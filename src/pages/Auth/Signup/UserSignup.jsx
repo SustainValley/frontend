@@ -1,8 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './UserSignup.module.css';
 import kakaoLogo from '../../../assets/kakaoLogo.svg';
 
 const UserSignup = () => {
+  const navigate = useNavigate();
+
   return (
     <div className={styles.userSignupContainer}>
       <div className={styles.logo}>Logo</div>
@@ -24,7 +27,9 @@ const UserSignup = () => {
       </div>
 
       <div className={styles.inputCard}>
-        <button className={styles.nextButton}>다음으로</button>
+        <button className={styles.nextButton} onClick={() => navigate('/signup/user/name')}>
+          다음으로
+        </button>
         <div className={styles.divider}>또는</div>
         <button className={styles.kakaoButton}>
           <img src={kakaoLogo} alt="카카오 로고" className={styles.kakaoIcon} />

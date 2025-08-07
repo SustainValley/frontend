@@ -22,7 +22,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    margin-bottom: 32px;
+    margin-bottom: 44px;
     margin-top: 76px;
   }
   
@@ -30,7 +30,7 @@
     padding: 0px 16px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
   }
   
   .label {
@@ -54,7 +54,6 @@
     border: none;
     border-radius: 12px;
     background: var(--gray-00, #F7F7F8);
-    font-family: Pretendard;
     box-sizing: border-box;
     color: var(--gray-40, #000000);
     font-family: Pretendard;
@@ -62,6 +61,10 @@
     font-style: normal;
     font-weight: 400;
     line-height: 20px; 
+  }
+
+  .input::placeholder {
+    color: var(--gray-40, #96A1A6);
   }
   
   .checkButton {
@@ -99,7 +102,7 @@
     font-weight: 600;
     line-height: 150%; 
     position: relative;
-    margin: 16px 0;
+    margin: 8px 0;
   }
   
   .divider::before,
