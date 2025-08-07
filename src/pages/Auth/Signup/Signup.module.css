@@ -1,0 +1,85 @@
+.signUpContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.logo {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  width: 136px;
+  height: 44px;
+  background: #D9D9D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.buttonWrapper {
+  margin-top: 92px;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardButton {
+  border-radius: 12px;
+  background: var(--gray-00, #F7F7F8);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  text-decoration: none;
+  color: inherit;
+  caret-color: transparent; /* 커서 깜빡임 방지 */
+}
+
+.cardButton:hover {
+  background-color: #eeeeee;
+}
+
+.textBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+  margin-bottom: 4px;
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 0 0.3px rgba(0, 0, 0, 0.1);
+}
+
+.subtitle {
+  color: var(--gray-60, #686F73);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  will-change: transform;
+  -webkit-font-smoothing: antialiased;
+  text-shadow: 0 0 0.3px rgba(0, 0, 0, 0.1);
+  pointer-events: none; 
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  pointer-events: none;     
+  user-select: none;      
+  caret-color: transparent; 
+}
