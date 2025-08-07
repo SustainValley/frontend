@@ -6,6 +6,7 @@ import Login from './pages/Auth/Login/Login';
 import Signup from './pages/Auth/Signup/Signup';
 import UserSignup from './pages/Auth/Signup/UserSignup';
 import OwnerSignup from './pages/Auth/Signup/OwnerSignup';
+import UserNameSignup from './pages/Auth/Signup/UserNameSignup'; 
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/signup/user" element={<UserSignup />} />
+            <Route path="/signup/user/name" element={<UserNameSignup />} />
             <Route path="/signup/owner" element={<OwnerSignup />} />
           </Routes>
         </BrowserRouter>

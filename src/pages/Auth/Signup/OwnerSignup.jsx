@@ -1,7 +1,6 @@
 import React from 'react';
 import styles from './UserSignup.module.css';
 import { Link } from 'react-router-dom';
-import arrowRight from '../../../assets/arrow-narrow-right.svg';
 
 const UserSignup = () => {
   return (
