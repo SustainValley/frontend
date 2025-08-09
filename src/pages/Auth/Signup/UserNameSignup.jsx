@@ -1,7 +1,10 @@
 import React from 'react';
 import styles from './UserNameSignup.module.css';
+import { useNavigate } from 'react-router-dom';
 
 const UserNameSignup = () => {
+  const navigate = useNavigate();
+
   return (
     <div className={styles.container}>
       <div className={styles.logo}>Logo</div>
@@ -15,7 +18,9 @@ const UserNameSignup = () => {
           <input className={styles.input} type="text" placeholder="이름" />
         </div>
 
-        <button className={styles.nextButton}>다음으로</button>
+        <button className={styles.nextButton} onClick={() => navigate('/signup/user/phone')}>
+          다음으로
+        </button>
       </div>
     </div>
   );
