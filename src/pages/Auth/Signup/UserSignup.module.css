@@ -1,150 +1,178 @@
-.signUpContainer {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-  }
-  
-  .logo {
-    position: absolute;
-    top: 8px;
-    left: 16px;
-    width: 136px;
-    height: 44px;
-    background: #D9D9D9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-  }
-  
-  .formSection {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    margin-bottom: 44px;
-    margin-top: 76px;
-  }
-  
-  .inputCard {
-    padding: 0px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .label {
-    color: var(--gray-80, #3A3E40);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 20px; 
-    margin-bottom: 4px;
-  }
-  
-  .inputRow {
-    display: flex;
-    gap: 10px;
-  }
-  
-  .input {
-    flex: 1;
-    padding: 16px;
-    border: none;
-    border-radius: 12px;
-    background: var(--gray-00, #F7F7F8);
-    box-sizing: border-box;
-    color: var(--gray-40, #000000);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 20px; 
-    
-  }
-  
-  input:focus {outline:none;}
+.userSignupContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
 
-  .input::placeholder {
-    color: var(--gray-40, #96A1A6);
-  }
-  
-  .checkButton {
-    padding: 0 16px;
-    border-radius: 12px;
-    background: var(--Primary-Primary, #3A3E40);
-    color: #FFF;
-    font-family: Pretendard;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px; 
-    border: none;
-  }
-  
-  .nextButton {
-    border: none;
-    border-radius: 12px;
-    background: var(--Primary-Primary, #3A3E40);
-    color: #FFF;
-    font-family: Pretendard;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px;
-    padding: 12px 140px;
-  }
-  
-  .divider {
-    text-align: center;
-    color: var(--gray-50, #7F888C);
-    font-family: Pretendard;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 150%; 
-    position: relative;
-    margin: 8px 0;
-  }
-  
-  .divider::before,
-  .divider::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 45%;
-    height: 1px;
-    background-color: #B0B8BC;
-  }
-  
-  .divider::before {
-    left: 0;
-  }
-  .divider::after {
-    right: 0;
-  }
-  
-  .kakaoButton {
-    width: 343px;
-    height: 45px;
-    border-radius: 12px;
-    background: var(--kakao-bg, #FEE500);
-    color: var(--kakao-text, rgba(0, 0, 0, 0.85));
-    font-family: "Apple SD Gothic Neo";
-    font-size: 15px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: normal; 
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  
-  .kakaoIcon {
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
-  }
+.logo {
+  position: absolute;
+  top: 8px;
+  left: 16px;
+  width: 136px;
+  height: 44px;
+  background: #D9D9D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 44px;
+  margin-top: 76px;
+}
+
+.inputCard {
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px; 
+  margin-bottom: 4px;
+}
+
+/* 아이디 + 중복확인 버튼 가로 정렬 */
+.inputRow {
+  display: flex;
+  gap: 10px;
+}
+
+/* 공통 인풋 */
+.input {
+  flex: 1;
+  height: 48px;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--gray-00, #F7F7F8);
+  box-sizing: border-box;
+  color: #3A3E40;
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.input:focus { outline: none; }
+
+.input::placeholder {
+  color: var(--gray-40, #96A1A6);
+}
+
+.checkButton {
+  flex: none;
+  width: 92px;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--Primary-Primary, #3A3E40);
+  color: #FFF;
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.checkButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nextButton {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: var(--Primary-Primary, #3A3E40);
+  color: #FFF;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  padding: 12px 16px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--gray-50, #7F888C);
+  font-family: Pretendard;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: #B0B8BC;
+}
+
+.kakaoButton {
+  width: 100%;
+  height: 45px;
+  border-radius: 12px;
+  background: var(--kakao-bg, #FEE500);
+  color: var(--kakao-text, rgba(0, 0, 0, 0.85));
+  font-family: "Apple SD Gothic Neo", Pretendard, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.kakaoIcon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.errorText {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #d92d20; 
+}
+
+.statusOk {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #1a7f37; 
+}
+.statusBad {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #d92d20; 
+}
+.statusError {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #b42318; 
+}
+.statusInfo {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #7f888c; 
+}

@@ -1,25 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './OwnerSignup.module.css';
+import { useOwnerSignup } from '../../../context/OwnerSignupContext';
+
+const loadDaumPostcode = () =>
+  new Promise((resolve, reject) => {
+    if (window.daum?.Postcode) return resolve(window.daum.Postcode);
+    const existing = document.getElementById('daum-postcode-script');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.daum.Postcode));
+      existing.addEventListener('error', reject);
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'daum-postcode-script';
+    script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.async = true;
+    script.onload = () => resolve(window.daum.Postcode);
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
 
 const OwnerSignup = () => {
   const navigate = useNavigate();
-
-  const [bno, setBno] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [brandName, setBrandName] = useState('');
-  const [zip, setZip] = useState('');
-  const [addr1, setAddr1] = useState('');
-  const [addr2, setAddr2] = useState('');
+  const {
+    bno, setBno,
+    ownerName, setOwnerName,
+    brandName, setBrandName,
+    zip, setZip,
+    addr1, setAddr1,
+    addr2, setAddr2,
+    verifyResult, setVerifyResult,
+  } = useOwnerSignup();
 
   const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState(null);
   const [verifyError, setVerifyError] = useState('');
+  const [postcodeReady, setPostcodeReady] = useState(false);
 
-  const RAW_KEY = process.env.REACT_APP_NTS_SERVICE_KEY || ''; 
+  const RAW_KEY = process.env.REACT_APP_NTS_SERVICE_KEY || '';
   const IS_ENCODED = /%[0-9A-F]{2}/i.test(RAW_KEY);
-
   const onlyDigits10 = (v) => v.replace(/[^0-9]/g, '').slice(0, 10);
+
+  useEffect(() => {
+    loadDaumPostcode()
+      .then(() => setPostcodeReady(true))
+      .catch(() => setPostcodeReady(false));
+  }, []);
 
   const handleVerifyFrontendOnly = async () => {
     setVerifyError('');
@@ -31,7 +57,7 @@ const OwnerSignup = () => {
       return;
     }
     if (!RAW_KEY) {
-      setVerifyError('서비스 키가 비어있어요. 프로젝트 루트의 .env.local에 REACT_APP_NTS_SERVICE_KEY를 설정하고 개발 서버를 재시작하세요.');
+      setVerifyError('서비스 키가 비어있어요. .env.local에 REACT_APP_NTS_SERVICE_KEY 설정 후 개발 서버 재시작하세요.');
       return;
     }
 
@@ -50,12 +76,10 @@ const OwnerSignup = () => {
       if (!res.ok) throw new Error(json?.message || '인증 호출 실패');
 
       const first = Array.isArray(json?.data) ? json.data[0] : null;
-
       if (!first || !first.b_stt) {
         setVerifyError('국세청에 등록되지 않은 사업자번호일 수 있어요. 다시 확인해주세요.');
         return;
       }
-
       setVerifyResult(first);
     } catch (e) {
       setVerifyError(e.message || '인증 중 오류가 발생했어요.');
@@ -64,9 +88,38 @@ const OwnerSignup = () => {
     }
   };
 
+  const handleOpenPostcode = async () => {
+    try {
+      await loadDaumPostcode();
+      new window.daum.Postcode({
+        oncomplete: function (data) {
+          const baseAddr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+          let extra = '';
+          if (data.userSelectedType === 'R') {
+            if (data.bname && /[동|로|가]$/g.test(data.bname)) extra += data.bname;
+            if (data.buildingName && data.apartment === 'Y') {
+              extra += (extra ? ', ' : '') + data.buildingName;
+            }
+            if (extra) extra = ` (${extra})`;
+          }
+
+          setZip(data.zonecode);          
+          setAddr1(baseAddr + extra);          
+
+          setTimeout(() => {
+            const el = document.getElementById('addr2');
+            if (el) el.focus();
+          }, 0);
+        },
+      }).open();
+    } catch (e) {
+      alert('주소 검색 스크립트를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
+    }
+  };
+
   const statusBadge = () => {
     if (!verifyResult) return null;
-    const st = verifyResult.b_stt; // 계속사업자 | 휴업자 | 폐업자
+    const st = verifyResult.b_stt; 
     const cls =
       st === '계속사업자' ? styles.badgeGreen :
       st === '휴업자'     ? styles.badgeOrange :
@@ -90,7 +143,6 @@ const OwnerSignup = () => {
       <div className={styles.logo}>Logo</div>
 
       <div className={styles.formSection}>
-        {/* 사업자 번호 */}
         <div className={styles.inputCard}>
           <label className={styles.label} htmlFor="bno">사업자 번호</label>
           <div className={styles.inputRow}>
@@ -113,7 +165,6 @@ const OwnerSignup = () => {
             </button>
           </div>
 
-          {/* 아래 안내/에러/상태 */}
           <div id="bnoHelp" className={styles.subHint}>
             하이픈( - ) 없이 숫자 10자리로 입력해 주세요.
           </div>
@@ -125,7 +176,6 @@ const OwnerSignup = () => {
           {statusBadge()}
         </div>
 
-        {/* 대표자 명 */}
         <div className={styles.inputCard}>
           <label className={styles.label} htmlFor="ownerName">대표자 명</label>
           <input
@@ -138,7 +188,6 @@ const OwnerSignup = () => {
           />
         </div>
 
-        {/* 상호 */}
         <div className={styles.inputCard}>
           <label className={styles.label} htmlFor="brandName">상호</label>
           <input
@@ -151,7 +200,6 @@ const OwnerSignup = () => {
           />
         </div>
 
-        {/* 주소 */}
         <div className={styles.inputCard}>
           <label className={styles.label}>사업장주소</label>
           <div className={styles.inputRow}>
@@ -161,8 +209,16 @@ const OwnerSignup = () => {
               className={styles.input}
               value={zip}
               onChange={(e) => setZip(e.target.value)}
+              readOnly
             />
-            <button className={styles.checkButton}>주소 검색</button>
+            <button
+              className={styles.checkButton}
+              onClick={handleOpenPostcode}
+              disabled={!postcodeReady && false}
+              title={postcodeReady ? '' : '클릭 시 스크립트를 불러와요'}
+            >
+              주소 검색
+            </button>
           </div>
           <input
             type="text"
@@ -170,8 +226,10 @@ const OwnerSignup = () => {
             className={styles.input}
             value={addr1}
             onChange={(e) => setAddr1(e.target.value)}
+            readOnly
           />
           <input
+            id="addr2"
             type="text"
             placeholder="상세주소"
             className={styles.input}
@@ -186,8 +244,13 @@ const OwnerSignup = () => {
           className={styles.nextButton}
           onClick={() => navigate('/signup/owner/password')}
           disabled={!verifyResult || verifyResult.b_stt !== '계속사업자'}
-          title={!verifyResult ? '사업자번호 인증을 먼저 진행하세요.' :
-                 verifyResult.b_stt !== '계속사업자' ? '계속사업자만 진행 가능합니다.' : ''}
+          title={
+            !verifyResult
+              ? '사업자번호 인증을 먼저 진행하세요.'
+              : verifyResult.b_stt !== '계속사업자'
+              ? '계속사업자만 진행 가능합니다.'
+              : ''
+          }
         >
           다음으로
         </button>
