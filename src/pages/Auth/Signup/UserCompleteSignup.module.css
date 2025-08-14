@@ -1,0 +1,72 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+.centerWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.brandBox {
+  width: 120px;
+  height: 120px;
+  background: #D9D9D9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3a3e40;
+  font-size: 14px;
+}
+
+.title {
+  margin-top: 32px;
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 45px;
+}
+
+.subText {
+  color: var(--gray-70, #515659);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px; 
+  text-align: center;
+}
+
+.nextButton {
+  border: none;
+  border-radius: 12px;
+  background: var(--Sub-Sub-1, #A9C247);
+  color: #FFF;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+  cursor: pointer;
+  display: flex;
+  width: 343px;
+  padding: 12px 0;
+  justify-content: center;
+  align-items: center;
+}
+

@@ -1,26 +1,105 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import './App.css';
+
+import { AuthProvider, useAuth } from './context/AuthContext';
+import RoleRoute from './components/RoleRoute';
+
+// ▼ User/Owner 각각의 컨텍스트
+import { SignupProvider } from './context/SignupContext';
+import { OwnerSignupProvider } from './context/OwnerSignupContext';
 
 import Login from './pages/Auth/Login/Login';
 import Signup from './pages/Auth/Signup/Signup';
 import UserSignup from './pages/Auth/Signup/UserSignup';
+import UserNameSignup from './pages/Auth/Signup/UserNameSignup';
+import UserPhoneSignup from './pages/Auth/Signup/UserPhoneSignup';
+import UserCompleteSignup from './pages/Auth/Signup/UserCompleteSignup';
 import OwnerSignup from './pages/Auth/Signup/OwnerSignup';
-import UserNameSignup from './pages/Auth/Signup/UserNameSignup'; 
+import OwnerPasswordSignup from './pages/Auth/Signup/OwnerPasswordSignup';
+import OwnerPhoneSignup from './pages/Auth/Signup/OwnerPhoneSignup';
+import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
+
+const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
+const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
+
+// ▼ 로그인 상태에 따라 초기 리다이렉트 (role 확정 전엔 대기)
+const RootRedirect = () => {
+  const { isAuthenticated, role } = useAuth();
+  const loc = useLocation();
+
+  if (!isAuthenticated) {
+    if (loc.pathname !== '/login') return <Navigate to="/login" replace />;
+    return null;
+  }
+
+  // role이 null/undefined인 초기 프레임에는 아무 것도 하지 않음
+  if (!role) return null;
+
+  const r = String(role).trim().toLowerCase();
+  const target = r === 'owner' ? '/owner/home' : '/user/home';
+  if (loc.pathname !== target) return <Navigate to={target} replace />;
+  return null;
+};
+
+// ▼ User 회원가입 라우트 전용 컨텍스트 래퍼
+const UserSignupLayout = () => (
+  <SignupProvider>
+    <Outlet />
+  </SignupProvider>
+);
+
+// ▼ Owner 회원가입 라우트 전용 컨텍스트 래퍼
+const OwnerSignupLayout = () => (
+  <OwnerSignupProvider>
+    <Outlet />
+  </OwnerSignupProvider>
+);
 
 function App() {
   return (
     <div className="web-wrapper">
       <div className="web-container">
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/signup/user" element={<UserSignup />} />
-            <Route path="/signup/user/name" element={<UserNameSignup />} />
-            <Route path="/signup/owner" element={<OwnerSignup />} />
-          </Routes>
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={<div />}>
+              <Routes>
+                <Route path="/" element={<RootRedirect />} />
+
+                {/* 로그인/메인 */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+
+                {/* ▼ User 회원가입 스텝: 컨텍스트로 묶어서 상태 유지 */}
+                <Route element={<UserSignupLayout />}>
+                  <Route path="/signup/user" element={<UserSignup />} />
+                  <Route path="/signup/user/name" element={<UserNameSignup />} />
+                  <Route path="/signup/user/phone" element={<UserPhoneSignup />} />
+                  <Route path="/signup/user/complete" element={<UserCompleteSignup />} />
+                </Route>
+
+                {/* ▼ Owner 회원가입 스텝: 별도 컨텍스트로 묶기 */}
+                <Route element={<OwnerSignupLayout />}>
+                  <Route path="/signup/owner" element={<OwnerSignup />} />
+                  <Route path="/signup/owner/password" element={<OwnerPasswordSignup />} />
+                  <Route path="/signup/owner/phone" element={<OwnerPhoneSignup />} />
+                  <Route path="/signup/owner/complete" element={<OwnerCompleteSignup />} />
+                </Route>
+
+                {/* 역할별 보호 라우트 */}
+                <Route element={<RoleRoute allow={['user']} />}>
+                  <Route path="/user/home" element={<UserMain />} />
+                </Route>
+                <Route element={<RoleRoute allow={['owner']} />}>
+                  <Route path="/owner/home" element={<OwnerMain />} />
+                </Route>
+
+                {/* 미지정 경로 처리 */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
       </div>
     </div>
   );

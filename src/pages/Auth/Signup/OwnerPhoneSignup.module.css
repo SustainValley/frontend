@@ -82,6 +82,7 @@
     color: var(--gray-40, #96A1A6);
   }
   
+
   .nextButton {
     border: none;
     border-radius: 12px;
@@ -92,6 +93,6 @@
     font-style: normal;
     font-weight: 600;
     line-height: 24px;
-    padding: 12px 140px;
+    padding: 12px 0px;
   }
   
