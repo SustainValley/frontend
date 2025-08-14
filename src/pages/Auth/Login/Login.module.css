@@ -32,7 +32,7 @@
     width: 100%;
     margin-bottom: 12px;
     padding: 16px;
-    color: var(--gray-40, #96A1A6);
+    color: var(--gray-40, #000000);
     font-family: Pretendard;
     font-size: 14px;
     font-style: normal;
@@ -42,6 +42,10 @@
     border-radius: 12px;
     background: var(--gray-00, #F7F7F8);
     box-sizing: border-box;
+  }
+
+  .input::placeholder {
+    color: var(--gray-40, #96A1A6);
   }
   
   .loginButton {

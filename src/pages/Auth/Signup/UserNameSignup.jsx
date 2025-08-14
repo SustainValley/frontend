@@ -13,7 +13,7 @@ const UserNameSignup = () => {
         <p className={styles.title}>이름을 입력해주세요</p>
         <p className={styles.subText}>회의실 예약 시 예약자명으로 사용돼요.</p>
 
-        <div className={styles.inputGroup}>
+         <div className={styles.inputGroup}>
           <label className={styles.label}>이름</label>
           <input className={styles.input} type="text" placeholder="이름" />
         </div>
