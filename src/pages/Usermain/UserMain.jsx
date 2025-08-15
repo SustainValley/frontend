@@ -158,10 +158,24 @@ export default function MapExplore() {
                 </div>
                 <button
                   className={styles.reserveBtn}
-                  onClick={() => alert(`${cafe.name} 예약 진행`)}
+                  onClick={() =>
+                    navigate('/user/reserve', {
+                      state: {
+                        cafe: {
+                          id: cafe.id,
+                          name: cafe.name,
+                          addr: cafe.addr,
+                          thumb: cafe.thumb,
+                          hours: cafe.hours,
+                          mood: cafe.mood,
+                          ppl: cafe.ppl,
+                        },
+                      },
+                    })
+                  }
                 >
                   예약하기
-                </button>
+              </button>
               </div>
             ))
           )}

@@ -1,3 +1,4 @@
+// src/App.js
 import React, { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import './App.css';
@@ -21,7 +22,8 @@ import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 
 import FilterPage from './pages/UserMain/FilterPage';
 
-const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
+const Reserve  = React.lazy(() => import('./pages/UserMain/Reserve'));
+const UserMain = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 
 const RootRedirect = () => {
@@ -62,7 +64,6 @@ const UserSignupLayout = () => (
   </SignupProvider>
 );
 
-// ▼ Owner 회원가입 라우트 전용 컨텍스트 래퍼
 const OwnerSignupLayout = () => (
   <OwnerSignupProvider>
     <Outlet />
@@ -83,7 +84,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
 
-                {/* ▼ User 회원가입 스텝: 컨텍스트로 묶어서 상태 유지 */}
+                {/* User 회원가입 스텝 */}
                 <Route element={<UserSignupLayout />}>
                   <Route path="/signup/user" element={<UserSignup />} />
                   <Route path="/signup/user/name" element={<UserNameSignup />} />
@@ -91,7 +92,7 @@ function App() {
                   <Route path="/signup/user/complete" element={<UserCompleteSignup />} />
                 </Route>
 
-                {/* ▼ Owner 회원가입 스텝: 별도 컨텍스트로 묶기 */}
+                {/* Owner 회원가입 스텝 */}
                 <Route element={<OwnerSignupLayout />}>
                   <Route path="/signup/owner" element={<OwnerSignup />} />
                   <Route path="/signup/owner/password" element={<OwnerPasswordSignup />} />
@@ -102,8 +103,10 @@ function App() {
                 {/* 역할별 보호 라우트 */}
                 <Route element={<RoleRoute allow={['user']} />}>
                   <Route path="/user/home" element={<UserMain />} />
-                  <Route path="/user/filters" element={<FilterPage />} /> 
+                  <Route path="/user/filters" element={<FilterPage />} />
+                  <Route path="/user/reserve" element={<Reserve />} /> {/* 예약 페이지 추가 */}
                 </Route>
+
                 <Route element={<RoleRoute allow={['owner']} />}>
                   <Route path="/owner/home" element={<OwnerMain />} />
                 </Route>
