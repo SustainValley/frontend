@@ -42,13 +42,11 @@
   margin-bottom: 4px;
 }
 
-/* 아이디 + 중복확인 버튼 가로 정렬 */
 .inputRow {
   display: flex;
   gap: 10px;
 }
 
-/* 공통 인풋 */
 .input {
   flex: 1;
   height: 48px;

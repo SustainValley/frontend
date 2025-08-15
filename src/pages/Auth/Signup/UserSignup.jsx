@@ -3,21 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import styles from './UserSignup.module.css';
 import kakaoLogo from '../../../assets/kakaoLogo.svg';
 import { useSignup } from '../../../context/SignupContext';
+import instance from '../../../lib/axios';
 
-const USERNAME_RE = /^[a-z][a-z0-9._-]{4,19}$/; 
+const USERNAME_RE = /^[a-z][a-z0-9._-]{4,19}$/;
 const PW_HAS_LETTER = /[A-Za-z]/;
 const PW_HAS_DIGIT = /\d/;
-const PW_HAS_SPECIAL = /[!@#$%^&*()\-_=+\[\]{};:'",.<>/?\\|`~]/;
+const PW_HAS_SPECIAL = /[^A-Za-z0-9]/;
 const PW_SPACE = /\s/;
 
 function validateUsername(u) {
   const v = u.trim();
   if (!v) return { ok: false, msg: '아이디를 입력해주세요.' };
   if (!USERNAME_RE.test(v)) {
-    return {
-      ok: false,
-      msg: '아이디는 영문 소문자로 시작, 영문/숫자/._- 포함 5~20자여야 해요.',
-    };
+    return { ok: false, msg: '아이디는 영문 소문자로 시작, 영문/숫자/._- 포함 5~20자여야 해요.' };
   }
   return { ok: true, msg: '' };
 }
@@ -39,25 +37,24 @@ const UserSignup = () => {
   const navigate = useNavigate();
   const { updateField } = useSignup();
 
-  const [username, setUsername]   = useState('');
-  const [password, setPassword]   = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
 
   const [userErr, setUserErr] = useState('');
   const [pwErr, setPwErr] = useState('');
 
   const [dupMsg, setDupMsg] = useState('');
-  const [dupStatus, setDupStatus] = useState('idle'); 
+  const [dupStatus, setDupStatus] = useState('idle');
+
   const usernameValid = useMemo(() => validateUsername(username).ok, [username]);
   const passwordValid = useMemo(() => validatePassword(password, username).ok, [password, username]);
   const passwordMatch = useMemo(() => password && password2 && password === password2, [password, password2]);
 
   const canClickDup = usernameValid && dupStatus !== 'checking';
-  const canNext =
-    usernameValid && passwordValid && passwordMatch && dupStatus === 'available';
+  const canNext = usernameValid && passwordValid && passwordMatch && dupStatus === 'available';
 
   const onNext = () => {
-
     const u = validateUsername(username);
     const p = validatePassword(password, username);
 
@@ -96,24 +93,21 @@ const UserSignup = () => {
     try {
       setDupStatus('checking');
       setDupMsg('');
-      const res = await fetch('/api/users/signup/check-username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ username: username.trim() }),
+
+      const { data } = await instance.post('/api/users/signup/check-username', {
+        username: username.trim(),
       });
 
-      const data = await res.json().catch(() => ({}));
       const msg = typeof data?.message === 'string' ? data.message : '';
 
-      if (res.ok) {
-        if (msg.includes('사용 가능')) setDupStatus('available');
-        else if (msg.includes('이미 사용중')) setDupStatus('taken');
-        else setDupStatus('info');
-        setDupMsg(msg || '확인되었습니다.');
+      if (msg.includes('사용 가능')) {
+        setDupStatus('available');
+      } else if (msg.includes('이미 사용중')) {
+        setDupStatus('taken');
       } else {
-        setDupStatus('error');
-        setDupMsg(msg || `중복확인에 실패했습니다. (HTTP ${res.status})`);
+        setDupStatus('info');
       }
+      setDupMsg(msg || '확인되었습니다.');
     } catch {
       setDupStatus('error');
       setDupMsg('네트워크 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
@@ -125,7 +119,6 @@ const UserSignup = () => {
       <div className={styles.logo}>Logo</div>
 
       <div className={styles.formSection}>
-
         <div className={styles.inputCard}>
           <label className={styles.label}>아이디</label>
           <div className={styles.inputRow}>
@@ -136,8 +129,8 @@ const UserSignup = () => {
               value={username}
               onChange={e => {
                 setUsername(e.target.value);
-                setUserErr('');        
-                setDupStatus('idle');      
+                setUserErr('');
+                setDupStatus('idle');
                 setDupMsg('');
               }}
               onBlur={() => {
@@ -156,7 +149,7 @@ const UserSignup = () => {
             </button>
           </div>
 
-          {userErr && <div className={styles.errorText}>{userErr}</div>}
+          {userErr && <div className={styles.errorText} aria-live="assertive">{userErr}</div>}
 
           {!userErr && dupStatus !== 'idle' && dupMsg && (
             <div
@@ -209,7 +202,7 @@ const UserSignup = () => {
             autoComplete="new-password"
           />
 
-          {pwErr && <div className={styles.errorText}>{pwErr}</div>}
+          {pwErr && <div className={styles.errorText} aria-live="assertive">{pwErr}</div>}
         </div>
       </div>
 

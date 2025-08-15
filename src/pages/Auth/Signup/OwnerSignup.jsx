@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from './OwnerSignup.module.css';
 import { useOwnerSignup } from '../../../context/OwnerSignupContext';
+import axios from 'axios';
 
 const loadDaumPostcode = () =>
   new Promise((resolve, reject) => {
@@ -39,7 +40,7 @@ const OwnerSignup = () => {
 
   const RAW_KEY = process.env.REACT_APP_NTS_SERVICE_KEY || '';
   const IS_ENCODED = /%[0-9A-F]{2}/i.test(RAW_KEY);
-  const onlyDigits10 = (v) => v.replace(/[^0-9]/g, '').slice(0, 10);
+  const onlyDigits10 = (v) => (v || '').replace(/[^0-9]/g, '').slice(0, 10);
 
   useEffect(() => {
     loadDaumPostcode()
@@ -66,14 +67,11 @@ const OwnerSignup = () => {
       const keyParam = IS_ENCODED ? RAW_KEY : encodeURIComponent(RAW_KEY);
       const url = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${keyParam}&returnType=JSON`;
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ b_no: [clean] }),
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.message || '인증 호출 실패');
+      const { data: json } = await axios.post(
+        url,
+        { b_no: [clean] },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
 
       const first = Array.isArray(json?.data) ? json.data[0] : null;
       if (!first || !first.b_stt) {
@@ -82,7 +80,7 @@ const OwnerSignup = () => {
       }
       setVerifyResult(first);
     } catch (e) {
-      setVerifyError(e.message || '인증 중 오류가 발생했어요.');
+      setVerifyError(e?.response?.data?.message || e?.message || '인증 중 오류가 발생했어요.');
     } finally {
       setVerifying(false);
     }
@@ -96,15 +94,15 @@ const OwnerSignup = () => {
           const baseAddr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
           let extra = '';
           if (data.userSelectedType === 'R') {
-            if (data.bname && /[동|로|가]$/g.test(data.bname)) extra += data.bname;
+            if (data.bname && /(동|로|가)$/.test(data.bname)) extra += data.bname;
             if (data.buildingName && data.apartment === 'Y') {
               extra += (extra ? ', ' : '') + data.buildingName;
             }
             if (extra) extra = ` (${extra})`;
           }
 
-          setZip(data.zonecode);          
-          setAddr1(baseAddr + extra);          
+          setZip(data.zonecode);
+          setAddr1(baseAddr + extra);
 
           setTimeout(() => {
             const el = document.getElementById('addr2');
@@ -112,14 +110,14 @@ const OwnerSignup = () => {
           }, 0);
         },
       }).open();
-    } catch (e) {
+    } catch {
       alert('주소 검색 스크립트를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
     }
   };
 
   const statusBadge = () => {
     if (!verifyResult) return null;
-    const st = verifyResult.b_stt; 
+    const st = verifyResult.b_stt;
     const cls =
       st === '계속사업자' ? styles.badgeGreen :
       st === '휴업자'     ? styles.badgeOrange :
@@ -128,12 +126,8 @@ const OwnerSignup = () => {
     return (
       <div className={styles.verifyBox}>
         <span className={cls}>{st}</span>
-        {verifyResult.tax_type && (
-          <span className={styles.taxType}>과세유형: {verifyResult.tax_type}</span>
-        )}
-        {verifyResult.end_dt && (
-          <span className={styles.endDt}>폐업일: {verifyResult.end_dt}</span>
-        )}
+        {verifyResult.tax_type && <span className={styles.taxType}>과세유형: {verifyResult.tax_type}</span>}
+        {verifyResult.end_dt && <span className={styles.endDt}>폐업일: {verifyResult.end_dt}</span>}
       </div>
     );
   };
@@ -214,7 +208,7 @@ const OwnerSignup = () => {
             <button
               className={styles.checkButton}
               onClick={handleOpenPostcode}
-              disabled={!postcodeReady && false}
+              disabled={!postcodeReady}
               title={postcodeReady ? '' : '클릭 시 스크립트를 불러와요'}
             >
               주소 검색
