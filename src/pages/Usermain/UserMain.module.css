@@ -6,7 +6,6 @@
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── 상단 검색바 ─────────────────────────────────── */
 .searchBar {
   position: absolute;
   top: calc(16px + env(safe-area-inset-top, 0px));
@@ -59,7 +58,6 @@
   cursor: pointer;
 }
 
-/* ── 바텀시트 & 배경 ─────────────────────────────── */
 .backdrop {
   position: absolute;
   left: 0; right: 0; bottom: 0;

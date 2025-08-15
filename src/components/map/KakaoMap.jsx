@@ -1,3 +1,5 @@
+// src/components/map/KakaoMap.jsx
+/* global kakao */
 import React, { useEffect, useRef, useState } from 'react';
 import useKakaoLoader from '../../hooks/useKakaoLoader';
 import pin from '../../assets/map-pin.svg';
@@ -15,7 +17,7 @@ export default function KakaoMap({
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
 
-  const [markers, setMarkers] = useState([]); 
+  const [markers, setMarkers] = useState([]); // [{ place, marker }]
   const markersRef = useRef([]);
   useEffect(() => { markersRef.current = markers; }, [markers]);
 
