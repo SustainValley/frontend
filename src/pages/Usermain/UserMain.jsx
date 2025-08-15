@@ -1,136 +1,172 @@
-import React, { useState } from "react";
-import styles from "./UserMain.module.css";
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import KakaoMap from '../../components/map/KakaoMap';
+import styles from './UserMain.module.css';
 
-const UserMain = () => {
-  const [expanded, setExpanded] = useState(false);
-  const [keyword, setKeyword] = useState("");
+import searchIcon from '../../assets/Search.svg';
+import filterIcon from '../../assets/filter.svg';
+
+export default function MapExplore() {
+  const navigate = useNavigate();
+
+  const [keyword, setKeyword]   = useState('');
+  const [input, setInput]       = useState('');
+  const [places, setPlaces]     = useState([]);
+  const [selected, setSelected] = useState(null);
+
+  const wrapRef = useRef(null);
+  const [ch, setCh] = useState(800);
+
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setCh(Math.max(300, Math.round(e.contentRect.height)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const SNAP = useMemo(() => {
+    const FULL_TOP = 96;
+    const MID_TOP  = Math.round(ch * 0.52);
+    const PEEK     = 140;
+    const PEEK_TOP = ch - PEEK;
+    return { FULL_TOP, MID_TOP, PEEK_TOP, MIN: FULL_TOP, MAX: PEEK_TOP };
+  }, [ch]);
+
+  const [sheetTop, setSheetTop] = useState(SNAP.PEEK_TOP);
+  useLayoutEffect(() => { setSheetTop(SNAP.PEEK_TOP); }, [SNAP.PEEK_TOP]);
+
+  const drag = useRef({ active:false, startY:0, startTop:SNAP.PEEK_TOP });
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+  const onPointerDown = (e) => {
+    const y = (e.touches?.[0]?.clientY ?? e.clientY);
+    drag.current = { active: true, startY: y, startTop: sheetTop };
+    e.currentTarget.setPointerCapture?.(e.pointerId ?? 1);
+  };
+
+  const onPointerMove = (e) => {
+    if (!drag.current.active) return;
+    const y  = (e.touches?.[0]?.clientY ?? e.clientY);
+    const dy = y - drag.current.startY;
+    const next = clamp(drag.current.startTop + dy, SNAP.MIN, SNAP.MAX);
+    setSheetTop(next);
+    if (e.cancelable) e.preventDefault();
+  };
+
+  const onPointerUp = () => {
+    if (!drag.current.active) return;
+    drag.current.active = false;
+
+    const mid1 = (SNAP.FULL_TOP + SNAP.MID_TOP) / 2;
+    const mid2 = (SNAP.MID_TOP  + SNAP.PEEK_TOP) / 2;
+    let target;
+    if (sheetTop <= mid1) target = SNAP.FULL_TOP;
+    else if (sheetTop <= mid2) target = SNAP.MID_TOP;
+    else target = SNAP.PEEK_TOP;
+
+    setSheetTop(target);
+  };
+
+  const search = () => {
+    if (!input.trim()) return;
+    setSelected(null);
+    setKeyword(input.trim());
+  };
+
+  const onInputChange = (e) => setInput(e.target.value);
+
+  const decorate = (p, i) => ({
+    id: p.id ?? `${p.place_name}-${i}`,
+    name: p.place_name ?? p.name ?? '이름없는 카페',
+    addr: p.road_address_name || p.address_name || '주소 준비중',
+    thumb: p.thumb || `https://picsum.photos/seed/cafe${i+3}/300/300`,
+    hours: i % 2 ? '12:00 - 18:00' : '09:00 - 21:00',
+    mood:  i % 3 ? '오픈된 공간' : '조용한 공간',
+    ppl:   i % 2 ? 6 : 2,
+  });
+
+  const list = (selected ? [selected] : places).map(decorate);
+  const nothing = !selected && places.length === 0;
+  const sheetHeight = Math.max(0, ch - sheetTop);
 
   return (
-    <div className={styles.previewFrame}>
-      {/* 지도 영역 */}
-      <div className={styles.mapArea}>
-        {/* 검색 바 */}
-        <div className={styles.searchBar}>
-          <button className={styles.iconBtn} aria-label="검색">
-            {/* 돋보기 */}
-            <svg width="20" height="20" viewBox="0 0 24 24">
-              <path d="M10.5 3a7.5 7.5 0 015.9 12.2l3.7 3.7-1.4 1.4-3.7-3.7A7.5 7.5 0 1110.5 3zm0 2a5.5 5.5 0 100 11 5.5 5.5 0 000-11z" />
-            </svg>
-          </button>
-          <input
-            className={styles.searchInput}
-            placeholder="회의실 예약 원하는 카페를 검색해주세요."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
-          <button
-            className={styles.iconBtn}
-            title="필터"
-            aria-label="필터 열기"
-            onClick={() => alert("필터 패널은 나중에 연결하세요 :)")}
-          >
-            {/* 필터(깔때기) */}
-            <svg width="22" height="22" viewBox="0 0 24 24">
-              <path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7V5z" />
-            </svg>
-          </button>
-        </div>
+    <div ref={wrapRef} className={styles.wrap}>
+      <KakaoMap
+        keyword={keyword}
+        onPlacesFound={setPlaces}
+        onPlaceClick={setSelected}
+      />
 
-        {/* 마커들 (위치는 샘플, 필요 시 좌표 맞춰 조정) */}
-        <Marker style={{ top: "42%", left: "58%" }} label="보라눌레스 아파트" />
-        <Marker style={{ top: "66%", left: "70%" }} label="하오청" />
-        <Marker style={{ top: "60%", left: "26%" }} label="풍치커피익스프레스공릉점" highlight />
-
-        {/* iOS 그랩바 느낌의 미세한 스크럽 표시 */}
-        <div className={styles.centerScrub} />
+      <div className={styles.searchBar}>
+        <img src={searchIcon} alt="" className={styles.icon} />
+        <input
+          className={styles.searchInput}
+          placeholder="회의실 예약 원하는 카페를 검색해주세요."
+          value={input}
+          onChange={onInputChange}
+          onKeyDown={(e) => e.key === 'Enter' && search()}
+        />
+        <span className={styles.vline} aria-hidden />
+        <button
+          className={styles.filterBtn}
+          onClick={() =>
+            navigate('/user/filters', {
+              state: { filters: { spaces: [], people: 1 } },
+            })
+          }
+          aria-label="필터 열기"
+        >
+          <img src={filterIcon} alt="" className={styles.icon} />
+        </button>
       </div>
 
-      {/* 하단 시트 */}
-      <div
-        className={`${styles.bottomSheet} ${expanded ? styles.expanded : ""}`}
-      >
-        <div className={styles.grabber} onClick={() => setExpanded(!expanded)} />
-        <div className={styles.sheetTitle}>회의실 예약</div>
+      <div className={styles.backdrop} style={{ height: `${sheetHeight}px` }} aria-hidden />
 
-        {/* 카드 1: 디자인과 동일한 첫 항목 */}
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>풍치커피익스프레스공릉점</div>
-          <div className={styles.infoRow}>
-            <svg width="16" height="16" viewBox="0 0 24 24">
-              <path d="M12 1a11 11 0 1011 11A11.013 11.013 0 0012 1zm0 2a9 9 0 11-9 9 9.01 9.01 0 019-9zm1 4h-2v6h6v-2h-4z" />
-            </svg>
-            <span>12:00 - 18:00</span>
-          </div>
-          <div className={styles.chips}>
-            <span className={styles.chip}>회의실 있음</span>
-            <span className={styles.chip}>2–6인</span>
-            <span className={styles.chip}>콘센트</span>
-          </div>
-        </div>
+      <div className={styles.bottomSheet}>
+        <div
+          className={styles.sheetPanel}
+          style={{ top: `${sheetTop}px`, height: `calc(100% - ${sheetTop}px)` }}
+        >
+          <div
+            className={styles.handle}
+            onMouseDown={onPointerDown}
+            onMouseMove={onPointerMove}
+            onMouseUp={onPointerUp}
+            onTouchStart={onPointerDown}
+            onTouchMove={onPointerMove}
+            onTouchEnd={onPointerUp}
+            aria-hidden
+          />
+          <div className={styles.sheetTitle}>회의 가능한 카페를 둘러보세요!</div>
 
-        {/* 카드 2: 예시 */}
-        <div className={styles.card}>
-          <div className={styles.cardTitle}>공릉 카페 A</div>
-          <div className={styles.infoRow}>
-            <svg width="16" height="16" viewBox="0 0 24 24">
-              <path d="M12 1a11 11 0 1011 11A11.013 11.013 0 0012 1zm0 2a9 9 0 11-9 9 9.01 9.01 0 019-9zm1 4h-2v6h6v-2h-4z" />
-            </svg>
-            <span>13:00 - 20:00</span>
-          </div>
-          <div className={styles.chips}>
-            <span className={styles.chip}>미팅룸</span>
-            <span className={styles.chip}>4–8인</span>
-          </div>
+          {nothing ? (
+            <div className={styles.cardGhost}>
+              검색 결과가 아직 없어요. 검색하거나 지도의 마커를 눌러보세요.
+            </div>
+          ) : (
+            list.map((cafe) => (
+              <div key={cafe.id} className={styles.cafeCard}>
+                <img className={styles.thumb} src={cafe.thumb} alt={cafe.name} />
+                <div className={styles.info}>
+                  <div className={styles.cafeName}>{cafe.name}</div>
+                  <div className={styles.metaRow}><span className={styles.ico} aria-hidden>🕒</span>{cafe.hours}</div>
+                  <div className={styles.metaRow}><span className={styles.ico} aria-hidden>💬</span>{cafe.mood}</div>
+                  <div className={styles.metaRow}><span className={styles.ico} aria-hidden>👥</span>{cafe.ppl}명</div>
+                </div>
+                <button
+                  className={styles.reserveBtn}
+                  onClick={() => alert(`${cafe.name} 예약 진행`)}
+                >
+                  예약하기
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
   );
-};
-
-const Marker = ({ style, label, highlight }) => (
-  <div className="markerWrap" style={style}>
-    <div className={`markerDot ${highlight ? "hl" : ""}`}>
-      {/* 말풍선/얼굴 느낌 */}
-      <span>💬</span>
-    </div>
-    {label && <div className="markerLabel">{label}</div>}
-
-    {/* 스타일을 모듈 안에서 쓰기 위해 CSS 클래스 네임을 전역으로 매핑 */}
-    <style>{`
-      .markerWrap {
-        position: absolute;
-        transform: translate(-50%, -100%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        pointer-events: none;
-      }
-      .markerDot {
-        width: 38px;
-        height: 38px;
-        border-radius: 999px;
-        background: #9cd27a;
-        border: 3px solid #fff;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.18);
-        display: grid;
-        place-items: center;
-        font-size: 18px;
-      }
-      .markerDot.hl { background: #8dcf63; }
-      .markerLabel {
-        pointer-events: none;
-        font-size: 12px;
-        line-height: 1;
-        background: #f19b2c;
-        color: #fff;
-        padding: 6px 10px;
-        border-radius: 10px;
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      }
-    `}</style>
-  </div>
-);
-
-export default UserMain;
+}

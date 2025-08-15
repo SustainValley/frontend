@@ -1,153 +1,197 @@
-:root{
-    --bg: #f3f3f3;
-    --text-strong:#3A3E40;
-    --text-sub:#7F888C;
-    --primary:#2f8cff;
-    --sheet-bg:#ffffff;
-    --chip-bg:#f3f6f8;
-    --chip-text:#4b5358;
-    --shadow: 0 10px 24px rgba(0,0,0,0.18);
-  }
-  
-  /* 휴대폰 미리보기 프레임 (iPhone 12 비율) */
-  .previewFrame{
-    width: 390px;
-    height: 844px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 34px;
-    box-shadow: 0 12px 40px rgba(0,0,0,.18);
-    overflow: hidden;
-    position: relative;
-    font-family: Pretendard, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
-  }
-  
-  /* 지도 영역: 실제 맵 연동 전 임시 배경 패턴 */
-  .mapArea{
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(#ececec 1px, transparent 1px),
-      radial-gradient(#ececec 1px, transparent 1px),
-      #fafafa;
-    background-position: 0 0, 10px 10px;
-    background-size: 20px 20px;
-  }
-  
-  /* 중앙에 살짝 보이는 스크럽 표시(회색 점) */
-  .centerScrub{
-    position: absolute;
-    left: 50%;
-    bottom: 120px;
-    width: 120px;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(0,0,0,.08);
-    transform: translateX(-50%);
-  }
-  
-  /* 상단 검색 바 */
-  .searchBar{
-    position: absolute;
-    left: 16px;
-    right: 16px;
-    top: 84px;
-    height: 48px;
-    border-radius: 14px;
-    background: #fff;
-    box-shadow: 0 6px 18px rgba(0,0,0,.12);
-    display: flex;
-    align-items: center;
-    padding: 0 8px 0 10px;
-    gap: 6px;
-  }
-  .iconBtn{
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: transparent;
-    border-radius: 10px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-  .iconBtn svg{
-    fill:#7F888C;
-  }
-  .searchInput{
-    flex: 1;
-    height: 100%;
-    border: none;
-    outline: none;
-    font-size: 14px;
-    color: #3A3E40;
-  }
-  
-  /* 하단 시트 */
-  .bottomSheet{
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    background: var(--sheet-bg);
-    border-top-left-radius: 22px;
-    border-top-right-radius: 22px;
-    box-shadow: var(--shadow);
-    padding: 10px 16px 24px;
-    height: 300px;                /* 접힘 상태 높이 */
-    transition: height .25s ease;
-  }
-  .bottomSheet.expanded{ height: 72%; }
-  
-  .grabber{
-    width: 56px;
-    height: 6px;
-    background: #E6EBEF;
-    border-radius: 999px;
-    margin: 6px auto 10px;
-    cursor: pointer;
-  }
-  .sheetTitle{
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-strong);
-    margin: 6px 2px 10px;
-  }
-  
-  /* 카드 */
-  .card{
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #EBEEF1;
-    box-shadow: 0 6px 16px rgba(0,0,0,.06);
-    padding: 14px;
-    margin-bottom: 12px;
-  }
-  .cardTitle{
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-strong);
-    margin-bottom: 8px;
-  }
-  .infoRow{
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #4b5358;
-    font-size: 13px;
-    margin-bottom: 10px;
-  }
-  .infoRow svg{ fill:#7F888C; }
-  
-  .chips{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .chip{
-    padding: 6px 10px;
-    border-radius: 999px;
-    background: var(--chip-bg);
-    color: var(--chip-text);
-    font-size: 12px;
-    border: 1px solid #E6EBEF;
-  }
-  
+.wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── 상단 검색바 ─────────────────────────────────── */
+.searchBar {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  left: 16px;
+  right: 16px;
+  height: 30px;
+  border-radius: 12px;
+  background: #FFF;
+  box-shadow: 0 0 16px 0 rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  gap: 8px;
+  border: none;
+  z-index: 10;
+}
+
+.icon { width: 24px; height: 24px; flex: 0 0 auto; }
+
+.searchInput {
+  flex: 1 1 auto;
+  border: 0;
+  outline: none;
+  color: var(--gray-50, #000);
+  font-family: Pretendard, system-ui, -apple-system, "Noto Sans KR", Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+  background: transparent;
+}
+.searchInput::placeholder { color: #9aa3a7; }
+
+.vline {
+  width: 1px;
+  height: 22px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 1px;
+  align-self: center;
+}
+
+.filterBtn {
+  flex: 0 0 auto;
+  border: 0;
+  background: #fff;
+  width: 32px;
+  height: 24px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* ── 바텀시트 & 배경 ─────────────────────────────── */
+.backdrop {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg,
+              rgba(255,255,255,0) 0%,
+              rgba(255,255,255,0.9) 60%,
+              #fff 100%);
+  pointer-events: none;
+  z-index: 8;
+}
+
+.bottomSheet { position: absolute; inset: 0; z-index: 9; pointer-events: none; }
+
+.sheetPanel {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  top: calc(100% - 140px);
+  height: calc(100% - 140px);
+  pointer-events: auto;
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
+  padding: 10px 16px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  transition: top 220ms cubic-bezier(.2,.8,.2,1);
+}
+.sheetPanel::-webkit-scrollbar { width: 0; height: 0; }
+
+.handle {
+  width: 88px;
+  height: 4px;
+  background: var(--Color-GrayScale-Gray100, #E4E6E7);
+  border-radius: 999px;
+  margin: 10px auto 20px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheetTitle {
+  color: var(--gray-90, #232526);
+  font-family: Pretendard, system-ui, -apple-system, "Noto Sans KR", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  margin-bottom: 16px;
+}
+
+/* ── 카드들 ─────────────────────────────────────── */
+.cardGhost {
+  background: #f6f7f8;
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: #6a7276;
+  font-size: 13px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.cafeCard {
+  display: grid;
+  grid-template-columns: 132px 1fr;  
+  grid-template-rows: auto auto;      
+  grid-template-areas:
+    "thumb info"
+    "btn   btn";
+  gap: 12px 16px;
+  align-items: start;
+  border-radius: 24px;
+  background: #FFF;
+  box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
+  padding: 16px;
+  border: 1px solid rgba(0,0,0,0.04);
+  margin-bottom: 16px;
+}
+
+.thumb {
+  grid-area: thumb;
+  width: 114px;
+  height: 114px;             
+  object-fit: cover;
+  border-radius: 12px;
+  background: #ddd;
+}
+
+.info {
+  grid-area: info;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cafeName {
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px; 
+}
+
+.metaRow {
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px; 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ico {
+  display: inline-block; 
+  width: 18px; 
+  text-align: center; 
+}
+
+.reserveBtn {
+  grid-area: btn;
+  margin-top: 4px;
+  padding: 12px 14px;            
+  border: 0;
+  border-radius: 12px;
+  background: var(--Primary-Primary, #3A3E40);
+  color: #FFF;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+  cursor: pointer;
+}

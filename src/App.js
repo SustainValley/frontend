@@ -19,6 +19,8 @@ import OwnerPasswordSignup from './pages/Auth/Signup/OwnerPasswordSignup';
 import OwnerPhoneSignup from './pages/Auth/Signup/OwnerPhoneSignup';
 import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 
+import FilterPage from './pages/UserMain/FilterPage';
+
 const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 
@@ -100,6 +102,7 @@ function App() {
                 {/* 역할별 보호 라우트 */}
                 <Route element={<RoleRoute allow={['user']} />}>
                   <Route path="/user/home" element={<UserMain />} />
+                  <Route path="/user/filters" element={<FilterPage />} /> 
                 </Route>
                 <Route element={<RoleRoute allow={['owner']} />}>
                   <Route path="/owner/home" element={<OwnerMain />} />
