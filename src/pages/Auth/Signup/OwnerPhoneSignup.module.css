@@ -96,3 +96,9 @@
     padding: 12px 0px;
   }
   
+  .errorText {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 18px;
+    color: #d92d20; 
+  }

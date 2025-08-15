@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from './UserPhoneSignup.module.css';
 import { useNavigate } from 'react-router-dom';
 import { useSignup } from '../../../context/SignupContext';
+import instance from '../../../lib/axios';
 
 const UserPhoneSignup = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const UserPhoneSignup = () => {
 
     setError('');
     setLoading(true);
+
     const payload = {
       username: signupData.username,
       nickname: signupData.nickname,
@@ -30,23 +32,15 @@ const UserPhoneSignup = () => {
     };
 
     try {
-      const res = await fetch('/hackathon/api/users/signup?type=per', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || `회원가입 실패 (status ${res.status})`);
-      }
-
-      const data = await res.json();
+      const { data } = await instance.post('/api/users/signup?type=per', payload);
       updateField('phoneNumber', payload.phoneNumber);
-      
       navigate('/signup/user/complete', { state: { message: data.message, userId: data.userId } });
     } catch (e) {
-      setError(e.message);
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        '회원가입 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -70,7 +64,7 @@ const UserPhoneSignup = () => {
             onChange={e => setPhone(e.target.value)}
             inputMode="tel"
           />
-          {error && <div className={styles.errorText}>{error}</div>}
+          {error && <div className={styles.errorText} aria-live="assertive">{error}</div>}
         </div>
 
         <button className={styles.nextButton} onClick={onSubmit} disabled={loading}>

@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import styles from './OwnerPhoneSignup.module.css';
 import { useNavigate } from 'react-router-dom';
 import { useOwnerSignup } from '../../../context/OwnerSignupContext';
+import instance from '../../../lib/axios';
 
-
-const digits = (v) => (v || '').replace(/[^0-9]/g, '');
+const digits = (v) => (v || '').replace(/[^0-9]/g, '').slice(0, 11);
 
 const formatBizNo = (tenDigits) => {
-  const s = digits(tenDigits).padEnd(10, '');
+  const s = (tenDigits || '').replace(/[^0-9]/g, '');
   if (s.length !== 10) return tenDigits;
   return `${s.slice(0,3)}-${s.slice(3,5)}-${s.slice(5)}`;
 };
@@ -30,10 +30,15 @@ const OwnerPhoneSignup = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitErr, setSubmitErr] = useState('');
 
+  const phoneValid = useMemo(() => {
+    const n = digits(phoneNumber).length;
+    return n >= 9 && n <= 11;
+  }, [phoneNumber]);
+
   const canSubmit =
     verifyResult?.b_stt === '계속사업자' &&
     bno && ownerName && brandName && zip && addr1 && password &&
-    digits(phoneNumber).length >= 9;
+    phoneValid;
 
   const handleSubmit = async () => {
     setSubmitErr('');
@@ -43,40 +48,27 @@ const OwnerPhoneSignup = () => {
     }
 
     const payload = {
-      businessnumber: formatBizNo(bno),              
-      presidentname: ownerName.trim(),                
-      businessname: brandName.trim(),                  
+      businessnumber: formatBizNo(bno),
+      presidentname: ownerName.trim(),
+      businessname: brandName.trim(),
       zipcode: zip.trim(),
-      address: `${addr1} ${addr2}`.trim(),             
-      password: password,                              
-      provider: 'local',                               
-      phoneNumber: formatPhone(phoneNumber),        
+      address: `${addr1} ${addr2}`.trim(),
+      password: password,
+      provider: 'local',
+      phoneNumber: formatPhone(phoneNumber),
     };
 
     try {
       setSubmitting(true);
-      const res = await fetch('/hackathon/api/users/signup?type=cor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const text = await res.text();
-      const data = (() => {
-        try { return JSON.parse(text); } catch { return null; }
-      })();
-
-      if (!res.ok) {
-        throw new Error(data?.message || text || `HTTP ${res.status}`);
-      }
-
+      const { data } = await instance.post('/api/users/signup?type=cor', payload);
       if (!data?.userId) {
-        
+        setSubmitErr('등록 결과가 올바르지 않습니다.');
+        return;
       }
-
-      navigate('/signup/owner/complete', { state: { userId: data?.userId } });
+      navigate('/signup/owner/complete', { state: { userId: data.userId } });
     } catch (e) {
-      setSubmitErr(e.message || '등록 중 오류가 발생했어요.');
+      const msg = e?.response?.data?.message || e?.message || '등록 중 오류가 발생했어요.';
+      setSubmitErr(msg);
     } finally {
       setSubmitting(false);
     }
@@ -97,12 +89,16 @@ const OwnerPhoneSignup = () => {
             type="text"
             placeholder="전화번호"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(digits(e.target.value))}
-            inputMode="numeric"
+            onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
+            onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit) handleSubmit(); }}
+            inputMode="tel"
           />
+          {phoneNumber && !phoneValid && (
+            <div className={styles.errorText} aria-live="assertive">전화번호 형식을 확인해주세요.</div>
+          )}
         </div>
 
-        {submitErr && <div className={styles.errorText}>{submitErr}</div>}
+        {submitErr && <div className={styles.errorText} aria-live="assertive">{submitErr}</div>}
 
         <button
           className={styles.nextButton}
