@@ -1,0 +1,455 @@
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+   .page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    height: 100%;
+    background: #f7f8f9;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* ==========================================================================
+     Top (AppBar + Hero)
+     ========================================================================== */
+  
+  .top {
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06); /* 상단 구분선 */
+  }
+  
+  /* AppBar: [Back] [Title] [Spacer] */
+  .appbar {
+    display: grid;
+    grid-template-columns: 40px 1fr 40px;
+    align-items: center;
+    min-height: 56px;
+    background: #fff;
+    padding: calc(env(safe-area-inset-top, 0px) + 4px) 12px 8px;
+  }
+  
+  .backBtn {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    border-radius: 10px;
+  }
+  
+  .backIcon {
+    width: 22px;
+    height: 22px;
+    display: block;
+    object-fit: contain;
+  }
+  
+  .title {
+    justify-self: center;
+    max-width: 100%;
+    text-align: center;
+    color: #232526;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* ==========================================================================
+     Hero (Horizontal Carousel)
+     ========================================================================== */
+  
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: #ddd;
+    aspect-ratio: 16 / 11;
+  }
+  
+  .heroTrack {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;       /* IE/Edge */
+  }
+  
+  .heroTrack::-webkit-scrollbar {
+    display: none;                  /* WebKit */
+    height: 0;
+  }
+  
+  .slide {
+    position: relative;
+    flex: 0 0 100%;
+    height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  
+  .slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  /* 사진 개수 표시 칩 */
+  .photoCount {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 6px 10px;
+    color: #232526;
+    background: rgba(255, 255, 255, 0.95);
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* ==========================================================================
+     Tabs
+     ========================================================================== */
+  
+  .tabs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    padding: 12px 16px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  }
+  
+  .tab {
+    position: relative;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #232526;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 28px;
+  }
+  
+  .tabActive::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -10px;
+    width: 64px;
+    height: 2px;
+    background: #232526;
+    border-radius: 2px;
+  }
+  
+  .tabMuted {
+    color: #c3c8cc;
+  }
+  
+  /* ==========================================================================
+     Body & Sections
+     ========================================================================== */
+  
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .section {
+    margin: 12px 12px 0;
+    padding: 16px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.06);
+  }
+  
+  .sectionTitle {
+    margin-bottom: 10px;
+    color: #232526;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  
+  /* Key-Value Rows */
+  .row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  
+  .row:first-of-type {
+    border-top: 0;
+  }
+  
+  .k {
+    width: 88px;
+    color: #6a7276;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  
+  .v {
+    color: #232526;
+    font-size: 13px;
+  }
+  
+  .inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .gray {
+    color: #6a7276;
+    font-size: 13px;
+  }
+  
+  .tagGreen {
+    padding: 2px 8px;
+    color: #1f7a54;
+    background: #e6f6ef;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 999px;
+  }
+  
+  /* Actions */
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .ghostBtn {
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
+    font-weight: 600;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .btnIcon {
+    margin-right: 6px;
+  }
+  
+  /* Chips */
+  .rowCol {
+    margin-top: 8px;
+  }
+  
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  
+  .chip {
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 12px;
+  }
+  
+  .chipActive {
+    color: #fff;
+    background: #1f7a54;
+    border-color: #1f7a54;
+  }
+  
+  /* Card / Inputs */
+  .card {
+    margin-top: 8px;
+    padding: 12px;
+    background: #fbfbfc;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+  }
+  
+  .smallLabel {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: #6a7276;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .dateRow {
+    margin-bottom: 10px;
+  }
+  
+  .dateInput {
+    width: 100%;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+  }
+  
+  /* Time Timeline */
+  .timeRow {
+    margin-bottom: 12px;
+  }
+  
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 2px;
+    height: 10px;
+    margin: 6px 0 10px;
+  }
+  
+  .slot {
+    background: #e9ecef;
+    border-radius: 2px;
+  }
+  
+  .slotActive {
+    background: #1f7a54;
+    border-radius: 2px;
+  }
+  
+  /* Time Pickers */
+  .timePickers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .timePicker select {
+    width: 100%;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+  }
+  
+  /* Counter */
+  .countRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .counter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .counter button {
+    width: 32px;
+    height: 32px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  
+  /* Notice */
+  .notice {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f4f6f7;
+    border-radius: 12px;
+  }
+  
+  .noticeTitle {
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  
+  .notice ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #6a7276;
+    font-size: 12px;
+  }
+  
+  .notice li {
+    margin: 4px 0;
+  }
+  
+  /* Summary */
+  .summaryCard {
+    margin-top: 12px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .summaryRow,
+  .summaryRowStrong {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-top: 1px dashed rgba(0, 0, 0, 0.06);
+    font-size: 14px;
+  }
+  
+  .summaryRow:first-of-type {
+    border-top: 0;
+  }
+  
+  .summaryK {
+    color: #6a7276;
+  }
+  
+  .summaryV {
+    color: #232526;
+    font-weight: 600;
+  }
+  
+  .summaryRowStrong .summaryK {
+    color: #232526;
+    font-weight: 700;
+  }
+  
+  .summaryVStrong {
+    color: #232526;
+    font-weight: 800;
+  }
+  
+  /* ==========================================================================
+     CTA
+     ========================================================================== */
+  
+  .ctaWrap {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 12px;
+    margin: 0 -12px -12px;
+  }
+  
+  .cta {
+    width: 100%;
+    height: 48px;
+    color: #fff;
+    background: #1f7a54;
+    border: 0;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: 0 6px 16px rgba(31, 122, 84, 0.25);
+  }
+  
