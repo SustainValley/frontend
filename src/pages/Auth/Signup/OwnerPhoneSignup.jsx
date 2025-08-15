@@ -55,7 +55,7 @@ const OwnerPhoneSignup = () => {
 
     try {
       setSubmitting(true);
-      const res = await fetch('/hackathon/api/users/signup?type=cor', {
+      const res = await fetch('/api/users/signup?type=cor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

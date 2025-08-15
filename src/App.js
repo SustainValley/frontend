@@ -1,11 +1,10 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import './App.css';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import RoleRoute from './components/RoleRoute';
 
-// ▼ User/Owner 각각의 컨텍스트
 import { SignupProvider } from './context/SignupContext';
 import { OwnerSignupProvider } from './context/OwnerSignupContext';
 
@@ -23,17 +22,30 @@ import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 
-// ▼ 로그인 상태에 따라 초기 리다이렉트 (role 확정 전엔 대기)
 const RootRedirect = () => {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, refresh } = useAuth();
   const loc = useLocation();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        await refresh?.();
+      } finally {
+        if (alive) setChecked(true);
+      }
+    })();
+    return () => { alive = false; };
+  }, [refresh]);
+
+  if (!checked) return null;
 
   if (!isAuthenticated) {
     if (loc.pathname !== '/login') return <Navigate to="/login" replace />;
     return null;
   }
 
-  // role이 null/undefined인 초기 프레임에는 아무 것도 하지 않음
   if (!role) return null;
 
   const r = String(role).trim().toLowerCase();
@@ -42,7 +54,6 @@ const RootRedirect = () => {
   return null;
 };
 
-// ▼ User 회원가입 라우트 전용 컨텍스트 래퍼
 const UserSignupLayout = () => (
   <SignupProvider>
     <Outlet />

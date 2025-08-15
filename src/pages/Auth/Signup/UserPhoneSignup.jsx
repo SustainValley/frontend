@@ -30,7 +30,7 @@ const UserPhoneSignup = () => {
     };
 
     try {
-      const res = await fetch('/hackathon/api/users/signup?type=per', {
+      const res = await fetch('/api/users/signup?type=per', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

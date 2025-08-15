@@ -96,7 +96,7 @@ const UserSignup = () => {
     try {
       setDupStatus('checking');
       setDupMsg('');
-      const res = await fetch('/hackathon/api/users/signup/check-username', {
+      const res = await fetch('/api/users/signup/check-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ username: username.trim() }),
