@@ -45,25 +45,30 @@ const flushQueue = (err, token) => {
 };
 
 async function refreshAccessToken() {
-  const rt = getRefreshToken();
+  const rt = getRefreshToken(); 
+  const headers = {};
+  if (rt) headers.Authorization = `Bearer ${rt}`;
+
   try {
-    // 👇 /hackathon + /api/... => /hackathon/api/auth/refresh
-    const { data } = await refreshClient.post('/api/auth/refresh', {});
+
+    const { data } = await refreshClient.post(
+      '/api/auth/refresh',
+      rt ? { refreshToken: rt } : {},   
+      { headers }                       
+    );
+
     const nextAccess = data?.accessToken || data?.token;
-    if (!nextAccess) throw new Error('no access token in POST refresh');
+    if (!nextAccess) throw new Error('no access token in refresh response');
+
     setAccessToken(nextAccess);
-    if (data?.refreshToken) setRefreshToken(data.refreshToken);
+    if (data?.refreshToken) setRefreshToken(data.refreshToken); // 서버가 새 RT 주면 교체
     return nextAccess;
-  } catch {
-    const headers = rt ? { Authorization: `Bearer ${rt}` } : {};
-    const { data } = await refreshClient.get('/api/auth/refresh', { headers });
-    const nextAccess = data?.accessToken || data?.token;
-    if (!nextAccess) throw new Error('no access token in GET refresh');
-    setAccessToken(nextAccess);
-    if (data?.refreshToken) setRefreshToken(data.refreshToken);
-    return nextAccess;
+  } catch (e) {
+
+    throw e;
   }
 }
+
 
 instance.interceptors.request.use((config) => {
   const at = getAccessToken();
