@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://3.27.150.124:8080/hackathon';
+const isProd = process.env.NODE_ENV === 'production';
+
+// ✅ 프로덕션: 상대경로('/hackathon')로 → 브라우저는 https://mocacafe.vercel.app/hackathon/... 로 요청
+// ✅ 개발: 로컬 http 백엔드로
+const BASE_URL = isProd
+  ? (process.env.REACT_APP_API_BASE_URL || '/hackathon')
+  : (process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/hackathon');
 
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
@@ -19,13 +25,13 @@ export const clearAuth = () => {
 };
 
 const instance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: BASE_URL,          // 👈 여기! 더 이상 http IP 절대경로 아님
   withCredentials: true,
   timeout: 10000,
 });
 
 const refreshClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: BASE_URL,          // 👈 동일
   withCredentials: true,
   timeout: 10000,
 });
@@ -41,6 +47,7 @@ const flushQueue = (err, token) => {
 async function refreshAccessToken() {
   const rt = getRefreshToken();
   try {
+    // 👇 /hackathon + /api/... => /hackathon/api/auth/refresh
     const { data } = await refreshClient.post('/api/auth/refresh', {});
     const nextAccess = data?.accessToken || data?.token;
     if (!nextAccess) throw new Error('no access token in POST refresh');

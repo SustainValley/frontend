@@ -1,0 +1,6 @@
+{
+    "rewrites": [
+      { "source": "/hackathon/(.*)", "destination": "http://3.27.150.124:8080/hackathon/$1" }
+    ]
+  }
+  
