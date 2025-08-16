@@ -99,6 +99,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+    margin-bottom: 40px;
   }
   .optionCard {
     display: grid;
