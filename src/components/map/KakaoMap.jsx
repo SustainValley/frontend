@@ -1,3 +1,4 @@
+/* global kakao */
 import React, {
   useEffect,
   useRef,
@@ -32,7 +33,8 @@ const KakaoMap = forwardRef(function KakaoMap(
 
   const clustererRef = useRef(null);
   const idleTimerRef = useRef(null);
-  
+
+  // ✅ 부모에서 ref.current로 map 객체 접근 가능하게
   useImperativeHandle(ref, () => map, [map]);
 
   useEffect(() => {
