@@ -4,9 +4,18 @@ import styles from './Login.module.css';
 import kakaoLogo from '../../../assets/kakaoLogo.svg';
 import { useAuth } from '../../../context/AuthContext';
 
+const digits = (v) => (v || '').replace(/[^0-9]/g, '');
+
+const formatBizNo = (v) => {
+  const s = digits(v).slice(0, 10); 
+  if (s.length <= 3) return s;
+  if (s.length <= 5) return `${s.slice(0, 3)}-${s.slice(3)}`;
+  return `${s.slice(0, 3)}-${s.slice(3, 5)}-${s.slice(5)}`;
+};
+
 const Login = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, role, login } = useAuth();
+  const { isAuthenticated, login } = useAuth();
 
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
@@ -18,21 +27,37 @@ const Login = () => {
   );
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    if (!role) return;
-    const r = String(role).trim().toLowerCase();
-    navigate(r === 'owner' ? '/owner/home' : '/user/home', { replace: true });
-  }, [isAuthenticated, role, navigate]);
+    if (!isAuthenticated || !id) return;
+
+    const rawId = digits(id);
+    const isBizNo = /^\d{10}$/.test(rawId); // 숫자 10자리면 사업자번호
+
+    navigate(isBizNo ? '/owner/home' : '/user/home', { replace: true });
+  }, [isAuthenticated, id, navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!canSubmit) return;
     setErr('');
     try {
-      await login(id.trim(), pw);
+      await login(id, pw);
     } catch (_error) {
       setErr('아이디 또는 비밀번호가 일치하지 않습니다.');
     }
+  };
+  
+
+  const onIdChange = (e) => {
+    const value = e.target.value;
+    const onlyDigits = value.replace(/-/g, '');
+
+    if (/^\d*$/.test(onlyDigits)) {
+      setId(formatBizNo(value));
+    } else {
+      setId(value); 
+    }
+
+    if (err) setErr('');
   };
 
   return (
@@ -43,13 +68,10 @@ const Login = () => {
         <form className={styles.form} onSubmit={onSubmit}>
           <input
             type="text"
-            placeholder="아이디"
+            placeholder="아이디 (또는 사업자번호)"
             className={styles.inputBox}
             value={id}
-            onChange={(e) => {
-              setId(e.target.value);
-              if (err) setErr('');
-            }}
+            onChange={onIdChange}
             autoComplete="username"
           />
           <input
@@ -64,7 +86,8 @@ const Login = () => {
             autoComplete="current-password"
           />
 
-          {canSubmit && err && <div className={styles.errorText}>{err}</div>}
+          {/* 에러 메시지는 제출했을 때만 표시 */}
+          {err && <div className={styles.errorText}>{err}</div>}
 
           <button
             type="submit"
@@ -85,7 +108,9 @@ const Login = () => {
         <button
           type="button"
           className={styles.kakaoButton}
-          onClick={() => (window.location.href = '/api/oauth2/authorization/kakao')}
+          onClick={() =>
+            (window.location.href = '/api/oauth2/authorization/kakao')
+          }
         >
           <img src={kakaoLogo} alt="카카오 로고" className={styles.kakaoIcon} />
           <span>카카오 로그인</span>
@@ -93,7 +118,9 @@ const Login = () => {
 
         <div className={styles.signupText}>
           아직 회원이 아니신가요?{' '}
-          <Link to="/signup" className={styles.signupLink}>회원가입</Link>
+          <Link to="/signup" className={styles.signupLink}>
+            회원가입
+          </Link>
         </div>
       </div>
     </div>
