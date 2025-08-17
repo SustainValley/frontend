@@ -5,7 +5,7 @@ import kakaoLogo from '../../../assets/kakaoLogo.svg';
 import { useSignup } from '../../../context/SignupContext';
 import instance from '../../../lib/axios';
 
-const USERNAME_RE = /^[a-z][a-z0-9._-]{4,19}$/;
+const USERNAME_RE = /^[A-Za-z0-9]{5,20}$/;
 const PW_HAS_LETTER = /[A-Za-z]/;
 const PW_HAS_DIGIT = /\d/;
 const PW_HAS_SPECIAL = /[^A-Za-z0-9]/;
@@ -15,7 +15,7 @@ function validateUsername(u) {
   const v = u.trim();
   if (!v) return { ok: false, msg: '아이디를 입력해주세요.' };
   if (!USERNAME_RE.test(v)) {
-    return { ok: false, msg: '아이디는 영문 소문자로 시작, 영문/숫자/._- 포함 5~20자여야 해요.' };
+    return { ok: false, msg: '아이디는 영문/숫자만 사용하여 5~20자여야 해요.' };
   }
   return { ok: true, msg: '' };
 }
@@ -138,6 +138,8 @@ const UserSignup = () => {
                 setUserErr(u.ok ? '' : u.msg);
               }}
               autoComplete="username"
+              inputMode="text"
+              pattern="[A-Za-z0-9]*"
             />
             <button
               className={styles.checkButton}
