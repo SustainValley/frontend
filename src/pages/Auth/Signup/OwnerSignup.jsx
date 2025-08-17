@@ -22,6 +22,17 @@ const loadDaumPostcode = () =>
     document.body.appendChild(script);
   });
 
+// 숫자만 추출
+const digits = (v) => (v || '').replace(/[^0-9]/g, '');
+
+// 사업자번호 포맷 (###-##-#####)
+const formatBizNo = (v) => {
+  const s = digits(v).slice(0, 10); // 최대 10자리
+  if (s.length <= 3) return s;
+  if (s.length <= 5) return `${s.slice(0, 3)}-${s.slice(3)}`;
+  return `${s.slice(0, 3)}-${s.slice(3, 5)}-${s.slice(5)}`;
+};
+
 const OwnerSignup = () => {
   const navigate = useNavigate();
   const {
@@ -40,7 +51,6 @@ const OwnerSignup = () => {
 
   const RAW_KEY = process.env.REACT_APP_NTS_SERVICE_KEY || '';
   const IS_ENCODED = /%[0-9A-F]{2}/i.test(RAW_KEY);
-  const onlyDigits10 = (v) => (v || '').replace(/[^0-9]/g, '').slice(0, 10);
 
   useEffect(() => {
     loadDaumPostcode()
@@ -52,9 +62,9 @@ const OwnerSignup = () => {
     setVerifyError('');
     setVerifyResult(null);
 
-    const clean = onlyDigits10(bno);
+    const clean = digits(bno); // 👉 하이픈 제거
     if (clean.length !== 10) {
-      setVerifyError('사업자번호는 하이픈 없이 숫자 10자리여야 해요.');
+      setVerifyError('사업자번호는 숫자 10자리여야 해요.');
       return;
     }
     if (!RAW_KEY) {
@@ -146,7 +156,7 @@ const OwnerSignup = () => {
               placeholder="사업자 번호 입력 (숫자 10자리)"
               className={styles.input}
               value={bno}
-              onChange={(e) => setBno(onlyDigits10(e.target.value))}
+              onChange={(e) => setBno(formatBizNo(e.target.value))}
               inputMode="numeric"
               aria-describedby="bnoHelp bnoError"
             />
@@ -160,7 +170,7 @@ const OwnerSignup = () => {
           </div>
 
           <div id="bnoHelp" className={styles.subHint}>
-            하이픈( - ) 없이 숫자 10자리로 입력해 주세요.
+            숫자 입력 시 자동으로 하이픈(-)이 붙어요.
           </div>
           {verifyError && (
             <div id="bnoError" className={styles.errorText} role="alert" aria-live="assertive">

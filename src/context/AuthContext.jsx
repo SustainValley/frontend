@@ -1,4 +1,3 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api, { setTokens, clearAuth } from '../lib/axios';
 
@@ -24,73 +23,80 @@ export function AuthProvider({ children }) {
 
   const refreshNow = useCallback(async () => {
     const rt = localStorage.getItem(REFRESH_KEY) || '';
-    const headers = rt ? { Authorization: `Bearer ${rt}` } : {};
-    const body = rt ? { refreshToken: rt } : {};
-    const { data } = await api.post('/api/auth/refresh', body, { headers }); // withCredentials 포함
-    const nextAccess = data?.accessToken || data?.token;
-    if (!nextAccess) throw new Error('No access token in refresh response');
-    setTokens({ accessToken: nextAccess, refreshToken: data?.refreshToken });
-    return nextAccess;
+    if (!rt) {
+      clearAuth();
+      setIsAuthenticated(false);
+      setUser(null);
+      setRole(null);
+      return;
+    }
+    try {
+      const res = await api.post('/api/auth/refresh', { refreshToken: rt });
+      const access = res.data.accessToken;
+      const refresh = res.data.refreshToken;
+      if (!access || !refresh) throw new Error('리프레시 실패');
+      setTokens(access, refresh);
+      setIsAuthenticated(true);
+    } catch (err) {
+      console.error('❌ 토큰 리프레시 실패:', err.response?.data || err);
+      clearAuth();
+      setIsAuthenticated(false);
+      setUser(null);
+      setRole(null);
+    }
   }, []);
 
-  const login = useCallback(
-    async ({ id, pw }) => {
-      const { data } = await api.post('/api/auth/login', { id, password: pw });
-      const accessToken = data?.accessToken || data?.token;
-      const refreshToken = data?.refreshToken;
-      if (!accessToken && !refreshToken) {
-        throw new Error('Login succeeded but no tokens were returned');
-      }
-      setTokens({ accessToken, refreshToken });
+  const login = async (username, password) => {
+    try {
+      const res = await api.post('/api/users/login', { username, password });
 
-      try {
-        const me = await api.get('/api/users/me');
-        setUser(me.data);
-        setRole(me.data?.role ?? null);
-      } catch {}
+      const access = res.data.accessToken;
+      const refresh = res.data.refreshToken;
+
+      if (!access || !refresh) throw new Error('로그인 실패');
+
+      setTokens(access, refresh);
+      
+      if (/^\d{3}-\d{2}-\d{5}$/.test(username)) {
+        setRole('owner');
+      } else {
+        setRole('user');
+      }
+
       setIsAuthenticated(true);
-    },
-    []
-  );
+      setUser(res.data.userId);
+      return true;
+    } catch (err) {
+      console.error('❌ 로그인 실패:', err.response?.data || err);
+      throw err;
+    }
+  };
 
   const logout = useCallback(() => {
     clearAuth();
     setIsAuthenticated(false);
-    setUser(null);
     setRole(null);
-    if (typeof window !== 'undefined') window.location.href = '/login';
+    setUser(null);
   }, []);
 
+  // 초기 부팅 시 토큰 확인
   useEffect(() => {
     (async () => {
-      try {
-        const at = localStorage.getItem(ACCESS_KEY);
-        if (at) {
-          const me = await api.get('/api/users/me');
-          setUser(me.data);
-          setRole(me.data?.role ?? null);
-          setIsAuthenticated(true);
-        } else {
-          await refreshNow();
-          const me = await api.get('/api/users/me').catch(() => null);
-          if (me?.data) {
-            setUser(me.data);
-            setRole(me.data?.role ?? null);
-          }
-          setIsAuthenticated(true);
-        }
-      } catch {
-        clearAuth();
-        setIsAuthenticated(false);
-      } finally {
-        setBooted(true);
-      }
+      await refreshNow();
+      setBooted(true);
     })();
   }, [refreshNow]);
 
   const value = useMemo(
-    () => ({ isAuthenticated, role, user, login, logout, refreshNow }),
-    [isAuthenticated, role, user, login, logout, refreshNow]
+    () => ({
+      isAuthenticated,
+      role,
+      user,
+      login,
+      logout,
+      refreshNow,
+    }),
+    [isAuthenticated, role, user, refreshNow, logout]
   );
 
   if (!booted) return null;
