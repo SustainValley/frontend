@@ -1,46 +1,68 @@
-// src/components/map/KakaoMap.jsx
-/* global kakao */
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import useKakaoLoader from '../../hooks/useKakaoLoader';
 import pin from '../../assets/map-pin.svg';
 
-export default function KakaoMap({
-  keyword,
-  initialLevel = 4,
-  initialCenter,
-  onPlacesFound,
-  onPlaceClick,
-  reSearchOnMove = true,
-  idleDebounceMs = 400,
-}) {
+const KakaoMap = forwardRef(function KakaoMap(
+  {
+    keyword,
+    initialLevel = 4,
+    initialCenter,
+    onPlacesFound,
+    onPlaceClick,
+    reSearchOnMove = true,
+    idleDebounceMs = 400,
+  },
+  ref
+) {
   const ready = useKakaoLoader();
-  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
   const [map, setMap] = useState(null);
 
   const [markers, setMarkers] = useState([]); // [{ place, marker }]
   const markersRef = useRef([]);
-  useEffect(() => { markersRef.current = markers; }, [markers]);
+  useEffect(() => {
+    markersRef.current = markers;
+  }, [markers]);
 
   const clustererRef = useRef(null);
   const idleTimerRef = useRef(null);
+  
+  useImperativeHandle(ref, () => map, [map]);
 
   useEffect(() => {
-    if (!ready || !mapRef.current || map) return;
+    if (!ready || !mapContainerRef.current || map) return;
     const fallback = { lat: 37.5665, lng: 126.9780 };
     const center = initialCenter || fallback;
 
-    const m = new kakao.maps.Map(mapRef.current, {
+    const m = new kakao.maps.Map(mapContainerRef.current, {
       center: new kakao.maps.LatLng(center.lat, center.lng),
       level: initialLevel,
     });
     setMap(m);
 
     clustererRef.current = new kakao.maps.MarkerClusterer({
-      map: m, averageCenter: true, minLevel: 6,
+      map: m,
+      averageCenter: true,
+      minLevel: 6,
     });
 
-    setTimeout(() => { try { m.relayout?.(); m.setCenter(new kakao.maps.LatLng(center.lat, center.lng)); } catch {} }, 0);
-    const onResize = () => { try { m.relayout?.(); } catch {} };
+    setTimeout(() => {
+      try {
+        m.relayout?.();
+        m.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+      } catch {}
+    }, 0);
+    const onResize = () => {
+      try {
+        m.relayout?.();
+      } catch {}
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [ready, initialCenter, initialLevel, map]);
@@ -48,7 +70,6 @@ export default function KakaoMap({
   const esc = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   const makeNameRegex = (kw) => {
-
     const k = esc((kw || '').trim());
     if (!k) return null;
     return new RegExp(`${k}(?!구)`, 'i');
@@ -80,11 +101,14 @@ export default function KakaoMap({
             collected.push(p);
           }
         });
-        if (pagination?.hasNextPage) { pagination.nextPage(); return; }
+        if (pagination?.hasNextPage) {
+          pagination.nextPage();
+          return;
+        }
       }
 
       if (!collected.length) {
-        onPlacesFound?.([]); 
+        onPlacesFound?.([]);
         return;
       }
       collected.forEach((place) => {
@@ -94,7 +118,7 @@ export default function KakaoMap({
         nextMarkers.push({ place, marker });
         resultBounds.extend(pos);
       });
-      clustererRef.current?.addMarkers(nextMarkers.map(m => m.marker));
+      clustererRef.current?.addMarkers(nextMarkers.map((m) => m.marker));
       setMarkers(nextMarkers);
       onPlacesFound?.(collected);
     };
@@ -149,7 +173,7 @@ export default function KakaoMap({
         resultBounds.extend(pos);
       });
 
-      clustererRef.current?.addMarkers(nextMarkers.map(m => m.marker));
+      clustererRef.current?.addMarkers(nextMarkers.map((m) => m.marker));
       setMarkers(nextMarkers);
       onPlacesFound?.(collected);
     };
@@ -173,17 +197,13 @@ export default function KakaoMap({
     places.keywordSearch(qRaw, handle, { bounds });
   };
 
-  useEffect(() => { if (map) runBoundedSearch.current?.(); }, [map, keyword]);
+  useEffect(() => {
+    if (map) runBoundedSearch.current?.();
+  }, [map, keyword]);
 
   useEffect(() => {
     if (!map || !reSearchOnMove) return;
     const onIdle = () => {
-      if (!keyword?.trim()) {
-      
-        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = setTimeout(() => runBoundedSearch.current?.(), idleDebounceMs);
-        return;
-      }
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       idleTimerRef.current = setTimeout(() => runBoundedSearch.current?.(), idleDebounceMs);
     };
@@ -192,6 +212,11 @@ export default function KakaoMap({
   }, [map, keyword, reSearchOnMove, idleDebounceMs]);
 
   return (
-    <div ref={mapRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+    <div
+      ref={mapContainerRef}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+    />
   );
-}
+});
+
+export default KakaoMap;

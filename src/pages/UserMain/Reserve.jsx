@@ -22,7 +22,7 @@ const defaultCafe = {
     "https://picsum.photos/seed/meeting1/1200/900",
     "https://picsum.photos/seed/meeting2/1200/900",
     "https://picsum.photos/seed/meeting3/1200/900",
-    "https://picsum.photos/seed/meeting4/1200/900"
+    "https://picsum.photos/seed/meeting4/1200/900",
   ],
   hours: {
     weekly: [
@@ -32,10 +32,10 @@ const defaultCafe = {
       ["목", "12:00 - 18:00"],
       ["금", "12:00 - 18:00"],
       ["토", "12:00 - 18:00"],
-      ["일", "휴무일"]
-    ]
+      ["일", "휴무일"],
+    ],
   },
-  ppl: 5
+  ppl: 5,
 };
 
 const hours = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, "0")}:00`);
@@ -50,8 +50,9 @@ function parseRangeToMinutes(range) {
   return [parseTimeToMinutes(s), parseTimeToMinutes(e)];
 }
 function getEntryForDate(weekly, iso) {
-  const d = new Date(iso);
-  const label = DAY_LABELS[d.getDay()];
+  const [y, m, d] = iso.split("-").map(Number);
+  const localDate = new Date(y, m - 1, d);
+  const label = DAY_LABELS[localDate.getDay()];
   return weekly.find(([day]) => day === label) || null;
 }
 function formatKoDate(iso) {
@@ -72,8 +73,16 @@ function getRowSegment(fromMin, toMin, rowStartH, rowEndH) {
   return {
     show: true,
     left: ((s - rowStart) / (rowEnd - rowStart)) * 100,
-    width: (w / (rowEnd - rowStart)) * 100
+    width: (w / (rowEnd - rowStart)) * 100,
   };
+}
+
+// ✅ 한국(KST) 기준 오늘 YYYY-MM-DD
+function getTodayISO() {
+  const now = new Date();
+  const tzOffset = now.getTimezoneOffset() * 60000;
+  const local = new Date(now - tzOffset);
+  return local.toISOString().slice(0, 10);
 }
 
 export default function Reserve() {
@@ -81,6 +90,7 @@ export default function Reserve() {
   const { state } = useLocation();
   const cafe = state?.cafe ?? defaultCafe;
 
+  // 사진 슬라이드
   const photos = Array.isArray(cafe.photos) && cafe.photos.length ? cafe.photos : [cafe.thumb ?? defaultCafe.photos[0]];
   const [idx, setIdx] = useState(0);
   const trackRef = useRef(null);
@@ -100,6 +110,7 @@ export default function Reserve() {
     };
   }, [photos.length]);
 
+  // 탭
   const [activeTab, setActiveTab] = useState("detail");
   const tabsRef = useRef(null);
   const inkRef = useRef(null);
@@ -142,6 +153,7 @@ export default function Reserve() {
     requestAnimationFrame(() => moveInk(tabName));
   };
 
+  // 예약 form state
   const [type, setType] = useState("프로젝트 회의");
   const [date, setDate] = useState(() => {
     const d = new Date();
@@ -175,6 +187,7 @@ export default function Reserve() {
 
   const weekly = cafe.hours?.weekly ?? defaultCafe.hours.weekly;
 
+  // 예약 날짜 entry
   const dayEntry = useMemo(() => getEntryForDate(weekly, date), [weekly, date]);
   const openRange = useMemo(() => {
     if (!dayEntry) return null;
@@ -184,8 +197,10 @@ export default function Reserve() {
     return { s, e };
   }, [dayEntry]);
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const todayEntry = useMemo(() => getEntryForDate(weekly, todayISO), [weekly]);
+  // 오늘 entry
+  const todayISO = getTodayISO();
+  const todayLabel = DAY_LABELS[new Date().getDay()];
+  const todayEntry = weekly.find(([day]) => day === todayLabel) || null;
   const todayRange = useMemo(() => {
     if (!todayEntry) return null;
     const [, str] = todayEntry;
@@ -205,6 +220,29 @@ export default function Reserve() {
     return () => window.removeEventListener("resize", update);
   }, [showHours, weekly]);
 
+  const [runText, setRunText] = useState("휴무일");
+  const [isOpenNow, setIsOpenNow] = useState(false);
+  useEffect(() => {
+    if (!todayRange) {
+      setRunText("휴무일");
+      setIsOpenNow(false);
+      return;
+    }
+    const update = () => {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      if (nowMin < todayRange.s) setRunText("운영 전");
+      else if (nowMin < todayRange.e) setRunText("운영중");
+      else setRunText("영업 종료");
+
+      setIsOpenNow(nowMin >= todayRange.s && nowMin < todayRange.e);
+    };
+    update();
+    const timer = setInterval(update, 60000);
+    return () => clearInterval(timer);
+  }, [todayRange]);
+
+  // 시간 선택 제한
   const isStartHourEnabled = (h) => {
     if (!openRange) return false;
     const blockStart = h * 60;
@@ -225,12 +263,14 @@ export default function Reserve() {
     return fromH;
   };
 
+  // 가격
   const price = useMemo(() => {
     const [sH] = start.split(":").map(Number);
     const [eH] = end.split(":").map(Number);
     return Math.max(0, eH - sH) * 6000;
   }, [start, end]);
 
+  // 타임라인 색칠
   const selStartMin = Number(start.slice(0, 2)) * 60 + Number(start.slice(3));
   const selEndMin = Number(end.slice(0, 2)) * 60 + Number(end.slice(3));
   const morningSelected = getRowSegment(selStartMin, selEndMin, 0, 12);
@@ -242,21 +282,6 @@ export default function Reserve() {
   const afternoonUnA = getRowSegment(0, openRange ? openRange.s : FULL_DAY_END, 12, 24);
   const afternoonUnB = openRange ? getRowSegment(openRange.e, FULL_DAY_END, 12, 24) : { show: false, left: 0, width: 0 };
 
-  const runText = useMemo(() => {
-    if (!todayRange) return "휴무일";
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    if (nowMin < todayRange.s) return "운영 전";
-    if (nowMin < todayRange.e) return "운영중";
-    return "영업 종료";
-  }, [todayRange]);
-  const isOpenNow = useMemo(() => {
-    if (!todayRange) return false;
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    return nowMin >= todayRange.s && nowMin < todayRange.e;
-  }, [todayRange]);
-
   const onSubmit = (e) => {
     e.preventDefault();
     alert(
@@ -267,13 +292,14 @@ export default function Reserve() {
         `- 시간: ${start} ~ ${end}`,
         `- 인원: ${headcount}명`,
         `- 종류: ${type}`,
-        `- 금액: ${price.toLocaleString()}원`
+        `- 금액: ${price.toLocaleString()}원`,
       ].join("\n")
     );
   };
 
   return (
     <div className={styles.page}>
+      {/* 상단 앱바 + 사진 */}
       <div className={styles.top}>
         <div className={styles.appbar}>
           <button className={styles.backBtn} aria-label="뒤로가기" onClick={() => navigate(-1)}>
@@ -295,6 +321,7 @@ export default function Reserve() {
         </div>
       </div>
 
+      {/* 상세/예약 탭 */}
       <div className={styles.tabs} role="tablist" aria-label="카페 상세/예약">
         <div className={styles.tabsInner} ref={tabsRef}>
           <button
@@ -320,6 +347,7 @@ export default function Reserve() {
       </div>
 
       <main className={styles.body}>
+        {/* 운영 정보 */}
         <section ref={detailSecRef} data-tab="detail" className={styles.section} id="detail">
           <p className={styles.sectionTitle}>운영 정보</p>
           <div className={styles.row}>
@@ -374,6 +402,7 @@ export default function Reserve() {
           </div>
         </section>
 
+        {/* 회의실 정보 */}
         <section className={`${styles.section} ${styles.meetingInfo}`}>
           <h2 className={styles.sectionTitle}>회의실 이용 정보</h2>
           <div className={styles.row}>
@@ -390,9 +419,11 @@ export default function Reserve() {
           </div>
         </section>
 
+        {/* 예약 입력 */}
         <section ref={reserveSecRef} data-tab="reserve" className={styles.section} id="reserve">
           <h2 className={styles.sectionTitle}>예약 정보 입력</h2>
 
+          {/* 예약 종류 선택 */}
           <div className={styles.rowCol}>
             <span className={styles.kk}>회의 종류</span>
             <div className={styles.chipsGrid}>
@@ -411,6 +442,7 @@ export default function Reserve() {
             </div>
           </div>
 
+          {/* 일정 선택 */}
           <div className={styles.rowCol}>
             <span className={styles.kk}>일정</span>
             <div className={styles.card}>
@@ -440,6 +472,7 @@ export default function Reserve() {
               <div className={styles.timeRow}>
                 <label className={styles.smallLabel}>시간</label>
 
+                {/* 타임라인 */}
                 <div className={styles.timeline2} aria-hidden>
                   <div className={styles.timelineRow}>
                     <span className={styles.ampm}>오전</span>
@@ -471,6 +504,7 @@ export default function Reserve() {
                   </div>
                 </div>
 
+                {/* 시간 선택 드롭다운 */}
                 <div className={styles.timePickers}>
                   <div className={styles.timePicker}>
                     <span className={`${styles.smallLabel} ${styles.inlineLabel}`}>시작시간</span>
@@ -532,6 +566,7 @@ export default function Reserve() {
                 </div>
               </div>
 
+              {/* 인원 선택 */}
               <div className={styles.countRow}>
                 <span className={styles.smallLabel}>회의 인원</span>
                 <div className={styles.counter}>
@@ -539,7 +574,6 @@ export default function Reserve() {
                     type="button"
                     onClick={() => setHeadcount((h) => Math.max(1, h - 1))}
                     disabled={headcount <= 1}
-                    aria-disabled={headcount <= 1}
                   >
                     -
                   </button>
@@ -548,8 +582,6 @@ export default function Reserve() {
                     type="button"
                     onClick={() => setHeadcount((h) => Math.min(maxHeadcount, h + 1))}
                     disabled={headcount >= maxHeadcount}
-                    aria-disabled={headcount >= maxHeadcount}
-                    title={headcount >= maxHeadcount ? `최대 ${maxHeadcount}명까지 예약 가능` : undefined}
                   >
                     +
                   </button>
@@ -558,6 +590,7 @@ export default function Reserve() {
             </div>
           </div>
 
+          {/* 안내문 */}
           <div className={styles.notice}>
             <p className={styles.noticeTitle}>예약 전 꼭 확인해주세요</p>
             <ul>
@@ -567,6 +600,7 @@ export default function Reserve() {
             </ul>
           </div>
 
+          {/* 요약 */}
           <div className={styles.summaryCard}>
             <div className={styles.summaryRow}>
               <span className={styles.summaryK}>회의 종류</span>
@@ -586,6 +620,7 @@ export default function Reserve() {
             </div>
           </div>
 
+          {/* CTA */}
           <form onSubmit={onSubmit} className={styles.ctaWrap}>
             <button className={styles.cta} type="submit">예약 요청하기</button>
           </form>
