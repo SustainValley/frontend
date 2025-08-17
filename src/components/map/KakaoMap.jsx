@@ -25,7 +25,7 @@ const KakaoMap = forwardRef(function KakaoMap(
   const mapContainerRef = useRef(null);
   const [map, setMap] = useState(null);
 
-  const [markers, setMarkers] = useState([]); // [{ place, marker }]
+  const [markers, setMarkers] = useState([]);
   const markersRef = useRef([]);
   useEffect(() => {
     markersRef.current = markers;
@@ -34,7 +34,6 @@ const KakaoMap = forwardRef(function KakaoMap(
   const clustererRef = useRef(null);
   const idleTimerRef = useRef(null);
 
-  // ✅ 부모에서 ref.current로 map 객체 접근 가능하게
   useImperativeHandle(ref, () => map, [map]);
 
   useEffect(() => {
@@ -60,6 +59,7 @@ const KakaoMap = forwardRef(function KakaoMap(
         m.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
       } catch {}
     }, 0);
+
     const onResize = () => {
       try {
         m.relayout?.();
@@ -110,9 +110,11 @@ const KakaoMap = forwardRef(function KakaoMap(
       }
 
       if (!collected.length) {
+        clearMarkers();
         onPlacesFound?.([]);
         return;
       }
+
       collected.forEach((place) => {
         const pos = new kakao.maps.LatLng(+place.y, +place.x);
         const marker = new kakao.maps.Marker({ position: pos, image: markerImage });
@@ -120,6 +122,7 @@ const KakaoMap = forwardRef(function KakaoMap(
         nextMarkers.push({ place, marker });
         resultBounds.extend(pos);
       });
+
       clustererRef.current?.addMarkers(nextMarkers.map((m) => m.marker));
       setMarkers(nextMarkers);
       onPlacesFound?.(collected);
@@ -163,7 +166,8 @@ const KakaoMap = forwardRef(function KakaoMap(
 
     const finalize = () => {
       if (!collected.length) {
-        searchCafesInBounds(bounds);
+        clearMarkers();
+        onPlacesFound?.([]);
         return;
       }
 
