@@ -1,89 +1,98 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import instance, { setTokens, clearAuth } from '../lib/axios';
-import { isBizNo, hyphenizeBiz10 } from '../utils/id';
+// src/context/AuthContext.jsx
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import api, { setTokens, clearAuth } from '../lib/axios';
 
-const AuthContext = createContext(null);
+const ACCESS_KEY = 'access_token';
+const REFRESH_KEY = 'refresh_token';
 
-export const AuthProvider = ({ children }) => {  const [accessToken, setAccessToken] = useState(() => localStorage.getItem('access_token') || '');
-  const [role, setRole] = useState(() => localStorage.getItem('role') || '');
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
-  });
-
-  const isAuthenticated = !!accessToken && !!role;
-
-  useEffect(() => {
-    if (role) localStorage.setItem('role', role); else localStorage.removeItem('role');
-    if (user) localStorage.setItem('user', JSON.stringify(user)); else localStorage.removeItem('user');
-  }, [role, user]);
-
-  const refresh = useCallback(async () => {
-    const apply = (data) => {
-      const nextAT = data?.accessToken || data?.token;
-      if (!nextAT) return null;
-      setTokens({ accessToken: nextAT, refreshToken: data?.refreshToken });
-      setAccessToken(nextAT);
-      if (data?.role) setRole(String(data.role).trim().toLowerCase());
-      if (data?.user) setUser(data.user);
-      return nextAT;
-    };
-
-    try {
-      const { data } = await instance.post('/api/auth/refresh', {}); 
-      return apply(data);
-    } catch {
-      try {
-        const { data } = await instance.get('/api/auth/refresh'); 
-        return apply(data);
-      } catch {
-        return null;
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!accessToken) refresh();
-  }, [refresh, accessToken]);
-
-  const login = useCallback(async (username, password) => {
-    const usernameForServer = isBizNo(username) ? hyphenizeBiz10(username) : username;
-
-    const { data } = await instance.post('/api/users/login', {
-      username: usernameForServer,
-      password,
-    });
-
-    const at = data?.accessToken || data?.token;
-    if (!at) throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
-
-    setTokens({ accessToken: at, refreshToken: data?.refreshToken });
-    setAccessToken(at);
-
-    let fromServer =
-      data?.role || data?.type || data?.userRole || data?.accountType ||
-      data?.user?.role || data?.user?.type || data?.user?.userRole;
-    const fallback = isBizNo(username) ? 'owner' : 'user';
-    const normalizedRole = String(fromServer || fallback).trim().toLowerCase();
-
-    setRole(normalizedRole);
-    setUser(data?.user ?? { username: usernameForServer });
-    return normalizedRole;
-  }, []);
-
-  const logout = useCallback(async () => {
-    try { await instance.post('/api/auth/logout', {}); } catch (_) {}
-    clearAuth();
-    setAccessToken('');
-    setRole('');
-    setUser(null);
-  }, []);
-
-  const value = useMemo(
-    () => ({ isAuthenticated, role, user, accessToken, login, logout, refresh }),
-    [isAuthenticated, role, user, accessToken, login, logout, refresh]
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+const AuthContext = createContext({
+  isAuthenticated: false,
+  role: null,
+  user: null,
+  login: async () => {},
+  logout: () => {},
+  refreshNow: async () => {},
+});
 
 export const useAuth = () => useContext(AuthContext);
+
+export function AuthProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [role, setRole] = useState(null);
+  const [user, setUser] = useState(null);
+  const [booted, setBooted] = useState(false);
+
+  const refreshNow = useCallback(async () => {
+    const rt = localStorage.getItem(REFRESH_KEY) || '';
+    const headers = rt ? { Authorization: `Bearer ${rt}` } : {};
+    const body = rt ? { refreshToken: rt } : {};
+    const { data } = await api.post('/api/auth/refresh', body, { headers }); // withCredentials 포함
+    const nextAccess = data?.accessToken || data?.token;
+    if (!nextAccess) throw new Error('No access token in refresh response');
+    setTokens({ accessToken: nextAccess, refreshToken: data?.refreshToken });
+    return nextAccess;
+  }, []);
+
+  const login = useCallback(
+    async ({ id, pw }) => {
+      const { data } = await api.post('/api/auth/login', { id, password: pw });
+      const accessToken = data?.accessToken || data?.token;
+      const refreshToken = data?.refreshToken;
+      if (!accessToken && !refreshToken) {
+        throw new Error('Login succeeded but no tokens were returned');
+      }
+      setTokens({ accessToken, refreshToken });
+
+      try {
+        const me = await api.get('/api/users/me');
+        setUser(me.data);
+        setRole(me.data?.role ?? null);
+      } catch {}
+      setIsAuthenticated(true);
+    },
+    []
+  );
+
+  const logout = useCallback(() => {
+    clearAuth();
+    setIsAuthenticated(false);
+    setUser(null);
+    setRole(null);
+    if (typeof window !== 'undefined') window.location.href = '/login';
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const at = localStorage.getItem(ACCESS_KEY);
+        if (at) {
+          const me = await api.get('/api/users/me');
+          setUser(me.data);
+          setRole(me.data?.role ?? null);
+          setIsAuthenticated(true);
+        } else {
+          await refreshNow();
+          const me = await api.get('/api/users/me').catch(() => null);
+          if (me?.data) {
+            setUser(me.data);
+            setRole(me.data?.role ?? null);
+          }
+          setIsAuthenticated(true);
+        }
+      } catch {
+        clearAuth();
+        setIsAuthenticated(false);
+      } finally {
+        setBooted(true);
+      }
+    })();
+  }, [refreshNow]);
+
+  const value = useMemo(
+    () => ({ isAuthenticated, role, user, login, logout, refreshNow }),
+    [isAuthenticated, role, user, login, logout, refreshNow]
+  );
+
+  if (!booted) return null;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
