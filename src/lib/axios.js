@@ -1,29 +1,37 @@
-import axios from 'axios';
+import axios from "axios";
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd = process.env.NODE_ENV === "production";
 
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  (isProd ? '/hackathon' : 'http://localhost:8080/hackathon');
+  (isProd ? "/hackathon" : "http://localhost:8080/hackathon");
 
-const ACCESS_KEY = 'access_token';
-const REFRESH_KEY = 'refresh_token';
+const ACCESS_KEY = "access_token";
+const REFRESH_KEY = "refresh_token";
+const USER_ID_KEY = "user_id"; 
 
-const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || '';
+const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || "";
 const setAccessToken = (t) =>
   t ? localStorage.setItem(ACCESS_KEY, t) : localStorage.removeItem(ACCESS_KEY);
-const getRefreshToken = () => localStorage.getItem(REFRESH_KEY) || '';
+
+const getRefreshToken = () => localStorage.getItem(REFRESH_KEY) || "";
 const setRefreshToken = (t) =>
   t ? localStorage.setItem(REFRESH_KEY, t) : localStorage.removeItem(REFRESH_KEY);
 
-export const setTokens = ({ accessToken, refreshToken }) => {
+export const getUserId = () => localStorage.getItem(USER_ID_KEY) || "";
+const setUserId = (id) =>
+  id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY);
+
+export const setTokens = ({ accessToken, refreshToken, userId }) => {
   if (accessToken) setAccessToken(accessToken);
   if (refreshToken) setRefreshToken(refreshToken);
+  if (userId) setUserId(userId);
 };
 
 export const clearAuth = () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(USER_ID_KEY);
 };
 
 const instance = axios.create({
@@ -40,8 +48,10 @@ const refreshClient = axios.create({
 
 let isRefreshing = false;
 let queue = [];
+
 const waitForToken = () =>
   new Promise((resolve, reject) => queue.push({ resolve, reject }));
+
 const flushQueue = (err, token) => {
   queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve(token)));
   queue = [];
@@ -49,22 +59,27 @@ const flushQueue = (err, token) => {
 
 async function refreshAccessToken() {
   const rt = getRefreshToken();
-  const headers = {};
-  if (rt) headers.Authorization = `Bearer ${rt}`;
+  if (!rt) throw new Error("No refresh token available");
 
   const { data } = await refreshClient.post(
-    '/auth/refresh',
-    rt ? { refreshToken: rt } : {},
-    { headers }
+    "/api/users/refresh", 
+    {}, 
+    {
+      headers: {
+        Authorization: `Bearer ${rt}`, 
+      },
+    }
   );
 
-  const nextAccess = data?.accessToken || data?.token;
-  if (!nextAccess) throw new Error('No access token in refresh response');
+  const nextAccess = data?.accessToken;
+  if (!nextAccess) throw new Error("No access token in refresh response");
 
   setAccessToken(nextAccess);
   if (data?.refreshToken) setRefreshToken(data.refreshToken);
+
   return nextAccess;
 }
+
 
 instance.interceptors.request.use((config) => {
   const at = getAccessToken();
@@ -83,13 +98,13 @@ instance.interceptors.response.use(
 
     const original = config || {};
     const status = response.status;
-    const url = (original.url || '').toLowerCase();
+    const url = (original.url || "").toLowerCase();
 
     const isAuthApi =
-      url.includes('/auth/login') ||
-      url.includes('/users/login') ||
-      url.includes('/auth/refresh') ||
-      url.includes('/auth/logout');
+      url.includes("/auth/login") ||
+      url.includes("/users/login") ||
+      url.includes("/auth/refresh") ||
+      url.includes("/auth/logout");
 
     if (status !== 401 || original._retry || isAuthApi) {
       throw error;
@@ -114,7 +129,7 @@ instance.interceptors.response.use(
     } catch (e) {
       flushQueue(e, null);
       clearAuth();
-      if (typeof window !== 'undefined') window.location.href = '/login';
+      if (typeof window !== "undefined") window.location.href = "/login";
       throw e;
     } finally {
       isRefreshing = false;
@@ -124,6 +139,6 @@ instance.interceptors.response.use(
 
 export default instance;
 
-if (typeof window !== 'undefined') {
-
+if (typeof window !== "undefined") {
+  
 }

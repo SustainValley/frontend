@@ -1,8 +1,15 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import api, { setTokens, clearAuth } from '../lib/axios';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import api, { setTokens, clearAuth } from "../lib/axios";
 
-const ACCESS_KEY = 'access_token';
-const REFRESH_KEY = 'refresh_token';
+const ACCESS_KEY = "access_token";
+const REFRESH_KEY = "refresh_token";
 
 const AuthContext = createContext({
   isAuthenticated: false,
@@ -21,8 +28,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booted, setBooted] = useState(false);
 
+  // ✅ Refresh 로직
   const refreshNow = useCallback(async () => {
-    const rt = localStorage.getItem(REFRESH_KEY) || '';
+    const rt = localStorage.getItem(REFRESH_KEY) || "";
     if (!rt) {
       clearAuth();
       setIsAuthenticated(false);
@@ -31,14 +39,22 @@ export function AuthProvider({ children }) {
       return;
     }
     try {
-      const res = await api.post('/api/auth/refresh', { refreshToken: rt });
+      const res = await api.post("/api/users/refresh", {}, {
+        headers: { Authorization: `Bearer ${rt}` }
+      });
+
       const access = res.data.accessToken;
       const refresh = res.data.refreshToken;
-      if (!access || !refresh) throw new Error('리프레시 실패');
-      setTokens(access, refresh);
+      const userId = res.data.userId; 
+
+      if (!access || !refresh) throw new Error("리프레시 실패");
+
+      setTokens({ accessToken: access, refreshToken: refresh, userId });
+
       setIsAuthenticated(true);
+      setUser(userId || null);
     } catch (err) {
-      console.error('❌ 토큰 리프레시 실패:', err.response?.data || err);
+      console.error("❌ 토큰 리프레시 실패:", err.response?.data || err);
       clearAuth();
       setIsAuthenticated(false);
       setUser(null);
@@ -48,26 +64,28 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     try {
-      const res = await api.post('/api/users/login', { username, password });
+      const res = await api.post("/api/users/login", { username, password });
 
+      console.log("refresh API 응답:", res.data);
       const access = res.data.accessToken;
       const refresh = res.data.refreshToken;
+      const userId = res.data.userId; 
 
-      if (!access || !refresh) throw new Error('로그인 실패');
+      if (!access || !refresh) throw new Error("로그인 실패");
 
-      setTokens(access, refresh);
-      
+      setTokens({ accessToken: access, refreshToken: refresh, userId });
+
       if (/^\d{3}-\d{2}-\d{5}$/.test(username)) {
-        setRole('owner');
+        setRole("owner");
       } else {
-        setRole('user');
+        setRole("user");
       }
 
       setIsAuthenticated(true);
-      setUser(res.data.userId);
+      setUser(userId);
       return true;
     } catch (err) {
-      console.error('❌ 로그인 실패:', err.response?.data || err);
+      console.error("❌ 로그인 실패:", err.response?.data || err);
       throw err;
     }
   };
@@ -79,7 +97,6 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  // 초기 부팅 시 토큰 확인
   useEffect(() => {
     (async () => {
       await refreshNow();

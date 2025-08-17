@@ -78,7 +78,9 @@
   font-weight: 400;
   line-height: 16px;
 }
-.searchInput::placeholder { color: #9aa3a7; }
+.searchInput::placeholder {
+  color: #9aa3a7;
+}
 
 .vline {
   width: 1px;
@@ -146,14 +148,15 @@
   touch-action: none;
 }
 
-/* ✅ 내용만 스크롤 */
 .sheetContent {
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 16px 24px;
 }
-.sheetContent::-webkit-scrollbar { display: none; }
+.sheetContent::-webkit-scrollbar {
+  display: none;
+}
 
 .sheetTitle {
   font-size: 18px;
@@ -165,7 +168,6 @@
 
 .myLocationBtn {
   position: absolute;
-  top: -60px; 
   right: 20px;
   z-index: 20;
   border: none;
@@ -178,10 +180,65 @@
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   cursor: pointer;
+  transition: top 0.25s ease; 
 }
 .myLocationBtn img {
   width: 24px;
   height: 24px;
+}
+
+.withReserve {
+  top: -120px; 
+}
+.noReserve {
+  top: -90px;  
+}
+
+/* ✅ 예약 상태 박스 */
+.reserveStatus {
+  position: absolute;
+  top: -70px;
+  left: 16px;
+  right: 16px;
+  margin: 0 auto;
+  max-width: calc(100% - 32px);
+
+  border-radius: 16px;
+  padding: 12px 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 19;
+
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  color: var(--gray-90, #232526);
+}
+
+/* 상태별 배경 */
+.scheduled {
+  background: linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%);
+}
+.inuse {
+  background: linear-gradient(135deg, #FFF5F5 0%, #FFEAEA 100%);
+}
+.pending {
+  background: linear-gradient(135deg, #FFFEEA 0%, #FFF8E1 100%);
+}
+
+.reserveCafe {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reserveInfo {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.time {
+  font-weight: 700;
+  color: #3FA34D;
 }
 
 .cafeCard {
@@ -252,4 +309,49 @@
   font-weight: 600;
   line-height: 24px;
   cursor: pointer;
+}
+.menuBackdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 30;
+}
+
+.sideMenu {
+  position: absolute;
+  top: 0; left: 0;
+  width: 70%;
+  max-width: 280px;
+  height: 100%;
+  background: #fff;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.sideMenu.open {
+  transform: translateX(0);   /* 열릴 때 */
+}
+
+.sideMenu.close {
+  transform: translateX(-100%); /* 닫힐 때 */
+}
+
+.menuItem {
+  padding: 12px 16px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #e53935;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.menuItem + .menuItem {
+  margin-top: 12px;
 }

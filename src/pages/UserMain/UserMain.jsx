@@ -24,6 +24,23 @@ export default function MapExplore() {
   const [ch, setCh] = useState(800);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const openMenu = () => {
+    setMenuVisible(true);
+    requestAnimationFrame(() => setIsMenuOpen(true));
+  };
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    setTimeout(() => setMenuVisible(false), 250);
+  };
+
+  const [reservation, setReservation] = useState({
+    cafe: "풍치커피익스프레스공릉점",
+    time: "13:00 - 15:00",
+    status: "scheduled", 
+  });
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -35,10 +52,9 @@ export default function MapExplore() {
     return () => ro.disconnect();
   }, []);
 
-  // ✅ 상단바 + 내 위치 버튼 고려해서 덜 올라오게
   const SNAP = useMemo(() => {
     const HEADER = 300;
-    const BUTTON_MARGIN = 120; // 내 위치 버튼이 겹치지 않도록 여백
+    const BUTTON_MARGIN = 120;
     const FULL_TOP = HEADER + BUTTON_MARGIN;
     const MID_TOP  = Math.round(ch * 0.65);
     const PEEK     = 140;
@@ -100,7 +116,6 @@ export default function MapExplore() {
     ppl:   i % 2 ? 6 : 2,
   });
 
-  // 공간 키 추출 (간단 매핑)
   const spaceKeyFromCafe = (cafe) => {
     if (cafe.mood.includes('오픈')) return 'open';
     if (cafe.mood.includes('조용')) return 'quiet';
@@ -108,10 +123,8 @@ export default function MapExplore() {
     return 'limited';
   };
 
-  // 원본 리스트
   const list = (selected ? [selected] : places).map(decorate);
 
-  // ✅ 필터 적용된 리스트
   const filtered = list.filter(cafe => {
     const matchSpace = filters.spaces.length === 0 || filters.spaces.includes(spaceKeyFromCafe(cafe));
     const matchPeople = filters.people === 0 || cafe.ppl >= filters.people;
@@ -145,7 +158,7 @@ export default function MapExplore() {
         <button
           className={styles.topBtn}
           aria-label="메뉴 열기"
-          onClick={() => setIsMenuOpen(true)}
+          onClick={openMenu}
         >
           <img src={menuIcon} alt="" className={styles.topIcon} />
         </button>
@@ -164,14 +177,14 @@ export default function MapExplore() {
       />
 
       {/* 사이드 메뉴 */}
-      {isMenuOpen && (
+      {menuVisible && (
         <>
-          <div className={styles.menuBackdrop} onClick={() => setIsMenuOpen(false)} />
-          <div className={styles.sideMenu}>
+          <div className={styles.menuBackdrop} onClick={closeMenu} />
+          <div className={`${styles.sideMenu} ${isMenuOpen ? styles.open : styles.close}`}>
             <button
               className={styles.menuItem}
               onClick={() => {
-                setIsMenuOpen(false);
+                closeMenu();
                 alert('로그아웃!');
               }}
             >
@@ -225,10 +238,34 @@ export default function MapExplore() {
             aria-hidden
           />
 
-          {/* ✅ 내 위치 버튼: 바텀시트 위 고정 */}
-          <button className={styles.myLocationBtn} onClick={moveToMyLocation}>
+          <button
+            className={`${styles.myLocationBtn} ${
+              reservation ? styles.withReserve : styles.noReserve
+            }`}
+            onClick={moveToMyLocation}
+          >
             <img src={locationIcon} alt="내 위치" />
           </button>
+
+          {reservation && (
+            <div
+              className={`${styles.reserveStatus} ${
+                reservation.status === "scheduled"
+                  ? styles.scheduled
+                  : reservation.status === "inuse"
+                  ? styles.inuse
+                  : styles.pending
+              }`}
+            >
+              <div className={styles.reserveCafe}>{reservation.cafe}</div>
+              <div className={styles.reserveInfo}>
+                <span className={styles.time}>{reservation.time}</span>
+                {reservation.status === "scheduled" && <span> 회의실 이용 예정이에요!</span>}
+                {reservation.status === "inuse" && <span> 회의실 이용 중이에요!</span>}
+                {reservation.status === "pending" && <span> 회의실 이용 요청 중...</span>}
+              </div>
+            </div>
+          )}
 
           <div className={styles.sheetContent}>
             <div className={styles.sheetTitle}>회의 가능한 카페를 둘러보세요!</div>
