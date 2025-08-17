@@ -4,7 +4,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
-  (isProd ? '/hackathon/api' : 'http://localhost:8080/hackathon/api');
+  (isProd ? '/hackathon' : 'http://localhost:8080/hackathon');
 
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
