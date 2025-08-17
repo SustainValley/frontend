@@ -1,204 +1,218 @@
 :root {
-    --green-600: #7FBF2C;
-    --green-100: #F4FAE9;
-    --line: #E4E6E7;
-    --text-900: #232526;
-    --text-600: #61686C;
-    --btn-dark: #3A3E40;
-  }
-
-  .wrap {
-    position: relative;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    background: #fff;
-  }
-  
-  .appBar {
-    position: sticky;
-    top: 0;
-    display: grid;
-    grid-template-columns: 44px 1fr 44px;
-    align-items: center;
-    height: calc(48px + env(safe-area-inset-top, 0px));
-    padding: calc(env(safe-area-inset-top, 0px)) 12px 8px;
-    background: #fff;
-    z-index: 10;
-  }
-
-  .backBtn {
-    width: 24px; 
-    height: 24px;
-    border: 0; 
-    background: transparent;
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center;
-    cursor: pointer;
-  }
-
-  .backIcon {
-    width: 24px; 
-    height: 24px;
-    object-fit: contain; 
-    display: block;
-  }
-
-  .srOnly {
-    position: absolute; 
-    width: 1px; 
-    height: 1px; 
-    padding: 0; 
-    margin: -1px;
-    overflow: hidden; 
-    clip: rect(0 0 0 0); 
-    white-space: nowrap; border: 0;
-  }
-
-  .appBarTitle {
-    text-align: center;
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 18px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px;
-  }
-
-  .appBarRight { width: 44px; height: 44px; }
-  
-
-  .body {
-    overflow-y: auto;
-    padding: 0 16px 24px;
-  }
-  
-  .section { margin: 8px 0 20px; }
-
-  .sectionTitle {
-    margin: 12px 0 8px;
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 18px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px; 
-  }
-  .sectionSub {
-    margin: 0 0 16px;
-    color: var(--gray-70, #515659);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 20px; 
-  }
-  
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-bottom: 40px;
-  }
-  .optionCard {
-    display: grid;
-    grid-template-columns: 24px 1fr;
-    align-items: center;
-    gap: 10px;
-    padding: 12px;
-    border-radius: 12px;
-    border: 1px solid #DDE3D0;  
-    background: #fff;           
-    text-align: left;
-    cursor: pointer;
-    transition: background 120ms ease-out;
-  }
-  .optionIcon {
-    width: 24px; height: 24px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .optionImg {
-    width: 24px; height: 24px;
-    object-fit: contain; display: block;
-  }
-  .optionTitle {
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: 20px; 
-  }
-  .optionSub {
-    color: var(--gray-50, #7F888C);
-    font-family: Pretendard;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 20px;
-    margin-top: 2px;
-  }
-  
-  .active {
-    background: var(--green-100);
-  }
-  
-  .rowBetween { 
-    display: flex; 
-    justify-content: 
-    space-between; 
-    align-items: center; 
+  --green-600: #7FBF2C;
+  --green-100: #F4FAE9;
+  --line: #E4E6E7;
+  --text-900: #232526;
+  --text-600: #61686C;
+  --btn-dark: #3A3E40;
 }
 
-  .peopleLabel { 
-    color: var(--text-900); 
-    font-size: 14px; 
-    }
+.wrap {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  background: #fff;
+}
 
-  .hl { 
-    color: var(--green-600); 
-    font-weight: 700; 
-    }
+.appBar {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  height: calc(48px + env(safe-area-inset-top, 0px));
+  padding: calc(env(safe-area-inset-top, 0px)) 12px 8px;
+  background: #fff;
+  z-index: 10;
+}
 
-  .stepper { 
-    display: inline-flex; 
-    align-items: center;
-     gap: 10px; 
-    }
+.backBtn {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
 
-  .stepBtn {
-    width: 25px; height: 25px;
-    border-radius: 4px;
-    border: 1px solid var(--gray-20, #C8D1D5);
-    background: var(--white, #FFF);
-    font-size: 16px;
-    color: var(--text-900); cursor: pointer;
-  }
+.backIcon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
 
-  .stepValue { 
-    min-width: 20px; 
-    text-align: center; 
-    color: var(--text-900); 
-    }
-  
-  .footer {
-    position: sticky;
-    bottom: 242px;
-    background: #fff;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  }
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
-  .applyBtn {
-    width: 100%; height: 52px;
-    border: 0; border-radius: 12px;
-    background: var(--btn-dark);
-    color: #FFF;
-    font-family: Pretendard;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px; 
-    cursor: pointer;
-  }
-  
+.appBarTitle {
+  text-align: center;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.appBarRight { width: 44px; height: 44px; }
+
+.body {
+  overflow-y: auto;
+  padding: 0 16px 24px;
+}
+
+.section { margin: 8px 0 20px; }
+
+.sectionTitle {
+  margin: 12px 0 8px;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+}
+.sectionSub {
+  margin: 0 0 16px;
+  color: var(--gray-70, #515659);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 40px;
+}
+
+.optionCard {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #DDE3D0;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.optionIcon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.optionImg {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+.optionTitle {
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
+}
+.optionSub {
+  color: var(--gray-50, #7F888C);
+  font-family: Pretendard;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 20px;
+  margin-top: 2px;
+}
+
+.active {
+  background: var(--green-100);
+}
+
+.rowBetween {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.peopleLabel {
+  color: var(--text-900);
+  font-size: 14px;
+}
+
+.hl {
+  color: var(--green-600);
+  font-weight: 700;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepBtn {
+  width: 25px;
+  height: 25px;
+  border-radius: 4px;
+  border: 1px solid var(--gray-20, #C8D1D5);
+  background: var(--white, #FFF);
+  font-size: 16px;
+  color: var(--text-900);
+  cursor: pointer;
+}
+
+/* ✅ 비활성화 상태 */
+.stepBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepValue {
+  min-width: 20px;
+  text-align: center;
+  color: var(--text-900);
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.applyBtn {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--btn-dark);
+  color: #FFF;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+  cursor: pointer;
+}

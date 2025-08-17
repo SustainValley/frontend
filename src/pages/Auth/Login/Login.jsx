@@ -46,7 +46,6 @@ const Login = () => {
     }
   };
   
-
   const onIdChange = (e) => {
     const value = e.target.value;
     const onlyDigits = value.replace(/-/g, '');
@@ -58,6 +57,19 @@ const Login = () => {
     }
 
     if (err) setErr('');
+  };
+
+  const handleKakaoLogin = () => {
+    const REST_API_KEY = process.env.REACT_APP_KAKAO_REST_API_KEY;
+    const REDIRECT_URI = process.env.REACT_APP_KAKAO_REDIRECT_URI;
+
+    if (!REST_API_KEY || !REDIRECT_URI) {
+      console.error('[KAKAO] 환경변수(REACT_APP_KAKAO_REST_API_KEY, REACT_APP_KAKAO_REDIRECT_URI)가 설정되지 않았습니다.');
+      return;
+    }
+
+    window.location.href =
+      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
   };
 
   return (
@@ -105,15 +117,9 @@ const Login = () => {
           <hr className={styles.line} />
         </div>
 
-        <button
-          type="button"
-          className={styles.kakaoButton}
-          onClick={() =>
-            (window.location.href = '/api/oauth2/authorization/kakao')
-          }
-        >
-          <img src={kakaoLogo} alt="카카오 로고" className={styles.kakaoIcon} />
-          <span>카카오 로그인</span>
+        <button type="button" onClick={handleKakaoLogin} className={styles.kakaoButton}>
+          <img src={kakaoLogo} alt="카카오 로그인" className={styles.kakaoIcon} />
+          카카오 로그인
         </button>
 
         <div className={styles.signupText}>

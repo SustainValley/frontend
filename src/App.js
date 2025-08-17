@@ -20,6 +20,8 @@ import OwnerPasswordSignup from './pages/Auth/Signup/OwnerPasswordSignup';
 import OwnerPhoneSignup from './pages/Auth/Signup/OwnerPhoneSignup';
 import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 
+import KakaoCallback from './pages/Auth/Login/KakaoCallback';
+
 import FilterPage from './pages/UserMain/FilterPage';
 
 const Reserve  = React.lazy(() => import('./pages/UserMain/Reserve'));
@@ -84,6 +86,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
 
+                {/* 카카오 로그인 콜백 */}
+                <Route path="/oauth/kakao/callback" element={<KakaoCallback />} />
+
                 {/* User 회원가입 스텝 */}
                 <Route element={<UserSignupLayout />}>
                   <Route path="/signup/user" element={<UserSignup />} />
@@ -104,7 +109,7 @@ function App() {
                 <Route element={<RoleRoute allow={['user']} />}>
                   <Route path="/user/home" element={<UserMain />} />
                   <Route path="/user/filters" element={<FilterPage />} />
-                  <Route path="/user/reserve" element={<Reserve />} /> {/* 예약 페이지 추가 */}
+                  <Route path="/user/reserve" element={<Reserve />} />
                 </Route>
 
                 <Route element={<RoleRoute allow={['owner']} />}>

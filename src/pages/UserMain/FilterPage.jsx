@@ -24,7 +24,7 @@ export default function FilterPage() {
 
   // 복수 선택은 Set으로 관리
   const [spaces, setSpaces] = useState(new Set(initial.spaces || []));
-  const [people, setPeople] = useState(initial.people || 1);
+  const [people, setPeople] = useState(initial.people ?? 0);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -35,14 +35,14 @@ export default function FilterPage() {
       return next;
     });
 
-  const dec = () => setPeople(p => Math.max(1, p - 1));
+  const dec = () => setPeople(p => Math.max(0, p - 1));
   const inc = () => setPeople(p => Math.min(20, p + 1));
 
   const apply = () => {
     const filters = { spaces: Array.from(spaces), people };
-    navigate(-1, { state: { filters } });
+    navigate('/user/home', { state: { filters } });
   };
-
+  
   return (
     <div className={styles.wrap}>
       {/* 앱바 */}
@@ -89,14 +89,27 @@ export default function FilterPage() {
           <h2 className={styles.sectionTitle}>수용가능인원</h2>
           <p className={styles.sectionSub}>회의 참석 인원 수를 선택해주세요.</p>
 
-        <div className={styles.rowBetween}>
+          <div className={styles.rowBetween}>
             <div className={styles.peopleLabel}>
               회의 인원 <span className={styles.hl}>{people}</span> 명
             </div>
             <div className={styles.stepper}>
-              <button className={styles.stepBtn} onClick={dec} aria-label="감소">–</button>
+              <button 
+                className={styles.stepBtn} 
+                onClick={dec} 
+                aria-label="감소" 
+                disabled={people === 0}
+              >
+                –
+              </button>
               <div className={styles.stepValue}>{people}</div>
-              <button className={styles.stepBtn} onClick={inc} aria-label="증가">+</button>
+              <button 
+                className={styles.stepBtn} 
+                onClick={inc} 
+                aria-label="증가"
+              >
+                +
+              </button>
             </div>
           </div>
         </section>

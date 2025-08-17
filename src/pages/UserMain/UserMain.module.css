@@ -6,9 +6,47 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.topbar {
+  position: absolute;
+  top: env(safe-area-inset-top, 0px);
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  z-index: 20;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.topBtn {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.topIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.topTitle {
+  text-align: center;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
 .searchBar {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top, 0px));
+  top: calc(16px + env(safe-area-inset-top, 0px) + 48px);
   left: 16px;
   right: 16px;
   height: 30px;
@@ -23,18 +61,22 @@
   z-index: 10;
 }
 
-.icon { width: 24px; height: 24px; flex: 0 0 auto; }
+.icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
 
 .searchInput {
   flex: 1 1 auto;
   border: 0;
   outline: none;
+  background: transparent;
   color: var(--gray-50, #000);
   font-family: Pretendard, system-ui, -apple-system, "Noto Sans KR", Segoe UI, Roboto, Arial, sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  background: transparent;
 }
 .searchInput::placeholder { color: #9aa3a7; }
 
@@ -60,68 +102,92 @@
 
 .backdrop {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: linear-gradient(180deg,
-              rgba(255,255,255,0) 0%,
-              rgba(255,255,255,0.9) 60%,
-              #fff 100%);
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.9) 60%,
+    #fff 100%);
   pointer-events: none;
   z-index: 8;
 }
 
-.bottomSheet { position: absolute; inset: 0; z-index: 9; pointer-events: none; }
+.bottomSheet {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+}
 
 .sheetPanel {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  top: calc(100% - 140px);
-  height: calc(100% - 140px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: auto;
   background: #fff;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
   box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
-  padding: 10px 16px 24px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
   transition: top 220ms cubic-bezier(.2,.8,.2,1);
 }
-.sheetPanel::-webkit-scrollbar { width: 0; height: 0; }
 
 .handle {
+  flex: 0 0 auto;
   width: 88px;
   height: 4px;
   background: var(--Color-GrayScale-Gray100, #E4E6E7);
   border-radius: 999px;
-  margin: 10px auto 20px;
+  margin: 10px auto;
   cursor: grab;
   touch-action: none;
 }
 
+/* ✅ 내용만 스크롤 */
+.sheetContent {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 24px;
+}
+.sheetContent::-webkit-scrollbar { display: none; }
+
 .sheetTitle {
-  color: var(--gray-90, #232526);
-  font-family: Pretendard, system-ui, -apple-system, "Noto Sans KR", Arial, sans-serif;
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
-  margin-bottom: 16px;
+  margin: 10px 0 16px;
+  color: var(--gray-90, #232526);
 }
 
-/* ── 카드들 ─────────────────────────────────────── */
-.cardGhost {
-  background: #f6f7f8;
-  border-radius: 14px;
-  padding: 14px 16px;
-  color: #6a7276;
-  font-size: 13px;
-  border: 1px solid rgba(0,0,0,0.05);
+.myLocationBtn {
+  position: absolute;
+  top: -60px; 
+  right: 20px;
+  z-index: 20;
+  border: none;
+  background: #fff;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+}
+.myLocationBtn img {
+  width: 24px;
+  height: 24px;
 }
 
 .cafeCard {
   display: grid;
-  grid-template-columns: 132px 1fr;  
-  grid-template-rows: auto auto;      
+  grid-template-columns: 132px 1fr;
+  grid-template-rows: auto auto;
   grid-template-areas:
     "thumb info"
     "btn   btn";
@@ -129,7 +195,7 @@
   align-items: start;
   border-radius: 24px;
   background: #FFF;
-  box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.10);
   padding: 16px;
   border: 1px solid rgba(0,0,0,0.04);
   margin-bottom: 16px;
@@ -138,7 +204,7 @@
 .thumb {
   grid-area: thumb;
   width: 114px;
-  height: 114px;             
+  height: 114px;
   object-fit: cover;
   border-radius: 12px;
   background: #ddd;
@@ -152,43 +218,37 @@
 }
 
 .cafeName {
-  color: var(--gray-90, #232526);
-  font-family: Pretendard;
   font-size: 16px;
-  font-style: normal;
   font-weight: 600;
-  line-height: 20px; 
+  line-height: 20px;
+  color: var(--gray-90, #232526);
 }
 
 .metaRow {
-  color: var(--gray-80, #3A3E40);
-  font-family: Pretendard;
   font-size: 14px;
-  font-style: normal;
   font-weight: 500;
-  line-height: 20px; 
+  line-height: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--gray-80, #3A3E40);
 }
 
 .ico {
-  display: inline-block; 
-  width: 18px; 
-  text-align: center; 
+  display: inline-block;
+  width: 18px;
+  text-align: center;
 }
 
 .reserveBtn {
   grid-area: btn;
   margin-top: 4px;
-  padding: 12px 14px;            
+  padding: 12px 14px;
   border: 0;
   border-radius: 12px;
   background: var(--Primary-Primary, #3A3E40);
   color: #FFF;
-  font-family: Pretendard;
   font-size: 16px;
-  font-style: normal;
   font-weight: 600;
   line-height: 24px;
   cursor: pointer;

@@ -114,6 +114,15 @@ const UserSignup = () => {
     }
   };
 
+const onKakaoLogin = () => {
+  const REST_API_KEY = "c84cef645a77c5d2642041b3b6bc8959"; // 네 REST API 키
+  const REDIRECT_URI = "http://3.27.150.124:8080/hackathon/api/oauth/kakao/callback"; // ✅ 백엔드 콜백 주소
+
+  window.location.href = 
+    `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+};
+
+
   return (
     <div className={styles.userSignupContainer}>
       <div className={styles.logo}>Logo</div>
@@ -219,7 +228,7 @@ const UserSignup = () => {
 
         <div className={styles.divider}>또는</div>
 
-        <button className={styles.kakaoButton} type="button">
+        <button className={styles.kakaoButton} type="button" onClick={onKakaoLogin}>
           <img src={kakaoLogo} alt="카카오 로고" className={styles.kakaoIcon} />
           카카오톡으로 시작하기
         </button>
