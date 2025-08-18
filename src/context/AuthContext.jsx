@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import api, { setTokens, clearAuth } from "../lib/axios";
+import api, { setTokens, clearAuth, refreshClient } from "../lib/axios";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
@@ -28,7 +28,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booted, setBooted] = useState(false);
 
-  // ✅ Refresh 로직
   const refreshNow = useCallback(async () => {
     const rt = localStorage.getItem(REFRESH_KEY) || "";
     if (!rt) {
@@ -39,13 +38,15 @@ export function AuthProvider({ children }) {
       return;
     }
     try {
-      const res = await api.post("/api/users/refresh", {}, {
-        headers: { Authorization: `Bearer ${rt}` }
-      });
+      const res = await refreshClient.post(
+        "/api/users/refresh",
+        {},
+        { headers: { Authorization: `Bearer ${rt}` } }
+      );
 
       const access = res.data.accessToken;
       const refresh = res.data.refreshToken;
-      const userId = res.data.userId; 
+      const userId = res.data.userId;
 
       if (!access || !refresh) throw new Error("리프레시 실패");
 
@@ -53,6 +54,12 @@ export function AuthProvider({ children }) {
 
       setIsAuthenticated(true);
       setUser(userId || null);
+
+      if (/^\d{3}-\d{2}-\d{5}$/.test(userId)) {
+        setRole("owner");
+      } else {
+        setRole("user");
+      }
     } catch (err) {
       console.error("❌ 토큰 리프레시 실패:", err.response?.data || err);
       clearAuth();
@@ -66,10 +73,9 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.post("/api/users/login", { username, password });
 
-      console.log("refresh API 응답:", res.data);
       const access = res.data.accessToken;
       const refresh = res.data.refreshToken;
-      const userId = res.data.userId; 
+      const userId = res.data.userId;
 
       if (!access || !refresh) throw new Error("로그인 실패");
 
@@ -99,8 +105,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      await refreshNow();
-      setBooted(true);
+      try {
+        await refreshNow();
+      } finally {
+        setBooted(true);
+      }
     })();
   }, [refreshNow]);
 

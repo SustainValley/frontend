@@ -51,7 +51,7 @@
   right: 16px;
   height: 30px;
   border-radius: 12px;
-  background: #FFF;
+  background: #fff;
   box-shadow: 0 0 16px 0 rgba(0,0,0,0.15);
   display: flex;
   align-items: center;
@@ -78,6 +78,7 @@
   font-weight: 400;
   line-height: 16px;
 }
+
 .searchInput::placeholder {
   color: #9aa3a7;
 }
@@ -107,10 +108,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,0.9) 60%,
-    #fff 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 60%, #fff 100%);
   pointer-events: none;
   z-index: 8;
 }
@@ -154,6 +152,7 @@
   overscroll-behavior: contain;
   padding: 0 16px 24px;
 }
+
 .sheetContent::-webkit-scrollbar {
   display: none;
 }
@@ -182,6 +181,7 @@
   cursor: pointer;
   transition: top 0.25s ease; 
 }
+
 .myLocationBtn img {
   width: 24px;
   height: 24px;
@@ -190,11 +190,11 @@
 .withReserve {
   top: -120px; 
 }
+
 .noReserve {
   top: -90px;  
 }
 
-/* ✅ 예약 상태 박스 */
 .reserveStatus {
   position: absolute;
   top: -70px;
@@ -202,26 +202,25 @@
   right: 16px;
   margin: 0 auto;
   max-width: calc(100% - 32px);
-
   border-radius: 16px;
   padding: 12px 16px;
-
   display: flex;
   flex-direction: column;
   gap: 6px;
   z-index: 19;
-
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   color: var(--gray-90, #232526);
+  cursor: pointer;
 }
 
-/* 상태별 배경 */
 .scheduled {
   background: linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%);
 }
+
 .inuse {
   background: linear-gradient(135deg, #FFF5F5 0%, #FFEAEA 100%);
 }
+
 .pending {
   background: linear-gradient(135deg, #FFFEEA 0%, #FFF8E1 100%);
 }
@@ -251,7 +250,7 @@
   gap: 12px 16px;
   align-items: start;
   border-radius: 24px;
-  background: #FFF;
+  background: #fff;
   box-shadow: 0 0 16px rgba(0, 0, 0, 0.10);
   padding: 16px;
   border: 1px solid rgba(0,0,0,0.04);
@@ -281,22 +280,6 @@
   color: var(--gray-90, #232526);
 }
 
-.metaRow {
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--gray-80, #3A3E40);
-}
-
-.ico {
-  display: inline-block;
-  width: 18px;
-  text-align: center;
-}
-
 .reserveBtn {
   grid-area: btn;
   margin-top: 4px;
@@ -304,22 +287,27 @@
   border: 0;
   border-radius: 12px;
   background: var(--Primary-Primary, #3A3E40);
-  color: #FFF;
+  color: #fff;
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
   cursor: pointer;
 }
+
 .menuBackdrop {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0;
   background: rgba(0,0,0,0.4);
   z-index: 30;
 }
 
 .sideMenu {
   position: absolute;
-  top: 0; left: 0;
+  top: 0; 
+  left: 0;
   width: 70%;
   max-width: 280px;
   height: 100%;
@@ -334,11 +322,11 @@
 }
 
 .sideMenu.open {
-  transform: translateX(0);   /* 열릴 때 */
+  transform: translateX(0);
 }
 
 .sideMenu.close {
-  transform: translateX(-100%); /* 닫힐 때 */
+  transform: translateX(-100%);
 }
 
 .menuItem {
@@ -352,6 +340,266 @@
   text-align: left;
   cursor: pointer;
 }
+
 .menuItem + .menuItem {
   margin-top: 12px;
+}
+
+.cardGhost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border-radius: 16px;
+  background: #fafafa;
+  border: 1px dashed rgba(0,0,0,0.15);
+  color: var(--gray-70, #5f6368);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.detailSheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 87%;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  overflow-y: auto;
+}
+
+.detailHeader {
+  margin-bottom: 10px;
+}
+
+.detailHeader p:first-child {
+  font-family: Pretendard;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 0px;
+}
+
+.today {
+  color: #000000;
+}
+
+.time {
+  color: var(--Sub-Sub-1, #A4CC08);
+}
+
+.detailHeader p:last-child {
+  color: var(--Sub-Sub-1, #000000);
+  font-family: Pretendard;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 10px;
+}
+
+.detailCafeCard {
+  display: flex;
+  gap: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: none;
+  margin-bottom: 24px;
+}
+
+.detailCafeCard img {
+  width: 114px;
+  height: 114px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.detailCafeCard .info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.detailContent h4 {
+  margin-top: 20px;
+  margin-bottom: 6px;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.detailContent p {
+  margin: 8px 0;
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px; 
+}
+
+.detailContent p b {
+  margin-right: 6px;
+  color: var(--gray-50, #7F888C);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.cancelBtn {
+  display :flex;
+  min-width: 250px;           /* ✅ 버튼이 너무 꽉 차지 않도록 */
+  margin: 20px auto 10px auto; /* ✅ 위아래 여백, 중앙 정렬 */
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--gray-10, #E2E9EC);
+  color: var(--system-red, #E74C3C);
+  font-family: Pretendard;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+  justify-content: center; 
+}
+
+
+.modalOverlay {
+  position: absolute;     
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.cancelModal {
+  background: #fff;
+  border-radius: 12px;
+  width: 80%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.modalHeader {
+  position: relative;
+  display: flex;
+  justify-content: center;   
+  align-items: center;
+  background: var(--Primary-Primary, #3A3E40);
+  color: #fff;
+  padding: 12px 16px;
+}
+
+.modalHeader h3 {
+  margin: 0;
+  color: var(--white, #FFF);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px; 
+}
+
+.closeIcon {
+  position: absolute;        
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.cancelReasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.cancelReasons li {
+  padding: 12px 0;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cancelReasons li:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.reasonSelected {
+  background: rgba(255, 42, 42, 0.08);
+  font-weight: 700;
+}
+
+.closeBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #f3f4f6;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@keyframes slideUp {
+  from { transform: translate(-50%, 100%); }
+  to { transform: translate(-50%, -50%); }
+}
+
+.metaRow {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gray-80, #3A3E40);
+}
+
+.metaIcon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.completeBody {
+  padding: 5px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.completeBody p {
+  margin: 8px 0;
+}
+
+.completeBody strong {
+  font-weight: 600;
+  color: #000;
 }
