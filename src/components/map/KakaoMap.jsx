@@ -38,11 +38,9 @@ const KakaoMap = forwardRef(function KakaoMap(
 
   useEffect(() => {
     if (!ready || !mapContainerRef.current || map) return;
-    const fallback = { lat: 37.5665, lng: 126.9780 }; // 서울시청 fallback
-    const center = initialCenter || fallback;
 
     const m = new kakao.maps.Map(mapContainerRef.current, {
-      center: new kakao.maps.LatLng(center.lat, center.lng),
+      center: new kakao.maps.LatLng(37.5665, 126.9780),
       level: initialLevel,
     });
     setMap(m);
@@ -57,35 +55,24 @@ const KakaoMap = forwardRef(function KakaoMap(
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          const current = new kakao.maps.LatLng(latitude, longitude);
-          m.setCenter(current);
-
+          const locPosition = new kakao.maps.LatLng(latitude, longitude);
+          m.setCenter(locPosition);
           new kakao.maps.Marker({
             map: m,
-            position: current,
+            position: locPosition,
           });
         },
         (err) => {
-          console.error("위치 에러:", err);
-          const fallbackPos = new kakao.maps.LatLng(fallback.lat, fallback.lng);
-          m.setCenter(fallbackPos);
-          new kakao.maps.Marker({
-            map: m,
-            position: fallbackPos,
-          });
+          console.warn("위치 에러:", err);
+          alert("현재 위치를 불러올 수 없습니다.");
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0,
-        }
+        { enableHighAccuracy: true, timeout: 5000 }
       );
     }
 
     setTimeout(() => {
       try {
         m.relayout?.();
-        m.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
       } catch {}
     }, 0);
 
@@ -96,7 +83,7 @@ const KakaoMap = forwardRef(function KakaoMap(
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [ready, initialCenter, initialLevel, map]);
+  }, [ready, initialLevel, map]);
 
   const esc = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const makeNameRegex = (kw) => {

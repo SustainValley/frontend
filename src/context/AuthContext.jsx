@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import api, { setTokens, clearAuth, refreshClient } from "../lib/axios";
+import api, { setTokens, clearAuth, refreshClient, getType } from "../lib/axios";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
@@ -24,8 +24,8 @@ export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState(null);
-  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null); // "owner" | "user"
+  const [user, setUser] = useState(null); // userId 저장
   const [booted, setBooted] = useState(false);
 
   const refreshNow = useCallback(async () => {
@@ -44,22 +44,21 @@ export function AuthProvider({ children }) {
         { headers: { Authorization: `Bearer ${rt}` } }
       );
 
-      const access = res.data.accessToken;
-      const refresh = res.data.refreshToken;
-      const userId = res.data.userId;
+      const { accessToken: access, refreshToken: refresh, userId, type } = res.data;
 
       if (!access || !refresh) throw new Error("리프레시 실패");
+      const finalType = type || localStorage.getItem("type");
 
-      setTokens({ accessToken: access, refreshToken: refresh, userId });
+      setTokens({
+        accessToken: access,
+        refreshToken: refresh,
+        userId,
+        type: finalType,
+      });
 
       setIsAuthenticated(true);
       setUser(userId || null);
-
-      if (/^\d{3}-\d{2}-\d{5}$/.test(userId)) {
-        setRole("owner");
-      } else {
-        setRole("user");
-      }
+      setRole(finalType === "COR" ? "owner" : finalType === "PER" ? "user" : null);
     } catch (err) {
       console.error("❌ 토큰 리프레시 실패:", err.response?.data || err);
       clearAuth();
@@ -73,20 +72,13 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.post("/api/users/login", { username, password });
 
-      const access = res.data.accessToken;
-      const refresh = res.data.refreshToken;
-      const userId = res.data.userId;
+      const { accessToken: access, refreshToken: refresh, userId, type } = res.data;
 
       if (!access || !refresh) throw new Error("로그인 실패");
 
-      setTokens({ accessToken: access, refreshToken: refresh, userId });
+      setTokens({ accessToken: access, refreshToken: refresh, userId, type });
 
-      if (/^\d{3}-\d{2}-\d{5}$/.test(username)) {
-        setRole("owner");
-      } else {
-        setRole("user");
-      }
-
+      setRole(type === "COR" ? "owner" : type === "PER" ? "user" : null);
       setIsAuthenticated(true);
       setUser(userId);
       return true;
@@ -104,6 +96,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+
+    const savedType = getType();
+    if (savedType) {
+      setRole(savedType === "COR" ? "owner" : savedType === "PER" ? "user" : null);
+      setIsAuthenticated(!!localStorage.getItem(ACCESS_KEY));
+      setUser(localStorage.getItem("user_id"));
+    }
+
     (async () => {
       try {
         await refreshNow();
@@ -125,6 +125,9 @@ export function AuthProvider({ children }) {
     [isAuthenticated, role, user, refreshNow, logout]
   );
 
-  if (!booted) return null;
+  if (!booted) {
+    return null;
+  }
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

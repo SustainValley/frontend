@@ -1,0 +1,135 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100vh;
+    background: #fff;
+    font-family: Pretendard, sans-serif;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .content {
+    flex: 1;
+  }
+  
+  /* 카페명 */
+  .cafeHeader {
+    display: inline-flex;
+    align-items: center;
+    color: var(--gray-90, #232526);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 24px;
+    margin-bottom: 24px;
+  }
+  .cafeName {
+    margin-right: 12px;
+  }
+  .arrowIcon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  /* MOCA 카드 */
+  .tipCard {
+    background: #333;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+  .tipText {
+    margin-bottom: 30px;
+  }
+  .tipIcon {
+    width: 32px;
+    height: 32px;
+    align-self: flex-end;
+  }
+  
+  /* 오늘의 예약 */
+  .reservationCard {
+    border-radius: 12px;
+    background: linear-gradient(
+      104deg,
+      var(--limerick-00, #ebf7ce) 19.85%,
+      var(--Sub-Sub-2, #bfd194) 96.51%
+    );
+    padding: 16px;
+    margin-bottom: 24px;
+  
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 143px;
+  }
+  .reservationTitle {
+    color: var(--gray-90, #232526);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+  .reservationImg {
+    width: 159px;
+    height: 115px;
+    object-fit: contain;
+    align-self: flex-end;
+  }
+  
+  /* 두 개 카드 */
+  .gridBox {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    height: 96px;
+    margin-bottom: 16px; /* 위로 조금 올림 */
+  }
+  
+  .smallCard {
+    background: #f6f6f6;
+    border-radius: 12px;
+    padding: 16px;
+    color: var(--gray-90, #232526);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;    /* 왼쪽 정렬 */
+    justify-content: flex-start; /* 카드 위쪽 정렬 */
+    gap: 2px; /* 줄 간격 좁게 */
+  }
+  
+  .chatCard {
+    gap: 0; /* gap 제거, New!를 margin으로 제어 */
+  }
+  
+  .chatCard .newLabel {
+    margin-top: 30px; /* 위 텍스트와 간격 넓힘 */
+    color: var(--Sub-Sub-1, #a4cc08);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+  }
+  
+  /* 로그아웃 버튼 */
+  .logoutBtn {
+    width: 100%;
+    padding: 12px;
+    background: #e6edf0;
+    border: none;
+    border-radius: 12px;
+    color: #e74c3c;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 70px;
+  }
+  

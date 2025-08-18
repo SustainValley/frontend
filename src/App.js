@@ -23,14 +23,15 @@ import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 import KakaoCallback from './pages/Auth/Login/KakaoCallback';
 import FilterPage from './pages/UserMain/FilterPage';
 
+const Reserve       = React.lazy(() => import('./pages/UserMain/Reserve'));
+const UserMain      = React.lazy(() => import('./pages/UserMain/UserMain'));
+const OwnerMain     = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
+const OwnerAnalysis = React.lazy(() => import('./pages/OwnerMain/OwnerAnalysis'));
 
-const Reserve   = React.lazy(() => import('./pages/UserMain/Reserve'));
-const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
-const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
+const ChatList      = React.lazy(() => import('./pages/UserMain/ChatList'));
+const ChatRoom      = React.lazy(() => import('./pages/UserMain/ChatRoom'));
 
-const ChatList  = React.lazy(() => import('./pages/UserMain/ChatList'));
-const ChatRoom  = React.lazy(() => import('./pages/UserMain/ChatRoom'));
-
+// ✅ RootRedirect: 새로고침 시 안전 처리
 const RootRedirect = () => {
   const { isAuthenticated, role, refreshNow } = useAuth();
   const loc = useLocation();
@@ -48,27 +49,39 @@ const RootRedirect = () => {
     return () => { alive = false; };
   }, [refreshNow]);
 
-  if (!checked) return <div>초기화중...</div>;
+  // ✅ 아직 refresh 체크 중이면 아무 것도 안 보여줌
+  if (!checked) return null;
 
+  // 로그인 안 됨
   if (!isAuthenticated) {
-    if (loc.pathname !== '/login') return <Navigate to="/login" replace />;
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
+  // role 아직 안 잡힘이면 그냥 대기 (안보임)
   if (!role) return null;
 
-  const r = String(role).trim().toLowerCase();
-  const target = r === 'owner' ? '/owner/home' : '/user/home';
-  if (loc.pathname !== target) return <Navigate to={target} replace />;
+  // role에 따라 홈 리다이렉트
+  if (role === "owner") {
+    if (!loc.pathname.startsWith("/owner")) {
+      return <Navigate to="/owner/home" replace />;
+    }
+  } else if (role === "user") {
+    if (!loc.pathname.startsWith("/user")) {
+      return <Navigate to="/user/home" replace />;
+    }
+  }
+
   return null;
 };
 
+// User 회원가입 레이아웃
 const UserSignupLayout = () => (
   <SignupProvider>
     <Outlet />
   </SignupProvider>
 );
 
+// Owner 회원가입 레이아웃
 const OwnerSignupLayout = () => (
   <OwnerSignupProvider>
     <Outlet />
@@ -81,7 +94,7 @@ function App() {
       <div className="web-container">
         <AuthProvider>
           <BrowserRouter>
-            <Suspense fallback={<div>로딩중...</div>}>
+            <Suspense fallback={null}>
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
 
@@ -108,18 +121,19 @@ function App() {
                   <Route path="/signup/owner/complete" element={<OwnerCompleteSignup />} />
                 </Route>
 
-                {/* 역할별 보호 라우트 */}
+                {/* 사용자 라우트 */}
                 <Route element={<RoleRoute allow={['user']} />}>
                   <Route path="/user/home" element={<UserMain />} />
                   <Route path="/user/filters" element={<FilterPage />} />
                   <Route path="/user/reserve" element={<Reserve />} />
-
                   <Route path="/chat" element={<ChatList />} />
                   <Route path="/chat/:chatId" element={<ChatRoom />} />
                 </Route>
 
+                {/* 사장님 라우트 */}
                 <Route element={<RoleRoute allow={['owner']} />}>
                   <Route path="/owner/home" element={<OwnerMain />} />
+                  <Route path="/owner/analysis" element={<OwnerAnalysis />} />
                 </Route>
 
                 {/* 미지정 경로 처리 */}
@@ -134,4 +148,3 @@ function App() {
 }
 
 export default App;
-

@@ -4,18 +4,9 @@ import styles from './Login.module.css';
 import kakaoLogo from '../../../assets/kakaoLogo.svg';
 import { useAuth } from '../../../context/AuthContext';
 
-const digits = (v) => (v || '').replace(/[^0-9]/g, '');
-
-const formatBizNo = (v) => {
-  const s = digits(v).slice(0, 10); 
-  if (s.length <= 3) return s;
-  if (s.length <= 5) return `${s.slice(0, 3)}-${s.slice(3)}`;
-  return `${s.slice(0, 3)}-${s.slice(3, 5)}-${s.slice(5)}`;
-};
-
 const Login = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, role, login } = useAuth();
 
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
@@ -27,13 +18,14 @@ const Login = () => {
   );
 
   useEffect(() => {
-    if (!isAuthenticated || !id) return;
+    if (!isAuthenticated || !role) return;
 
-    const rawId = digits(id);
-    const isBizNo = /^\d{10}$/.test(rawId); // 숫자 10자리면 사업자번호
-
-    navigate(isBizNo ? '/owner/home' : '/user/home', { replace: true });
-  }, [isAuthenticated, id, navigate]);
+    if (role === 'owner') {
+      navigate('/owner/home', { replace: true });
+    } else if (role === 'user') {
+      navigate('/user/home', { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -41,22 +33,10 @@ const Login = () => {
     setErr('');
     try {
       await login(id, pw);
+      // role은 login 안에서 자동으로 세팅됨
     } catch (_error) {
       setErr('아이디 또는 비밀번호가 일치하지 않습니다.');
     }
-  };
-  
-  const onIdChange = (e) => {
-    const value = e.target.value;
-    const onlyDigits = value.replace(/-/g, '');
-
-    if (/^\d*$/.test(onlyDigits)) {
-      setId(formatBizNo(value));
-    } else {
-      setId(value); 
-    }
-
-    if (err) setErr('');
   };
 
   const handleKakaoLogin = () => {
@@ -83,7 +63,10 @@ const Login = () => {
             placeholder="아이디 (또는 사업자번호)"
             className={styles.inputBox}
             value={id}
-            onChange={onIdChange}
+            onChange={(e) => {
+              setId(e.target.value);
+              if (err) setErr('');
+            }}
             autoComplete="username"
           />
           <input
@@ -98,7 +81,6 @@ const Login = () => {
             autoComplete="current-password"
           />
 
-          {/* 에러 메시지는 제출했을 때만 표시 */}
           {err && <div className={styles.errorText}>{err}</div>}
 
           <button

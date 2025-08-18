@@ -1,28 +1,27 @@
-import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+// src/components/RoleRoute.jsx
+import React from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const RoleRoute = ({ allow = [] }) => {
+const RoleRoute = ({ allow }) => {
   const { isAuthenticated, role } = useAuth();
-  const loc = useLocation();
+  const location = useLocation();
 
   if (!isAuthenticated) {
-    if (loc.pathname !== '/login') return <Navigate to="/login" replace />;
-    return null;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!role) return null;
+  if (!role) {
+    return null; 
+  }
 
-  const r = String(role).trim().toLowerCase();
-  const allowed = allow.map(a => String(a).toLowerCase());
-
-  if (!allowed.includes(r)) {
-    const target = r === 'owner' ? '/owner/home' : '/user/home';
-    if (loc.pathname !== target) return <Navigate to={target} replace />;
-    return null;
+  if (!allow.includes(role)) {
+    const fallback = role === "owner" ? "/owner/home" : "/user/home";
+    return <Navigate to={fallback} replace />;
   }
 
   return <Outlet />;
 };
+
 
 export default RoleRoute;
