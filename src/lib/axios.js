@@ -8,7 +8,8 @@ const BASE_URL =
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
-const USER_ID_KEY = "user_id"; 
+const USER_ID_KEY = "user_id";
+const TYPE_KEY = "type"; // ✅ 서버 응답의 type 그대로 저장
 
 // === LocalStorage helpers ===
 const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || "";
@@ -23,16 +24,24 @@ export const getUserId = () => localStorage.getItem(USER_ID_KEY) || "";
 const setUserId = (id) =>
   id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY);
 
-export const setTokens = ({ accessToken, refreshToken, userId }) => {
+export const getType = () => localStorage.getItem(TYPE_KEY) || "";
+const setType = (type) =>
+  type ? localStorage.setItem(TYPE_KEY, type) : localStorage.removeItem(TYPE_KEY);
+
+// ✅ 토큰 + userId + type 저장
+export const setTokens = ({ accessToken, refreshToken, userId, type }) => {
   if (accessToken) setAccessToken(accessToken);
   if (refreshToken) setRefreshToken(refreshToken);
   if (userId) setUserId(userId);
+  if (type) setType(type); // ✅ "COR"/"PER"
 };
 
+// ✅ 모든 값 제거
 export const clearAuth = () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_ID_KEY);
+  localStorage.removeItem(TYPE_KEY);
 };
 
 // === Axios instances ===
@@ -41,7 +50,7 @@ const instance = axios.create({
   timeout: 10000,
 });
 
-// ✅ refresh 전용 클라이언트 (interceptor 없음, 쿠키 불필요)
+// ✅ refresh 전용 클라이언트 (interceptor 없음)
 export const refreshClient = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
@@ -63,6 +72,7 @@ async function refreshAccessToken() {
 
   setAccessToken(nextAccess);
   if (data?.refreshToken) setRefreshToken(data.refreshToken);
+  if (data?.type) setType(data.type); // ✅ 새 토큰 받아올 때도 type 갱신
 
   return nextAccess;
 }
