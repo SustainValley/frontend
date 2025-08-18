@@ -10,6 +10,7 @@ const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 const USER_ID_KEY = "user_id"; 
 
+// === LocalStorage helpers ===
 const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || "";
 const setAccessToken = (t) =>
   t ? localStorage.setItem(ACCESS_KEY, t) : localStorage.removeItem(ACCESS_KEY);
@@ -34,41 +35,27 @@ export const clearAuth = () => {
   localStorage.removeItem(USER_ID_KEY);
 };
 
+// === Axios instances ===
 const instance = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true,
   timeout: 10000,
 });
 
-const refreshClient = axios.create({
+// ✅ refresh 전용 클라이언트 (interceptor 없음, 쿠키 불필요)
+export const refreshClient = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true,
   timeout: 10000,
 });
 
-let isRefreshing = false;
-let queue = [];
-
-const waitForToken = () =>
-  new Promise((resolve, reject) => queue.push({ resolve, reject }));
-
-const flushQueue = (err, token) => {
-  queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve(token)));
-  queue = [];
-};
-
+// === Refresh ===
 async function refreshAccessToken() {
   const rt = getRefreshToken();
   if (!rt) throw new Error("No refresh token available");
 
   const { data } = await refreshClient.post(
-    "/api/users/refresh", 
-    {}, 
-    {
-      headers: {
-        Authorization: `Bearer ${rt}`, 
-      },
-    }
+    "/api/users/refresh",
+    {},
+    { headers: { Authorization: `Bearer ${rt}` } }
   );
 
   const nextAccess = data?.accessToken;
@@ -80,7 +67,7 @@ async function refreshAccessToken() {
   return nextAccess;
 }
 
-
+// === Request interceptor (accessToken) ===
 instance.interceptors.request.use((config) => {
   const at = getAccessToken();
   if (at) {
@@ -90,6 +77,18 @@ instance.interceptors.request.use((config) => {
   return config;
 });
 
+// === Response interceptor (401 → refresh) ===
+let isRefreshing = false;
+let queue = [];
+
+const waitForToken = () =>
+  new Promise((resolve, reject) => queue.push({ resolve, reject }));
+
+const flushQueue = (err, token) => {
+  queue.forEach(({ resolve, reject }) => (err ? reject(err) : resolve(token)));
+  queue = [];
+};
+
 instance.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -98,15 +97,8 @@ instance.interceptors.response.use(
 
     const original = config || {};
     const status = response.status;
-    const url = (original.url || "").toLowerCase();
 
-    const isAuthApi =
-      url.includes("/auth/login") ||
-      url.includes("/users/login") ||
-      url.includes("/auth/refresh") ||
-      url.includes("/auth/logout");
-
-    if (status !== 401 || original._retry || isAuthApi) {
+    if (status !== 401 || original._retry) {
       throw error;
     }
 
@@ -138,7 +130,3 @@ instance.interceptors.response.use(
 );
 
 export default instance;
-
-if (typeof window !== "undefined") {
-  
-}

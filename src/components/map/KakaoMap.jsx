@@ -38,7 +38,7 @@ const KakaoMap = forwardRef(function KakaoMap(
 
   useEffect(() => {
     if (!ready || !mapContainerRef.current || map) return;
-    const fallback = { lat: 37.5665, lng: 126.9780 };
+    const fallback = { lat: 37.5665, lng: 126.9780 }; // 서울시청 fallback
     const center = initialCenter || fallback;
 
     const m = new kakao.maps.Map(mapContainerRef.current, {
@@ -52,6 +52,35 @@ const KakaoMap = forwardRef(function KakaoMap(
       averageCenter: true,
       minLevel: 6,
     });
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const current = new kakao.maps.LatLng(latitude, longitude);
+          m.setCenter(current);
+
+          new kakao.maps.Marker({
+            map: m,
+            position: current,
+          });
+        },
+        (err) => {
+          console.error("위치 에러:", err);
+          const fallbackPos = new kakao.maps.LatLng(fallback.lat, fallback.lng);
+          m.setCenter(fallbackPos);
+          new kakao.maps.Marker({
+            map: m,
+            position: fallbackPos,
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0,
+        }
+      );
+    }
 
     setTimeout(() => {
       try {
@@ -70,7 +99,6 @@ const KakaoMap = forwardRef(function KakaoMap(
   }, [ready, initialCenter, initialLevel, map]);
 
   const esc = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
   const makeNameRegex = (kw) => {
     const k = esc((kw || '').trim());
     if (!k) return null;

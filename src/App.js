@@ -21,15 +21,18 @@ import OwnerPhoneSignup from './pages/Auth/Signup/OwnerPhoneSignup';
 import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 
 import KakaoCallback from './pages/Auth/Login/KakaoCallback';
-
 import FilterPage from './pages/UserMain/FilterPage';
 
-const Reserve  = React.lazy(() => import('./pages/UserMain/Reserve'));
-const UserMain = React.lazy(() => import('./pages/UserMain/UserMain'));
+
+const Reserve   = React.lazy(() => import('./pages/UserMain/Reserve'));
+const UserMain  = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 
+const ChatList  = React.lazy(() => import('./pages/UserMain/ChatList'));
+const ChatRoom  = React.lazy(() => import('./pages/UserMain/ChatRoom'));
+
 const RootRedirect = () => {
-  const { isAuthenticated, role, refresh } = useAuth();
+  const { isAuthenticated, role, refreshNow } = useAuth();
   const loc = useLocation();
   const [checked, setChecked] = useState(false);
 
@@ -37,15 +40,15 @@ const RootRedirect = () => {
     let alive = true;
     (async () => {
       try {
-        await refresh?.();
+        await refreshNow?.();
       } finally {
         if (alive) setChecked(true);
       }
     })();
     return () => { alive = false; };
-  }, [refresh]);
+  }, [refreshNow]);
 
-  if (!checked) return null;
+  if (!checked) return <div>초기화중...</div>;
 
   if (!isAuthenticated) {
     if (loc.pathname !== '/login') return <Navigate to="/login" replace />;
@@ -78,7 +81,7 @@ function App() {
       <div className="web-container">
         <AuthProvider>
           <BrowserRouter>
-            <Suspense fallback={<div />}>
+            <Suspense fallback={<div>로딩중...</div>}>
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
 
@@ -110,6 +113,9 @@ function App() {
                   <Route path="/user/home" element={<UserMain />} />
                   <Route path="/user/filters" element={<FilterPage />} />
                   <Route path="/user/reserve" element={<Reserve />} />
+
+                  <Route path="/chat" element={<ChatList />} />
+                  <Route path="/chat/:chatId" element={<ChatRoom />} />
                 </Route>
 
                 <Route element={<RoleRoute allow={['owner']} />}>
@@ -128,3 +134,4 @@ function App() {
 }
 
 export default App;
+
