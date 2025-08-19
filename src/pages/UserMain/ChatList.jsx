@@ -1,36 +1,61 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Chat.module.css";
-
 import backIcon from "../../assets/chevron.svg";
-
-const chats = [
-  {
-    id: 1,
-    name: "매머드 익스프레스",
-    preview: "안녕하세요. 매머드 익스프레스입니다.",
-    unread: true,
-  },
-  {
-    id: 2,
-    name: "프렛커피",
-    preview: "안녕하세요. 문의 주신 내용에 답변드립니다.",
-    unread: false,
-  },
-  {
-    id: 3,
-    name: "풍치커피익스프레스공릉점",
-    preview: "안녕하세요. 문의 주신 내용에 답변드립니다. 일단 노트북 이...",
-    unread: false,
-  },
-];
+import { useAuth } from "../../context/AuthContext";
 
 export default function ChatList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [chats, setChats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const uid = user?.userId || localStorage.getItem("user_id");
+
+    if (!uid) {
+      setLoading(false);
+      setError("로그인 정보가 없습니다.");
+      return;
+    }
+
+    const fetchChats = async () => {
+      try {
+        const res = await fetch(`/hackathon/api/chat/${uid}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (data.isSuccess) {
+          const mapped = data.result.map((chat) => ({
+            id: chat.roomId,
+            name: chat.title || `유저 ${chat.chatRoomUserId}`,
+            preview: `최근 메시지 시간: ${new Date(
+              chat.lastMessageTime
+            ).toLocaleString()}`,
+            unread: chat.unread ?? false,
+          }));
+          setChats(mapped);
+        } else {
+          setError(data.message || "채팅방을 불러올 수 없습니다.");
+        }
+      } catch (err) {
+        setError("서버 오류가 발생했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChats();
+  }, [user]);
 
   return (
     <div className={styles.page}>
-      {/* 상단 바 */}
       <div className={styles.appbar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>
           <img src={backIcon} alt="뒤로가기" />
@@ -39,21 +64,29 @@ export default function ChatList() {
         <div style={{ width: "40px" }} />
       </div>
 
-      {/* 채팅 목록 */}
-      <div className={styles.chatList}>
-        {chats.map((chat) => (
-          <div
-            key={chat.id}
-            className={`${styles.chatItem} ${
-              chat.unread ? styles.unread : styles.read
-            }`}
-            onClick={() => navigate(`/chat/${chat.id}`)}
-          >
-            <div className={styles.chatName}>{chat.name}</div>
-            <div className={styles.chatPreview}>{chat.preview}</div>
-          </div>
-        ))}
-      </div>
+      {loading && <div className={styles.chatList}>불러오는 중...</div>}
+      {error && !loading && <div className={styles.chatList}>{error}</div>}
+
+      {!loading && !error && (
+        <div className={styles.chatList}>
+          {chats.length === 0 ? (
+            <div className={styles.chatItem}>채팅방이 없습니다.</div>
+          ) : (
+            chats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`${styles.chatItem} ${
+                  chat.unread ? styles.unread : styles.read
+                }`}
+                onClick={() => navigate(`/chat/${chat.id}`)}
+              >
+                <div className={styles.chatName}>{chat.name}</div>
+                <div className={styles.chatPreview}>{chat.preview}</div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

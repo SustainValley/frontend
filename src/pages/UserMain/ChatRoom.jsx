@@ -1,38 +1,108 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
+import axios from "axios";
 import styles from "./Chat.module.css";
 
 import backIcon from "../../assets/chevron.svg";
-import sendIcon from "../../assets/tabler_send.svg"; 
+import sendIcon from "../../assets/tabler_send.svg";
 
 export default function ChatRoom() {
   const navigate = useNavigate();
   const { chatId } = useParams();
+  const roomId = Number(chatId);
 
-  const [messages, setMessages] = useState([
-    { from: "store", name: "매머드 익스프레스", text: "안녕하세요, 매머드 익스프레스입니다." },
-    {
-      from: "me",
-      text: "안녕하세요. 문의할 것이 있어서 연락드립니다.\n혹시 오늘 오후 3시에 8명도 예약이 가능할까요?\n답변 기다리겠습니다. 감사합니다.",
-    },
-  ]);
-
-  const [input, setInput] = useState("");
-  const textareaRef = useRef(null);
+  const clientRef = useRef(null);
   const chatEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [sender, setSender] = useState(1); 
+
+  useEffect(() => {
+    const client = new Client({
+
+      webSocketFactory: () => new SockJS("http://localhost:8080/ws-stomp"),
+      reconnectDelay: 5000,
+      debug: (str) => console.log(str),
+      onConnect: () => {
+        console.log(" WebSocket Connected with SockJS");
+
+        client.subscribe(`/sub/chatroom/${roomId}`, (msg) => {
+          const newMessage = JSON.parse(msg.body);
+          console.log("📩 받은 메시지:", newMessage);
+          setMessages((prev) => [
+            ...prev,
+            {
+              from: newMessage.sender === sender ? "me" : "store",
+              name: newMessage.sender === sender ? "나" : "상대방",
+              text: newMessage.message,
+              createdAt: newMessage.createdAt,
+            },
+          ]);
+        });
+
+        client.subscribe(`/user/queue/errors`, (err) => {
+          try {
+            const errorMsg = JSON.parse(err.body);
+            alert(`❌ 에러 발생: ${errorMsg.message}`);
+          } catch {
+            alert(`❌ 에러 발생: ${err.body}`);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error("❌ Broker error:", frame.headers["message"]);
+        console.error("Details:", frame.body);
+      },
+    });
+
+    client.activate();
+    clientRef.current = client;
+
+    axios
+      .get(`/hackathon/api/chat/room?id=${roomId}`)
+      .then((res) => {
+        const prevMsgs = res.data.result.map((m) => ({
+          from: m.sender === sender ? "me" : "store",
+          name: m.sender === sender ? "나" : "상대방",
+          text: m.message,
+          createdAt: m.createdAt,
+        }));
+        setMessages(prevMsgs);
+      })
+      .catch((e) => console.error("❌ 이전 메시지 로드 실패", e));
+
+    return () => {
+      if (clientRef.current) {
+        clientRef.current.deactivate();
+        console.log("❌ WebSocket Disconnected");
+      }
+    };
+  }, [roomId, sender]);
 
   const sendMessage = () => {
-    if (!input.trim()) return;
-    setMessages((prev) => [...prev, { from: "me", text: input.trim() }]);
+    if (!input.trim() || !clientRef.current?.connected) return;
+    const body = { roomId, message: input.trim(), sender };
+
+    clientRef.current.publish({
+      destination: `/pub/chatroom/${roomId}`,
+      body: JSON.stringify(body),
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      { from: "me", name: "나", text: input.trim() },
+    ]);
     setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"; 
-    }
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      if (e.nativeEvent.isComposing) return; 
+      if (e.nativeEvent.isComposing) return;
       e.preventDefault();
       sendMessage();
     }
@@ -51,7 +121,6 @@ export default function ChatRoom() {
 
   return (
     <div className={styles.page}>
-      {/* 상단 바 */}
       <div className={styles.appbar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>
           <img src={backIcon} alt="뒤로가기" />
@@ -60,7 +129,6 @@ export default function ChatRoom() {
         <div style={{ width: "40px" }} />
       </div>
 
-      {/* 메시지 영역 */}
       <div className={styles.chatWindow}>
         {messages.map((msg, i) =>
           msg.from === "store" ? (
@@ -68,11 +136,17 @@ export default function ChatRoom() {
               <div className={styles.profile}></div>
               <div className={styles.messageContent}>
                 <div className={styles.senderName}>{msg.name || "상대방"}</div>
-                <div className={`${styles.bubble} ${styles.store}`}>{msg.text}</div>
+                <div className={`${styles.bubble} ${styles.store}`}>
+                  {msg.text}
+                </div>
               </div>
             </div>
           ) : (
-            <div key={i} className={styles.messageRow} style={{ justifyContent: "flex-end" }}>
+            <div
+              key={i}
+              className={styles.messageRow}
+              style={{ justifyContent: "flex-end" }}
+            >
               <div className={`${styles.bubble} ${styles.me}`}>{msg.text}</div>
             </div>
           )
@@ -80,7 +154,7 @@ export default function ChatRoom() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* 입력창 */}
+
       <div className={styles.inputBar}>
         <textarea
           ref={textareaRef}

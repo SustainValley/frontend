@@ -1,4 +1,3 @@
-// src/App.js
 import React, { Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import './App.css';
@@ -27,11 +26,17 @@ const Reserve       = React.lazy(() => import('./pages/UserMain/Reserve'));
 const UserMain      = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain     = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 const OwnerAnalysis = React.lazy(() => import('./pages/OwnerMain/OwnerAnalysis'));
-
 const ChatList      = React.lazy(() => import('./pages/UserMain/ChatList'));
 const ChatRoom      = React.lazy(() => import('./pages/UserMain/ChatRoom'));
 
-// ✅ RootRedirect: 새로고침 시 안전 처리
+const StoreInfo       = React.lazy(() => import('./pages/OwnerMain/StoreInfo'));
+const OperatingHours  = React.lazy(() => import('./pages/OwnerMain/OperatingHours'));
+const BlockTime       = React.lazy(() => import('./pages/OwnerMain/BlockTime'));
+
+
+const OwnerReservationList   = React.lazy(() => import('./pages/OwnerMain/OwnerReservationList'));   // 예약 목록
+const OwnerReservationDetail = React.lazy(() => import('./pages/OwnerMain/OwnerReservationDetail')); // 예약 상세
+
 const RootRedirect = () => {
   const { isAuthenticated, role, refreshNow } = useAuth();
   const loc = useLocation();
@@ -49,24 +54,16 @@ const RootRedirect = () => {
     return () => { alive = false; };
   }, [refreshNow]);
 
-  // ✅ 아직 refresh 체크 중이면 아무 것도 안 보여줌
   if (!checked) return null;
-
-  // 로그인 안 됨
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // role 아직 안 잡힘이면 그냥 대기 (안보임)
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!role) return null;
 
-  // role에 따라 홈 리다이렉트
   if (role === "owner") {
-    if (!loc.pathname.startsWith("/owner")) {
+    if (!loc.pathname.startsWith("/owner") && !loc.pathname.startsWith("/chat")) {
       return <Navigate to="/owner/home" replace />;
     }
   } else if (role === "user") {
-    if (!loc.pathname.startsWith("/user")) {
+    if (!loc.pathname.startsWith("/user") && !loc.pathname.startsWith("/chat")) {
       return <Navigate to="/user/home" replace />;
     }
   }
@@ -74,14 +71,12 @@ const RootRedirect = () => {
   return null;
 };
 
-// User 회원가입 레이아웃
 const UserSignupLayout = () => (
   <SignupProvider>
     <Outlet />
   </SignupProvider>
 );
 
-// Owner 회원가입 레이아웃
 const OwnerSignupLayout = () => (
   <OwnerSignupProvider>
     <Outlet />
@@ -98,14 +93,11 @@ function App() {
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
 
-                {/* 로그인/메인 */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
 
-                {/* 카카오 로그인 콜백 */}
                 <Route path="/oauth/kakao/callback" element={<KakaoCallback />} />
 
-                {/* User 회원가입 스텝 */}
                 <Route element={<UserSignupLayout />}>
                   <Route path="/signup/user" element={<UserSignup />} />
                   <Route path="/signup/user/name" element={<UserNameSignup />} />
@@ -113,7 +105,6 @@ function App() {
                   <Route path="/signup/user/complete" element={<UserCompleteSignup />} />
                 </Route>
 
-                {/* Owner 회원가입 스텝 */}
                 <Route element={<OwnerSignupLayout />}>
                   <Route path="/signup/owner" element={<OwnerSignup />} />
                   <Route path="/signup/owner/password" element={<OwnerPasswordSignup />} />
@@ -121,22 +112,29 @@ function App() {
                   <Route path="/signup/owner/complete" element={<OwnerCompleteSignup />} />
                 </Route>
 
-                {/* 사용자 라우트 */}
                 <Route element={<RoleRoute allow={['user']} />}>
                   <Route path="/user/home" element={<UserMain />} />
                   <Route path="/user/filters" element={<FilterPage />} />
                   <Route path="/user/reserve" element={<Reserve />} />
-                  <Route path="/chat" element={<ChatList />} />
-                  <Route path="/chat/:chatId" element={<ChatRoom />} />
                 </Route>
 
-                {/* 사장님 라우트 */}
                 <Route element={<RoleRoute allow={['owner']} />}>
                   <Route path="/owner/home" element={<OwnerMain />} />
                   <Route path="/owner/analysis" element={<OwnerAnalysis />} />
+
+                  <Route path="/owner/store" element={<StoreInfo />} />
+                  <Route path="/owner/store/hours" element={<OperatingHours />} />
+                  <Route path="/owner/store/block-time" element={<BlockTime />} />
+
+                  <Route path="/owner/reservations" element={<OwnerReservationList />} />  
+                  <Route path="/owner/reservation/:id" element={<OwnerReservationDetail />} />
                 </Route>
 
-                {/* 미지정 경로 처리 */}
+                <Route element={<RoleRoute allow={['user','owner']} />}>
+                  <Route path="/chat" element={<ChatList />} />
+                  <Route path="/chat/:chatId" element={<ChatRoom />} />
+                </Route>
+                
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
             </Suspense>

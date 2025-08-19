@@ -1,0 +1,270 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #fff;
+    font-family: Pretendard, sans-serif;
+  }
+  
+  .header {
+    position: relative;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .backBtn {
+    position: absolute;
+    left: 16px;
+    background: transparent;
+    border: none;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+  }
+  .title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #232526;
+  }
+  .headerRight {
+    position: absolute;
+    right: 16px;
+  }
+
+  .dateWrap {
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 12px;
+  }
+  .dateText {
+    font-size: 14px;
+    color: #232526;
+  }
+  .icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .body {
+    flex: 1;
+    padding: 0 16px;
+    overflow-y: auto;
+  }
+  
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px;
+    background: #fff3f3;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-bottom: 20px;
+    color: #d93025;
+  }
+  .notice img {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .timelineSection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .timelineLabel {
+    color: var(--gray-90, #232526);
+    font-family: Pretendard;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 20px;
+    margin-bottom: 4px;
+  }
+  .timelineWrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .timelineRow {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    align-items: center;
+    gap: 8px;
+  }
+  .ampm {
+    color: var(--gray-50, #7F888C);
+    font-family: Pretendard;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+  }
+  .grid24 {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 4px;
+    height: 12px;
+    padding: 2px;
+    border-radius: 6px;
+    background: #f7f7f8;
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(8.333% - 1px),
+      rgba(0, 0, 0, 0.08) calc(8.333% - 1px),
+      rgba(0, 0, 0, 0.08) 8.333%
+    );
+  }
+  .fillRange {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    border-radius: 6px;
+    background: #7F888C;
+  }
+  
+  .timePickers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .timePicker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .label {
+    color: var(--gray-80, #3A3E40);
+    font-family: Pretendard;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 16px;
+  }
+  .selectWrap {
+    position: relative;
+  }
+  select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #f7f7f8;
+    border: none;
+    color: #000;
+    font-family: Pretendard;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    appearance: none;
+  }
+  .selectArrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+  }
+  
+  .footer {
+    margin-top: 65px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .blockBtn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--Primary-Primary, #3A3E40);
+    color: #FFF;
+    font-family: Pretendard;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    border: none;
+    cursor: pointer;
+  }
+  .resetBtn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--gray-10, #E2E9EC);
+    color: var(--system-red, #E74C3C);
+    font-family: Pretendard;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+  }
+  .modal {
+    width: 300px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .modalHeader {
+    background: #333;
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+    padding: 12px;
+    position: relative;
+  }
+  .modalClose {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+  }
+  .modalBody {
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .modalTitle {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .modalText {
+    font-size: 13px;
+    color: #555;
+  }
+  .modalFooter {
+    border-top: 1px solid #eee;
+    padding: 12px;
+  }
+  .modalBtn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #f2f2f2;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  

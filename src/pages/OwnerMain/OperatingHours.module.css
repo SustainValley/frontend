@@ -1,0 +1,256 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #fff;
+  }
+  
+  .header {
+    position: relative;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border : none;
+  }
+  
+  .backBtn {
+    position: absolute;
+    left: 12px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .backIcon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+  }
+  
+  .title {
+    color: var(--gray-90, #232526);
+    font-family: Pretendard;
+    font-size: 18px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 24px;
+  }
+  
+  .headerRight {
+    position: absolute;
+    right: 12px;
+  }
+  
+  .scroll {
+    flex: 1;
+    overflow: auto;
+    background: #ffffff;
+    padding: 12px;
+  }
+  
+  .card {
+    background: #fff;
+    border-radius: 12px
+  }
+  
+  .cardTitle {
+    color: var(--gray-90, #232526);
+    font-family: Pretendard;
+    font-size: 18px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 24px; 
+    margin-bottom: 8px;
+  }
+  
+  .row {
+    padding: 10px 6px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .row:last-child {
+    border-bottom: none;
+  }
+  
+  .left {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .day {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--gray-80, #3A3E40);
+    font-family: Pretendard;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 20px; 
+  }
+  
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 26px;
+    margin-left: auto;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: #d9d9d9;
+    transition: .2s;
+  }
+  .slider:before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.2);
+    transition: .2s;
+  }
+  .switch input:checked + .slider {
+    background: #a4cc08;
+  }
+  .switch input:checked + .slider:before {
+    transform: translateX(18px);
+  }
+  
+  .timeRow {
+    display: flex;
+    align-items: center;
+    gap: 21px;
+    flex-wrap: wrap;
+  }
+  .timeLabel {
+    color: var(--gray-80, #3A3E40);
+    font-family: Pretendard;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 16px;
+  }
+  .selectWrapper {
+    position: relative;
+    display: inline-block;
+  }
+  .select {
+    appearance: none;
+    border: none;
+    padding: 8px 32px 8px 10px;
+    border-radius: 8px;
+    background: var(--gray-00, #F7F7F8);
+    min-width: 96px;
+    color: #000;
+    font-family: Pretendard;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 20px; /* 142.857% */
+    cursor: pointer;
+  }
+  .select:disabled {
+    opacity: .45;
+  }
+  .selectWrapper::after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    background: url("../../assets/down.svg") no-repeat center center;
+    background-size: contain;
+    pointer-events: none;
+  }
+  
+  .saveBtn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px 12px;
+    border: 0;
+    border-radius: 12px;
+    background: #232526;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  
+  .modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+  }
+  .modal {
+    width: 320px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .modalHeader {
+    background: #333;
+    color: #fff;
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+    padding: 12px;
+    position: relative;
+  }
+  .modalClose {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    color: #fff;
+    cursor: pointer;
+  }
+  .modalBody {
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .modalTitle {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .modalText {
+    font-size: 13px;
+    color: #555;
+  }
+  .modalFooter {
+    border-top: 1px solid #eee;
+    padding: 12px;
+  }
+  .modalBtn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    background: #f2f2f2;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  
