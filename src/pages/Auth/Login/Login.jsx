@@ -33,7 +33,7 @@ const Login = () => {
     setErr('');
     try {
       await login(id, pw);
-      // role은 login 안에서 자동으로 세팅됨
+      // role, cafeId 등은 login 내부에서 저장/세팅됨
     } catch (_error) {
       setErr('아이디 또는 비밀번호가 일치하지 않습니다.');
     }

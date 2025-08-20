@@ -19,17 +19,19 @@ export default function ChatRoom() {
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [sender, setSender] = useState(1); 
+  const [sender, setSender] = useState(1); // 👉 로그인 유저 ID로 교체 필요
 
+  // ✅ 웹소켓 연결
   useEffect(() => {
     const client = new Client({
-
+      // ✅ SockJS factory 사용
       webSocketFactory: () => new SockJS("http://localhost:8080/ws-stomp"),
       reconnectDelay: 5000,
       debug: (str) => console.log(str),
       onConnect: () => {
-        console.log(" WebSocket Connected with SockJS");
+        console.log("✅ WebSocket Connected with SockJS");
 
+        // 메시지 구독
         client.subscribe(`/sub/chatroom/${roomId}`, (msg) => {
           const newMessage = JSON.parse(msg.body);
           console.log("📩 받은 메시지:", newMessage);
@@ -44,6 +46,7 @@ export default function ChatRoom() {
           ]);
         });
 
+        // 에러 구독
         client.subscribe(`/user/queue/errors`, (err) => {
           try {
             const errorMsg = JSON.parse(err.body);
@@ -62,6 +65,7 @@ export default function ChatRoom() {
     client.activate();
     clientRef.current = client;
 
+    // ✅ 기존 메시지 로드
     axios
       .get(`/hackathon/api/chat/room?id=${roomId}`)
       .then((res) => {
@@ -83,6 +87,7 @@ export default function ChatRoom() {
     };
   }, [roomId, sender]);
 
+  // ✅ 메시지 보내기
   const sendMessage = () => {
     if (!input.trim() || !clientRef.current?.connected) return;
     const body = { roomId, message: input.trim(), sender };
@@ -108,6 +113,7 @@ export default function ChatRoom() {
     }
   };
 
+  // 입력창 자동 높이
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -115,12 +121,14 @@ export default function ChatRoom() {
     textarea.style.height = textarea.scrollHeight + "px";
   }, [input]);
 
+  // 항상 최신 메시지로 스크롤
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <div className={styles.page}>
+      {/* 상단 바 */}
       <div className={styles.appbar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>
           <img src={backIcon} alt="뒤로가기" />
@@ -129,6 +137,7 @@ export default function ChatRoom() {
         <div style={{ width: "40px" }} />
       </div>
 
+      {/* 메시지 영역 */}
       <div className={styles.chatWindow}>
         {messages.map((msg, i) =>
           msg.from === "store" ? (
@@ -154,7 +163,7 @@ export default function ChatRoom() {
         <div ref={chatEndRef} />
       </div>
 
-
+      {/* 입력창 */}
       <div className={styles.inputBar}>
         <textarea
           ref={textareaRef}

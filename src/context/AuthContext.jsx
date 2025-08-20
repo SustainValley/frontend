@@ -6,7 +6,13 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import api, { setTokens, clearAuth, refreshClient, getType } from "../lib/axios";
+import api, {
+  setTokens,
+  clearAuth,
+  refreshClient,
+  getType,
+  getCafeId, 
+} from "../lib/axios";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
@@ -15,6 +21,7 @@ const AuthContext = createContext({
   isAuthenticated: false,
   role: null,
   user: null,
+  cafeId: null,      
   login: async () => {},
   logout: () => {},
   refreshNow: async () => {},
@@ -25,7 +32,8 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState(null); // "owner" | "user"
-  const [user, setUser] = useState(null); // userId 저장
+  const [user, setUser] = useState(null); 
+  const [cafeId, setCafeId] = useState(null); 
   const [booted, setBooted] = useState(false);
 
   const refreshNow = useCallback(async () => {
@@ -35,6 +43,7 @@ export function AuthProvider({ children }) {
       setIsAuthenticated(false);
       setUser(null);
       setRole(null);
+      setCafeId(null);
       return;
     }
     try {
@@ -44,7 +53,13 @@ export function AuthProvider({ children }) {
         { headers: { Authorization: `Bearer ${rt}` } }
       );
 
-      const { accessToken: access, refreshToken: refresh, userId, type } = res.data;
+      const {
+        accessToken: access,
+        refreshToken: refresh,
+        userId,
+        type,
+        cafeId: cafeIdFromServer, 
+      } = res.data;
 
       if (!access || !refresh) throw new Error("리프레시 실패");
       const finalType = type || localStorage.getItem("type");
@@ -54,17 +69,22 @@ export function AuthProvider({ children }) {
         refreshToken: refresh,
         userId,
         type: finalType,
+        cafeId: cafeIdFromServer !== undefined ? cafeIdFromServer : undefined, // 있으면 저장
       });
 
       setIsAuthenticated(true);
       setUser(userId || null);
       setRole(finalType === "COR" ? "owner" : finalType === "PER" ? "user" : null);
+      const nextCafeId =
+        cafeIdFromServer !== undefined ? cafeIdFromServer : getCafeId() || null;
+      setCafeId(nextCafeId);
     } catch (err) {
-      console.error("❌ 토큰 리프레시 실패:", err.response?.data || err);
+      console.error("❌ 토큰 리프레시 실패:", err?.response?.data || err);
       clearAuth();
       setIsAuthenticated(false);
       setUser(null);
       setRole(null);
+      setCafeId(null);
     }
   }, []);
 
@@ -72,18 +92,31 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.post("/api/users/login", { username, password });
 
-      const { accessToken: access, refreshToken: refresh, userId, type } = res.data;
+      const {
+        accessToken: access,
+        refreshToken: refresh,
+        userId,
+        type,
+        cafeId: cafeIdFromServer, 
+      } = res.data;
 
       if (!access || !refresh) throw new Error("로그인 실패");
 
-      setTokens({ accessToken: access, refreshToken: refresh, userId, type });
+      setTokens({
+        accessToken: access,
+        refreshToken: refresh,
+        userId,
+        type,
+        cafeId: cafeIdFromServer, 
+      });
 
       setRole(type === "COR" ? "owner" : type === "PER" ? "user" : null);
       setIsAuthenticated(true);
       setUser(userId);
+      setCafeId(cafeIdFromServer ?? null); 
       return true;
     } catch (err) {
-      console.error("❌ 로그인 실패:", err.response?.data || err);
+      console.error("❌ 로그인 실패:", err?.response?.data || err);
       throw err;
     }
   };
@@ -93,15 +126,17 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     setRole(null);
     setUser(null);
+    setCafeId(null);
   }, []);
 
   useEffect(() => {
-
     const savedType = getType();
     if (savedType) {
       setRole(savedType === "COR" ? "owner" : savedType === "PER" ? "user" : null);
       setIsAuthenticated(!!localStorage.getItem(ACCESS_KEY));
       setUser(localStorage.getItem("user_id"));
+      const savedCafeId = getCafeId();
+      setCafeId(savedCafeId ? Number(savedCafeId) : null); 
     }
 
     (async () => {
@@ -118,11 +153,12 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       role,
       user,
+      cafeId,     // ✅ 노출
       login,
       logout,
       refreshNow,
     }),
-    [isAuthenticated, role, user, refreshNow, logout]
+    [isAuthenticated, role, user, cafeId, refreshNow, logout]
   );
 
   if (!booted) {
