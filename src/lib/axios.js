@@ -1,17 +1,14 @@
 import axios from "axios";
 
-const isProd = process.env.NODE_ENV === "production";
-
 const BASE_URL =
-  process.env.REACT_APP_API_BASE_URL ||
-  (isProd ? "/hackathon" : "http://localhost:8080/hackathon");
+  process.env.REACT_APP_API_BASE_URL || "/hackathon"; 
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 const USER_ID_KEY = "user_id";
-const TYPE_KEY = "type"; // ✅ 서버 응답의 type 그대로 저장
+const TYPE_KEY = "type";
+const CAFE_ID_KEY = "cafe_id";
 
-// === LocalStorage helpers ===
 const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || "";
 const setAccessToken = (t) =>
   t ? localStorage.setItem(ACCESS_KEY, t) : localStorage.removeItem(ACCESS_KEY);
@@ -28,31 +25,43 @@ export const getType = () => localStorage.getItem(TYPE_KEY) || "";
 const setType = (type) =>
   type ? localStorage.setItem(TYPE_KEY, type) : localStorage.removeItem(TYPE_KEY);
 
-// ✅ 토큰 + userId + type 저장
-export const setTokens = ({ accessToken, refreshToken, userId, type }) => {
-  if (accessToken) setAccessToken(accessToken);
-  if (refreshToken) setRefreshToken(refreshToken);
-  if (userId) setUserId(userId);
-  if (type) setType(type); // ✅ "COR"/"PER"
+export const getCafeId = () => {
+  const v = localStorage.getItem(CAFE_ID_KEY);
+  return v ?? "";
+};
+const setCafeId = (id) => {
+  if (id === null || id === undefined || id === "") {
+    localStorage.removeItem(CAFE_ID_KEY);
+  } else {
+    localStorage.setItem(CAFE_ID_KEY, String(id));
+  }
 };
 
-// ✅ 모든 값 제거
+export const setTokens = ({ accessToken, refreshToken, userId, type, cafeId }) => {
+  if (accessToken) setAccessToken(accessToken);
+  if (refreshToken) setRefreshToken(refreshToken);
+  if (userId !== undefined) setUserId(userId);
+  if (type) setType(type);
+  if (cafeId !== undefined) setCafeId(cafeId);
+};
+
 export const clearAuth = () => {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_ID_KEY);
   localStorage.removeItem(TYPE_KEY);
+  localStorage.removeItem(CAFE_ID_KEY);
 };
 
 // === Axios instances ===
 const instance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: BASE_URL,         
   timeout: 10000,
+  // withCredentials: true,    
 });
 
-// ✅ refresh 전용 클라이언트 (interceptor 없음)
 export const refreshClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: BASE_URL,        
   timeout: 10000,
 });
 
@@ -62,7 +71,7 @@ async function refreshAccessToken() {
   if (!rt) throw new Error("No refresh token available");
 
   const { data } = await refreshClient.post(
-    "/api/users/refresh",
+    "/api/users/refresh",     
     {},
     { headers: { Authorization: `Bearer ${rt}` } }
   );
@@ -72,22 +81,25 @@ async function refreshAccessToken() {
 
   setAccessToken(nextAccess);
   if (data?.refreshToken) setRefreshToken(data.refreshToken);
-  if (data?.type) setType(data.type); // ✅ 새 토큰 받아올 때도 type 갱신
+  if (data?.type) setType(data.type);
+  if (data?.cafeId !== undefined) setCafeId(data.cafeId);
 
   return nextAccess;
 }
 
-// === Request interceptor (accessToken) ===
 instance.interceptors.request.use((config) => {
   const at = getAccessToken();
   if (at) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${at}`;
   }
+  if (process.env.NODE_ENV !== "production") {
+    const fullUrl = `${config.baseURL || ""}${config.url || ""}`;
+    console.debug("[API]", config.method?.toUpperCase(), fullUrl);
+  }
   return config;
 });
 
-// === Response interceptor (401 → refresh) ===
 let isRefreshing = false;
 let queue = [];
 
@@ -103,7 +115,11 @@ instance.interceptors.response.use(
   (res) => res,
   async (error) => {
     const { response, config } = error;
-    if (!response) throw error;
+
+    if (!response) {
+      console.error("[API NETWORK/CORS ERROR]", error?.message);
+      throw error;
+    }
 
     const original = config || {};
     const status = response.status;

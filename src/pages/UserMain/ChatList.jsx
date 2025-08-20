@@ -32,12 +32,12 @@ export default function ChatList() {
         const data = await res.json();
 
         if (data.isSuccess) {
-          const mapped = data.result.map((chat) => ({
+          const mapped = (data.result || []).map((chat) => ({
             id: chat.roomId,
-            name: chat.title || `유저 ${chat.chatRoomUserId}`,
-            preview: `최근 메시지 시간: ${new Date(
-              chat.lastMessageTime
-            ).toLocaleString()}`,
+            // title이 null이면 문자열 "null"로 표시
+            name: chat.title === null ? "null" : (chat.title ?? ""),
+            // lastMessage는 null/undefined면 빈 문자열, 빈 문자열("")은 그대로 유지
+            preview: chat.lastMessage ?? "",
             unread: chat.unread ?? false,
           }));
           setChats(mapped);

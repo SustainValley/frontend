@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./OwnerReservationList.module.css";
 
 import backIcon from "../../assets/chevron.svg";
@@ -9,9 +9,10 @@ import clockIcon from "../../assets/clock.svg";
 
 const OwnerReservationList = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState("today");
-  const [todayTab, setTodayTab] = useState("using");
+  const [activeTab, setActiveTab] = useState("today");     // request | confirmed | today
+  const [todayTab, setTodayTab] = useState("using");       // before | using | done
 
   const [showModal, setShowModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
@@ -27,17 +28,11 @@ const OwnerReservationList = () => {
   const [actionTarget, setActionTarget] = useState(null);
 
   const reservations = [
-
     { id: 1, name: "김민수", phone: "010-1234-1234", people: 5, date: "2025-08-07", time: "15:00-18:00", status: "request" },
-
     { id: 2, name: "이영희", phone: "010-5678-5678", people: 3, date: "2025-08-07", time: "12:00-14:00", status: "confirmed" },
-
     { id: 10, name: "김민수", phone: "010-1234-1234", people: 5, date: "2025-08-07", start: "2025-08-07T15:00:00", end: "2025-08-07T18:00:00", time: "15:00-18:00", status: "today", todayStatus: "before" },
-
     { id: 11, name: "김민수", phone: "010-1234-1234", people: 5, date: "2025-08-07", start: "2025-08-07T15:00:00", end: "2025-08-07T18:00:00", time: "15:00-18:00", status: "today", todayStatus: "using", mockRemainingMin: 60 },
-
     { id: 12, name: "박지현", phone: "010-1234-1234", people: 4, date: "2025-08-07", start: "2025-08-07T15:00:00", end: "2025-08-07T17:00:00", time: "15:00-17:00", status: "today", todayStatus: "using", mockRemainingMin: 0 },
-
     { id: 13, name: "박지현", phone: "010-1234-1234", people: 5, date: "2025-08-07", time: "15:00-18:00", status: "today", todayStatus: "done" },
   ];
 
@@ -53,7 +48,7 @@ const OwnerReservationList = () => {
 
   const getProgressAndRemain = (r) => {
     if (typeof r.mockRemainingMin === "number") {
-      const total = 120; 
+      const total = 120;
       const remain = r.mockRemainingMin;
       const used = Math.max(0, total - remain);
       const percent = Math.max(0, Math.min(100, Math.round((used / total) * 100)));
@@ -77,26 +72,56 @@ const OwnerReservationList = () => {
     return list;
   }, [reservations, activeTab, todayTab]);
 
+  // 쿼리 → 상태 초기화/동기화
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const sub = searchParams.get("sub");
+
+    if (tab === "request" || tab === "confirmed" || tab === "today") {
+      setActiveTab(tab);
+    }
+    if (tab === "today" && (sub === "before" || sub === "using" || sub === "done")) {
+      setTodayTab(sub);
+    }
+  }, [searchParams]);
+
+  // 탭 변경 시 URL 동기화
+  const goTab = (tab) => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    if (tab !== "today") params.delete("sub");
+    setSearchParams(params);
+  };
+
+  const goSub = (sub) => {
+    setTodayTab(sub);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "today");
+    params.set("sub", sub);
+    setSearchParams(params);
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="뒤로가기">
+      <button className={styles.backBtn} onClick={() => navigate("/owner/home")} aria-label="홈으로 이동">
           <img src={backIcon} alt="뒤로" />
         </button>
         <span className={styles.title}>실시간 예약 확인하기</span>
       </div>
 
       <div className={styles.tabs}>
-        <button className={`${styles.tab} ${activeTab === "request" ? styles.active : ""}`} onClick={() => setActiveTab("request")}>예약 요청</button>
-        <button className={`${styles.tab} ${activeTab === "confirmed" ? styles.active : ""}`} onClick={() => setActiveTab("confirmed")}>확정 예약</button>
-        <button className={`${styles.tab} ${activeTab === "today" ? styles.active : ""}`} onClick={() => setActiveTab("today")}>오늘 예약</button>
+        <button className={`${styles.tab} ${activeTab === "request" ? styles.active : ""}`} onClick={() => goTab("request")}>예약 요청</button>
+        <button className={`${styles.tab} ${activeTab === "confirmed" ? styles.active : ""}`} onClick={() => goTab("confirmed")}>확정 예약</button>
+        <button className={`${styles.tab} ${activeTab === "today" ? styles.active : ""}`} onClick={() => goTab("today")}>오늘 예약</button>
       </div>
 
       {activeTab === "today" && (
         <div className={styles.subTabs}>
-          <button className={`${styles.subTab} ${todayTab === "before" ? styles.subActive : ""}`} onClick={() => setTodayTab("before")}>이용 전</button>
-          <button className={`${styles.subTab} ${todayTab === "using" ? styles.subActive : ""}`} onClick={() => setTodayTab("using")}>이용 중</button>
-          <button className={`${styles.subTab} ${todayTab === "done" ? styles.subActive : ""}`} onClick={() => setTodayTab("done")}>이용 완료</button>
+          <button className={`${styles.subTab} ${todayTab === "before" ? styles.subActive : ""}`} onClick={() => goSub("before")}>이용 전</button>
+          <button className={`${styles.subTab} ${todayTab === "using" ? styles.subActive : ""}`} onClick={() => goSub("using")}>이용 중</button>
+          <button className={`${styles.subTab} ${todayTab === "done" ? styles.subActive : ""}`} onClick={() => goSub("done")}>이용 완료</button>
         </div>
       )}
 
@@ -303,8 +328,8 @@ const OwnerReservationList = () => {
               <button
                 onClick={() => {
                   setShowDoneModal(false);
-                  navigate("/owner/reservations");
-                }}
+                  navigate("/owner/reservations?tab=request")}
+                }
                 className={styles.approveBtn}
               >
                 확인
@@ -342,7 +367,7 @@ const OwnerReservationList = () => {
               <button
                 onClick={() => {
                   setShowApproveDone(false);
-                  navigate("/owner/reservations");
+                  navigate("/owner/reservations?tab=confirmed");
                 }}
                 className={styles.approveBtn}
               >
@@ -381,7 +406,7 @@ const OwnerReservationList = () => {
               <button
                 onClick={() => {
                   setShowSeatedDone(false);
-                  navigate("/owner/reservations");
+                  navigate("/owner/reservations?tab=today&sub=using");
                 }}
                 className={styles.approveBtn}
               >

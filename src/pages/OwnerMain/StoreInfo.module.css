@@ -54,7 +54,7 @@
   background: #f8f9fa;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  padding-bottom: 80px; /* 버튼 영역만큼 확보 */
+  padding-bottom: 80px;
 }
 
 .scroll::-webkit-scrollbar {
@@ -357,7 +357,9 @@
   line-height: 20px; 
 }
 
-.block, .input, .selectField {
+.block,
+.input,
+.selectField {
   padding: 16px;
   border-radius: 12px;
   background: var(--gray-00, #F7F7F8);
@@ -376,7 +378,8 @@
   color: var(--gray-40, #96A1A6);
 }
 
-.input:disabled, .selectField:disabled {
+.input:disabled,
+.selectField:disabled {
   background: #eef2f5;
   border-color: #e4e8eb;
   color: #9ba3a7;
@@ -517,7 +520,6 @@
   padding-top: 0;
 }
 
-/* 하단 저장 버튼 */
 .footer {
   position: absolute;
   bottom: 0;
@@ -548,7 +550,10 @@
 
 .modalOverlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: center;
@@ -574,14 +579,14 @@
   font-size: 15px;
   padding: 12px 16px;
   display: flex;
-  justify-content: center;   /* 가운데 정렬 */
+  justify-content: center;
   align-items: center;
-  position: relative;        /* 닫기 버튼 위치 절대값 */
+  position: relative;
 }
 
 .modalClose {
   position: absolute;
-  right: 16px;               /* 오른쪽에 고정 */
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
@@ -590,7 +595,6 @@
   color: #fff;
   cursor: pointer;
 }
-
 
 .modalBody {
   padding: 20px 16px;
