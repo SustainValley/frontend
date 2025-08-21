@@ -1,4 +1,3 @@
-// src/pages/OwnerMain/StoreInfo.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./StoreInfo.module.css";
@@ -34,11 +33,9 @@ export default function StoreInfo() {
     }
   }, []);
 
-  // ===== 상단 정보 =====
   const [name, setName] = useState("");
   const [addr, setAddr] = useState("");
 
-  // ===== 폼 상태 =====
   const [minOrder, setMinOrder] = useState("");
   const [maxPeople, setMaxPeople] = useState(5);
   const inc = () => setMaxPeople((v) => Math.min(20, v + 1));
@@ -66,8 +63,6 @@ export default function StoreInfo() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  // ===== 사진 캐러셀 =====
-  // Photo: { id: number|null, url: string, fileName: string }
   const [photos, setPhotos] = useState([]);
   const addInputRef = useRef(null);
   const replaceInputRef = useRef(null);
@@ -85,7 +80,6 @@ export default function StoreInfo() {
     if (pressTimer.current) clearTimeout(pressTimer.current);
   };
 
-  // objectURL 정리
   useEffect(() => {
     return () => {
       photos.forEach((p) => {
@@ -95,14 +89,12 @@ export default function StoreInfo() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ===== 통신 상태 =====
   const [fetching, setFetching] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [apiErr, setApiErr] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // ===== 이미지 절대경로 변환 (baseURL pathname 포함) =====
   const toAbsoluteImageUrl = (path) => {
     if (!path) return "";
     if (/^https?:\/\//i.test(path)) return path;
@@ -118,7 +110,6 @@ export default function StoreInfo() {
     }
   };
 
-  // ===== 카페 정보 가져오기 =====
   useEffect(() => {
     if (!cafeId) return;
     (async () => {
@@ -131,7 +122,6 @@ export default function StoreInfo() {
         setMinOrder(data?.minOrder || "");
         if (typeof data?.maxSeats === "number") setMaxPeople(data.maxSeats);
 
-        // 공간
         if (typeof data?.spaceType === "string" && data.spaceType.trim()) {
           const s = data.spaceType.trim();
           if (SPACE_OPTIONS.includes(s)) {
@@ -143,7 +133,6 @@ export default function StoreInfo() {
           }
         }
 
-        // 이미지: id+url 형식이 있을 수도, 없을 수도
         let mapped = [];
         if (Array.isArray(data?.imageInfos)) {
           mapped = data.imageInfos.map((it) => ({
@@ -161,7 +150,7 @@ export default function StoreInfo() {
           mapped = data.imageUrls.map((p) => {
             const abs = toAbsoluteImageUrl(p);
             return {
-              id: null, // 서버에서 id를 안 준 경우
+              id: null,
               url: abs,
               fileName: (abs.split("/").pop() || "image").split("?")[0],
             };
@@ -180,13 +169,11 @@ export default function StoreInfo() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cafeId]);
 
-  // ===== 업로드 (multipart/form-data) =====
   const uploadImageFile = async (file) => {
     if (!cafeIdRef.current) throw new Error("카페 ID가 없어 이미지를 업로드할 수 없어요.");
     const form = new FormData();
     form.append("image", file, file.name);
     const res = await instance.post(`/api/cafe/${cafeIdRef.current}/images`, form);
-    // 서버가 id/url을 돌려줄 수도 있음
     const d = res?.data || {};
     return {
       id: d?.id ?? d?.imageId ?? null,
@@ -202,7 +189,6 @@ export default function StoreInfo() {
     try {
       setUploading(true);
 
-      // 미리보기 먼저
       const startIdx = photos.length;
       const previews = files.map((f) => ({
         id: null,
@@ -212,7 +198,6 @@ export default function StoreInfo() {
       setPhotos((prev) => [...prev, ...previews]);
       setCurrent(startIdx);
 
-      // 순차 업로드하면서 id/서버URL 갱신
       for (let i = 0; i < files.length; i += 1) {
         const f = files[i];
         const result = await uploadImageFile(f);
@@ -225,9 +210,7 @@ export default function StoreInfo() {
           const updated = { ...next[targetIdx] };
           if (result.id != null) updated.id = result.id;
           if (result.url) {
-            // 서버가 저장 경로를 주면 절대경로화
             const abs = toAbsoluteImageUrl(result.url);
-            // 로컬 blob 정리
             if (updated.url?.startsWith("blob:")) URL.revokeObjectURL(updated.url);
             updated.url = abs;
             updated.fileName = (abs.split("/").pop() || updated.fileName).split("?")[0];
@@ -261,7 +244,6 @@ export default function StoreInfo() {
       setUploading(true);
       const newUrl = URL.createObjectURL(f);
 
-      // UI 먼저 교체
       setPhotos((prev) => {
         const next = [...prev];
         if (replaceIndex !== null && next[replaceIndex]) {
@@ -272,10 +254,8 @@ export default function StoreInfo() {
         return next;
       });
 
-      // 서버에도 새 이미지로 등록 (교체 API가 없다면 POST만)
       const result = await uploadImageFile(f);
 
-      // 등록 결과(id/서버URL) 반영
       setPhotos((prev) => {
         const next = [...prev];
         if (replaceIndex !== null && next[replaceIndex]) {
@@ -316,12 +296,10 @@ export default function StoreInfo() {
   const hasAnyPhoto = photos.length > 0;
   const badgeText = isAddSlide ? `사진 추가 (${current + 1}/${totalSlides})` : `${current + 1}/${totalSlides}`;
 
-  // ===== 삭제 =====
   const handleDelete = async (index) => {
     const target = photos[index];
     if (!target) return;
 
-    // id가 없으면 서버 호출 불가 → UI 에서만 제거
     if (target.id == null) {
       setPhotos((prev) => {
         const next = prev.filter((_, i) => i !== index);
@@ -360,7 +338,6 @@ export default function StoreInfo() {
     }
   };
 
-  // ===== 저장(PATCH) =====
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -373,7 +350,7 @@ export default function StoreInfo() {
 
     const payload = {
       minOrder: (minOrder || "").trim(),
-      maxCapacity: Number(maxPeople), // 서버가 maxSeats를 받으면 키 변경
+      maxCapacity: Number(maxPeople), 
       spaceType: isEtc ? (spaceCustom || "").trim() || "기타 (직접 입력)" : space,
     };
 
@@ -419,7 +396,6 @@ export default function StoreInfo() {
       </div>
 
       <div className={styles.scroll}>
-        {/* 사진 캐러셀 */}
         <div className={styles.photoCarousel} aria-busy={uploading || fetching || deleting}>
           {hasAnyPhoto && <div className={styles.badge}>{badgeText}</div>}
           {hasAnyPhoto && (
@@ -506,7 +482,6 @@ export default function StoreInfo() {
           />
         </div>
 
-        {/* 가게 정보 */}
         <div className={styles.infoBlock}>
           <div className={styles.shopName}>{name || "가게명"}</div>
           <div className={styles.addrRow}>
@@ -516,7 +491,6 @@ export default function StoreInfo() {
           </div>
         </div>
 
-        {/* 운영 상태 */}
         <div className={styles.section}>
           <div className={styles.stateRow}>
             <div className={styles.stateTitle}>MOCA 운영상태</div>
@@ -546,7 +520,6 @@ export default function StoreInfo() {
           </div>
         </div>
 
-        {/* 회의실 이용 정보 */}
         <div className={styles.section} ref={dropRef}>
           <div className={styles.caption}>회의실 이용 정보</div>
           <div className={styles.row}>

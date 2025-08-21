@@ -8,7 +8,6 @@ import { useAuth } from "../../context/AuthContext";
 import backIcon from "../../assets/chevron.svg";
 import sendIcon from "../../assets/tabler_send.svg";
 
-/* ========= 환경 ========= */
 const IS_DEV = process.env.NODE_ENV === "development";
 const API_HOST = ISDEV_HACK();
 function ISDEV_HACK() {
@@ -21,8 +20,7 @@ const WS_URL = `${
     : (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host
 }/hackathon/api/ws-stomp`;
 
-/* ========= 유틸 ========= */
-const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g; // 제로폭 문자
+const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g; 
 const NL_REGEX = /\r\n|\r/g;
 const WS_REGEX = /[ \t]+/g;
 const normalizeText = (s = "") =>
@@ -35,7 +33,6 @@ const toISO = (v) => (v ? new Date(v).toISOString() : new Date().toISOString());
 const uuid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const num = (v) => (v === null || v === undefined ? null : Number(v));
 
-/** 동일성 판정: serverId(또는 id) 우선, 없으면 (sender + createdAt) */
 const sameByIdentity = (a, b) => {
   const aSid = a.serverId ?? a.id;
   const bSid = b.serverId ?? b.id;
@@ -43,25 +40,20 @@ const sameByIdentity = (a, b) => {
   return (num(a.sender) ?? null) === (num(b.sender) ?? null) && String(a.createdAt) === String(b.createdAt);
 };
 
-/** pending 매칭: tempId가 1순위, 그 외엔 (내가 보냄 + 텍스트 동일 + 시간차 ≤ 10초) */
 const isMatchPending = (pending, incoming, myId) => {
   if (pending.state !== "pending") return false;
 
-  // tempId round-trip
   if (pending.clientId && incoming.tempId && String(pending.clientId) === String(incoming.tempId)) {
     return true;
   }
 
-  // 보낸 사람=나
   const sameSenderIsMe = num(pending.sender) === num(myId) && num(incoming.sender) === num(myId);
   if (!sameSenderIsMe) return false;
 
-  // 텍스트 동일
   if (normalizeText(pending.text ?? pending.message) !== normalizeText(incoming.text ?? incoming.message)) {
     return false;
   }
 
-  // 시간 여유 10초
   const dt = Math.abs(new Date(incoming.createdAt).getTime() - new Date(pending.createdAt).getTime());
   return dt <= 10000;
 };
@@ -96,7 +88,6 @@ export default function ChatRoom() {
     return candidates.some((id) => id === num(chatRoomUserId) || id === num(globalUserId));
   };
 
-  /* ========= chatRoomUserId 확보 ========= */
   const loadChatRoomUserId = async () => {
     if (!globalUserId || !roomId) return;
     try {
@@ -114,7 +105,6 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  /* ========= 읽음 처리 ========= */
   const markEnter = async () => {
     if (!roomId || !globalUserId) return;
     try {
@@ -126,12 +116,10 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  /* ========= 서버 리스트와 기존 병합 (텍스트 기반 중복 제거 없음) ========= */
   function reconcileWithServer(prev, serverList) {
     let out = [...prev];
 
     for (const s of serverList) {
-      // 1) pending → sent 교체 (tempId/시간/텍스트 기준)
       const pIdx = out.findIndex((m) => isMatchPending(m, s, chatRoomUserId ?? globalUserId));
       if (pIdx !== -1) {
         const copy = [...out];
@@ -140,7 +128,6 @@ export default function ChatRoom() {
         continue;
       }
 
-      // 2) 동일 ID(또는 sender+createdAt)면 이미 존재 → 스킵
       const already = out.some((m) => sameByIdentity(m, s));
       if (!already) out.push(s);
     }
@@ -149,7 +136,6 @@ export default function ChatRoom() {
     return out;
   }
 
-  /* ========= 초기 메시지 로드 ========= */
   const fetchMessages = async () => {
     if (!roomId) return;
     try {
@@ -182,7 +168,6 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  /* ========= STOMP 연결 ========= */
   const connect = () => {
     if (!roomId || subscribedRef.current) return;
     const ws = new WebSocket(WS_URL);
@@ -208,7 +193,7 @@ export default function ChatRoom() {
             const incoming = {
               serverId: payload.id ?? undefined,
               id: payload.id ?? undefined,
-              tempId: payload.tempId ?? undefined, // ★ 서버가 tempId를 에코해주면 1:1 매칭 가능
+              tempId: payload.tempId ?? undefined,
               sender: num(payload.sender) ?? num(payload.userId) ?? undefined,
               message: text,
               text,
@@ -219,7 +204,6 @@ export default function ChatRoom() {
             };
 
             setMessages((prev) => {
-              // 1) tempId/시간/텍스트 기반으로 pending 치환
               const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, chatRoomUserId ?? globalUserId));
               if (pIdx !== -1) {
                 const copy = [...prev];
@@ -227,11 +211,9 @@ export default function ChatRoom() {
                 return copy;
               }
 
-              // 2) 동일 ID(또는 sender+createdAt)면 중복 스킵
               const dup = prev.some((m) => sameByIdentity(m, incoming));
               if (dup) return prev;
 
-              // 3) Fallback: 내 pending 중 '같은 텍스트'가 정확히 하나면 그걸 치환
               const myId = chatRoomUserId ?? globalUserId;
               const sameTextPendings = prev
                 .map((m, idx) => ({ m, idx }))
@@ -280,7 +262,6 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  /* ========= 마운트 ========= */
   useEffect(() => {
     if (!roomId || Number.isNaN(roomId)) return;
     (async () => {
@@ -300,7 +281,6 @@ export default function ChatRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, chatRoomUserId]);
 
-  /* ========= 전송 ========= */
   const sendMessage = () => {
     const textRaw = input;
     const text = normalizeText(textRaw);
@@ -319,7 +299,6 @@ export default function ChatRoom() {
     const nowISO = new Date().toISOString();
     const clientId = uuid();
 
-    // 낙관적 UI (pending)
     setMessages((prev) => [
       ...prev,
       {
@@ -334,7 +313,6 @@ export default function ChatRoom() {
       },
     ]);
 
-    // tempId/createdAt 함께 전송 (서버가 그대로 에코해주면 완벽 매칭)
     sc.send(
       "/pub/message",
       {
@@ -347,13 +325,10 @@ export default function ChatRoom() {
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    // 백업 재조회
     setTimeout(fetchMessages, 1500);
 
-    // 7초 후 pending이면 failed 처리
     setTimeout(() => {
       setMessages((prev) => {
-        // 이미 동일 텍스트의 sent(내 메시지)가 있으면 실패표시 안 함
         const hasSameSent = prev.some(
           (m) => m.state === "sent" && m.from === "me" && normalizeText(m.text ?? m.message) === normalizeText(text)
         );
@@ -363,7 +338,6 @@ export default function ChatRoom() {
     }, 7000);
   };
 
-  /* ========= 입력창 자동 높이 ========= */
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -371,14 +345,12 @@ export default function ChatRoom() {
     ta.style.height = `${ta.scrollHeight}px`;
   }, [input]);
 
-  /* ========= 최신 메시지로 스크롤 ========= */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
     <div className={styles.page}>
-      {/* 상단 바 */}
       <div className={styles.appbar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>
           <img src={backIcon} alt="뒤로가기" />
@@ -387,7 +359,6 @@ export default function ChatRoom() {
         <div style={{ width: 40 }} />
       </div>
 
-      {/* 메시지 영역 */}
       <div className={styles.chatWindow}>
         {messages.map((msg, i) => {
           const key =

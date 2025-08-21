@@ -81,8 +81,6 @@ export default function MapExplore() {
 
   const SNAP = useMemo(() => {
     const HEADER = 300;
-    the: {
-    }
     const BUTTON_MARGIN = 120;
     const FULL_TOP = HEADER + BUTTON_MARGIN;
     const MID_TOP = Math.round(ch * 0.65);
@@ -178,6 +176,7 @@ export default function MapExplore() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [showResultModal, setShowResultModal] = useState(false);
+  const [cancelInFlight, setCancelInFlight] = useState(false); // 🔄 취소 요청 로딩
 
   const fmtHHMM = (t = '') => {
     if (!t) return '';
@@ -257,7 +256,7 @@ export default function MapExplore() {
             if (!status) return null;
             const time = `${fmtHHMM(row.startTime)} - ${fmtHHMM(row.endTime)}`;
             return {
-              id: String(row.reservationsId ?? idx),
+              id: String(row.reservationsId ?? idx), // ← API에서 쓸 id
               cafe: `카페 #${row.cafeId ?? '-'}`,
               time,
               status, // 'inuse' | 'scheduled' | 'pending'
@@ -276,7 +275,7 @@ export default function MapExplore() {
 
         if (!abort) setReservations(mapped);
       } catch (err) {
-        if (!abort) setErrorRsv(''); // 에러도 표시하지 않음(요구사항: 빈 상태 숨김)
+        if (!abort) setErrorRsv('');
         console.error(err);
       } finally {
         if (!abort) setLoadingRsv(false);
@@ -389,6 +388,76 @@ export default function MapExplore() {
     el?.classList.remove(styles.dragging);
   };
 
+  /* ====== 취소 API 호출 ====== */
+  const reasonToCode = (text) => {
+    // 서버 enum 가정치. 모르면 OTHER 로 보냄
+    if (!text) return 'OTHER';
+    const map = [
+      ['일정 변경', 'SCHEDULE_CHANGE'],
+      ['개인 사정', 'PERSONAL_REASON'],
+      ['시간 착오', 'WRONG_TIME'],
+      ['장소 변경', 'LOCATION_CHANGE'],
+      ['인원 부족', 'NOT_ENOUGH_PEOPLE'],
+      ['비용', 'BUDGET_ISSUE'],
+      ['중복 예약', 'DUPLICATE'],
+      ['영업시간', 'CLOSED_TIME'],
+    ];
+    const found = map.find(([k]) => text.includes(k));
+    return found ? found[1] : 'OTHER';
+  };
+
+  const cancelReservation = async ({ reservationId, userId, reasonText }) => {
+    const reasonCode = reasonToCode(reasonText);
+    const url = `${API_PREFIX}/reservation/delete/${encodeURIComponent(
+      reservationId
+    )}?userId=${encodeURIComponent(userId)}`;
+
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        accept: '*/*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ cancelReason: reasonCode }),
+    });
+
+    if (!res.ok) {
+      const msg = `취소 실패 (HTTP ${res.status})`;
+      throw new Error(msg);
+    }
+    // 응답 스킴: { isSuccess, code, message, result }
+    const data = await res.json().catch(() => ({}));
+    if (data?.isSuccess === false) {
+      throw new Error(data?.message || '취소 실패');
+    }
+    return data;
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!activeReservation) return;
+    try {
+      setCancelInFlight(true);
+      const reservationId = Number(activeReservation.id);
+      await cancelReservation({
+        reservationId,
+        userId,
+        reasonText: selectedReason,
+      });
+
+      // 성공: 리스트에서 제거, UI 업데이트
+      setReservations((prev) => prev.filter((r) => r.id !== String(reservationId)));
+      setActiveReservation(null);
+      setShowCancelModal(false);
+      setShowResultModal(true);
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || '예약을 취소할 수 없어요. 잠시 후 다시 시도해 주세요.');
+      // 실패 시 모달은 그대로 유지
+    } finally {
+      setCancelInFlight(false);
+    }
+  };
+
   return (
     <div ref={wrapRef} className={styles.wrap}>
       {/* 상단 바 */}
@@ -433,7 +502,6 @@ export default function MapExplore() {
           value={input}
           onChange={(e) => {
             setInput(e.target.value);
-            // 검색어 바뀌면 선택 해제해서 전체 결과 모드로
             setSelectedCafeId(null);
           }}
           onKeyDown={(e) => {
@@ -559,9 +627,16 @@ export default function MapExplore() {
                     </div>
                   </div>
 
+                  {/* ✅ 방법 1: state + localStorage로 cafeId 전달 */}
                   <button
                     className={styles.reserveBtn}
-                    onClick={() => navigate('/user/reserve', { state: { cafe } })}
+                    onClick={() => {
+                      // 폴백까지 단단하게
+                      try {
+                        localStorage.setItem('cafe_id', String(cafe.cafeId));
+                      } catch {}
+                      navigate('/user/reserve', { state: { cafeId: cafe.cafeId } });
+                    }}
                   >
                     예약하기
                   </button>
@@ -654,7 +729,7 @@ export default function MapExplore() {
               className={styles.cancelBtn}
               onClick={() => {
                 setShowDetailSheet(false);
-                setShowCancelModal(true); // ✅ 취소 사유 선택 모달 열기 (복구)
+                setShowCancelModal(true); // ✅ 취소 사유 선택 모달 열기
               }}
             >
               {activeReservation.status === 'pending' ? '요청 취소' : '예약 취소'}
@@ -663,7 +738,7 @@ export default function MapExplore() {
         </div>
       )}
 
-      {/* ====== 취소 사유 선택 모달 (복구) ====== */}
+      {/* ====== 취소 사유 선택 모달 ====== */}
       {showCancelModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.cancelModal}>
@@ -672,6 +747,7 @@ export default function MapExplore() {
               <button
                 className={styles.closeIcon}
                 onClick={() => {
+                  if (cancelInFlight) return;
                   setShowCancelModal(false);
                   setSelectedReason('');
                 }}
@@ -693,7 +769,7 @@ export default function MapExplore() {
               ].map((reason) => (
                 <li
                   key={reason}
-                  onClick={() => setSelectedReason(reason)}
+                  onClick={() => !cancelInFlight && setSelectedReason(reason)}
                   className={selectedReason === reason ? styles.reasonSelected : ''}
                 >
                   {reason}
@@ -701,27 +777,17 @@ export default function MapExplore() {
               ))}
             </ul>
 
-            {selectedReason && (
-              <button
-                className={styles.cancelBtn}
-                onClick={() => {
-                  // 실제로는 취소 API 호출 필요(여긴 프론트 상태만 반영)
-                  setReservations((prev) =>
-                    prev.filter((r) => r.id !== activeReservation?.id)
-                  );
-                  setActiveReservation(null);
-                  setShowCancelModal(false);
-                  setShowResultModal(true);
-                }}
-              >
-                확인
-              </button>
-            )}
+            <button
+              className={styles.cancelBtn}
+              disabled={!selectedReason || cancelInFlight}
+              onClick={handleConfirmCancel}
+            >
+              {cancelInFlight ? '처리 중…' : '확인'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* ====== 취소 완료 모달 (복구) ====== */}
       {showResultModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.cancelModal}>
@@ -740,7 +806,7 @@ export default function MapExplore() {
             </div>
             <div className={styles.completeBody}>
               <p>
-                <strong>{selectedReason}</strong>
+                <strong>{selectedReason || '사유 선택 안됨'}</strong>
               </p>
               <p>사유로 예약이 취소되었습니다.</p>
             </div>

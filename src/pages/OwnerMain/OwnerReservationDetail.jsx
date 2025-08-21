@@ -3,15 +3,13 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import styles from "./OwnerReservationDetail.module.css";
 
 import backIcon from "../../assets/chevron.svg";
-import clockIcon from "../../assets/clock.svg"; // 남은 시간 아이콘
+import clockIcon from "../../assets/clock.svg"; 
 import { useAuth } from "../../context/AuthContext";
 import instance from "../../lib/axios";
 
-// 서버 상태값 상수
 const RESV = { PENDING: "PENDING", APPROVED: "APPROVED", REJECTED: "REJECTED" };
 const ATT  = { BEFORE_USE: "BEFORE_USE", IN_USE: "IN_USE", COMPLETED: "COMPLETED" };
 
-// "YYYY-MM-DD"
 function getTodayISODate(tzName = "Asia/Seoul") {
   const now = new Date();
   const y = new Intl.DateTimeFormat("en-CA", { timeZone: tzName, year: "numeric" }).format(now);
@@ -20,7 +18,6 @@ function getTodayISODate(tzName = "Asia/Seoul") {
   return `${y}-${m}-${d}`;
 }
 
-// HH:mm[:ss] → HH:mm:ss
 function toHms(t) {
   if (!t) return "";
   if (typeof t === "string") {
@@ -51,7 +48,6 @@ export default function OwnerReservationDetail() {
   const location = useLocation();
   const { user } = useAuth();
 
-  // 여러 경로에서 ID 회수
   const targetId = useMemo(() => {
     const qs = new URLSearchParams(location.search);
     const candidates = [
@@ -67,7 +63,6 @@ export default function OwnerReservationDetail() {
     return candidates[0];
   }, [params, location.search, location.state]);
 
-  // UI 상태
   const [showModal, setShowModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -78,13 +73,11 @@ export default function OwnerReservationDetail() {
 
   const [showSeatedConfirm, setShowSeatedConfirm] = useState(false);
 
-  // 데이터 상태
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [actErr, setActErr] = useState("");
-  const [item, setItem] = useState(null); // 선택된 예약 1건
+  const [item, setItem] = useState(null); 
 
-  // 남은시간/진행바 갱신용(10초)
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
     if (item?.attendanceStatus !== ATT.IN_USE) return;
@@ -110,7 +103,6 @@ export default function OwnerReservationDetail() {
     return null;
   };
 
-  // ===== 목록에서 해당 예약만 찾아오기 =====
   const fetchReservation = async () => {
     setLoading(true);
     setLoadErr("");
@@ -140,15 +132,15 @@ export default function OwnerReservationDetail() {
       setItem({
         id: Number(found.reservationsId),
         userName: found.userName ?? "고객",
-        phone: "", // 백엔드에 없으므로 비워둠
+        phone: "", 
         people: found.peopleCount,
         meetingType: meetingTypeLabel(found.meetingType),
         date,
         start: st ? `${date}T${st}` : undefined,
         end: et ? `${date}T${et}` : undefined,
         timeText: st && et ? `${st.slice(0, 5)}-${et.slice(0, 5)}` : "",
-        reservationStatus: found.reservationStatus,   // PENDING | APPROVED | REJECTED
-        attendanceStatus: found.attendanceStatus,     // BEFORE_USE | IN_USE | COMPLETED
+        reservationStatus: found.reservationStatus,  
+        attendanceStatus: found.attendanceStatus,    
       });
     } catch (e) {
       console.error(e);
@@ -164,7 +156,6 @@ export default function OwnerReservationDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId]);
 
-  // ===== 진행률/남은시간 계산 =====
   const getProgressAndRemain = (r, nowMs) => {
     if (!r?.start || !r?.end) return { remain: 0, percent: 0 };
     const start = Date.parse(r.start);
@@ -178,26 +169,24 @@ export default function OwnerReservationDetail() {
     return { remain, percent };
   };
 
-  // ===== 버튼 모드 결정 =====
   const mode = useMemo(() => {
     if (!item) return "none";
-    if (item.attendanceStatus === ATT.IN_USE) return "inuse";        // 이용 중 → ‘이용 완료’만
-    if (item.attendanceStatus === ATT.COMPLETED) return "completed"; // 완료 표시만
-    if (item.reservationStatus === RESV.PENDING) return "request";   // 거절/승인
+    if (item.attendanceStatus === ATT.IN_USE) return "inuse";       
+    if (item.attendanceStatus === ATT.COMPLETED) return "completed"; 
+    if (item.reservationStatus === RESV.PENDING) return "request"; 
     if (item.reservationStatus === RESV.APPROVED) {
       const isToday = item.date === getTodayISODate();
-      return isToday ? "today" : "confirmed"; // 취소/착석
+      return isToday ? "today" : "confirmed"; 
     }
     return "none";
   }, [item]);
 
-  // ===== 액션 API =====
   const updateReservationStatus = async ({ id, status }) => {
     setActErr("");
     try {
       await instance.patch(
         `/api/reservation/owner/update`,
-        { reservationsId: id, reservationStatus: status }, // APPROVED | REJECTED
+        { reservationsId: id, reservationStatus: status }, 
         { headers: { "Content-Type": "application/json" } }
       );
       await fetchReservation();
@@ -213,7 +202,7 @@ export default function OwnerReservationDetail() {
     setActErr("");
     try {
       await instance.patch(`/api/reservation/owner/today/${id}`, null, {
-        params: { attendance }, // BEFORE_USE | IN_USE | COMPLETED
+        params: { attendance }, 
         headers: { "Content-Type": "application/json" },
       });
       await fetchReservation();
@@ -225,7 +214,6 @@ export default function OwnerReservationDetail() {
     }
   };
 
-  // ===== 버튼 핸들러 =====
   const doReject = async () => {
     if (!item) return;
     const ok = await updateReservationStatus({ id: item.id, status: RESV.REJECTED });
@@ -240,17 +228,14 @@ export default function OwnerReservationDetail() {
 
   const doSeated = async () => {
     if (!item) return;
-    // 확정 상태에서 '착석' → IN_USE
     await updateAttendance({ id: item.id, attendance: ATT.IN_USE });
   };
 
   const doComplete = async () => {
     if (!item) return;
-    // 이용 완료 → COMPLETED (모달 없이 즉시 처리 & UI 전환)
     await updateAttendance({ id: item.id, attendance: ATT.COMPLETED });
   };
 
-  // ===== 렌더 =====
   if (loading) return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -325,7 +310,6 @@ export default function OwnerReservationDetail() {
         </div>
       </div>
 
-      {/* 회의 인원: 기본은 마지막 섹션이라 보더 제거, IN_USE 때는 보더 표시 */}
       <div className={`${styles.section} ${isInUse ? "" : styles.noBorder}`}>
         <h3 className={styles.sectionTitle}>회의 인원</h3>
         <div className={styles.row}>
@@ -333,7 +317,6 @@ export default function OwnerReservationDetail() {
         </div>
       </div>
 
-      {/* 남은 시간 카드 (IN_USE일 때만, 마지막 섹션이므로 noBorder) */}
       {isInUse && (
         <div className={`${styles.section} ${styles.noBorder}`}>
           <h3 className={styles.sectionTitle}>남은 시간</h3>
@@ -358,7 +341,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* ===== 상태에 따라 버튼 영역 ===== */}
       {mode === "request" && (
         <div className={styles.btnWrap}>
           <button className={styles.rejectBtn} onClick={() => setShowModal(true)}>거절하기</button>
@@ -373,7 +355,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 이용 중(IN_USE): ‘이용 완료’ 한 개만 */}
       {mode === "inuse" && (
         <div className={styles.btnWrap}>
           <button className={styles.approveBtn} onClick={doComplete}>
@@ -382,7 +363,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 완료 상태(COMPLETED): 버튼 회색 + 체크, 비활성 */}
       {mode === "completed" && (
         <div className={styles.btnWrap}>
           <button
@@ -395,7 +375,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* ====== 취소 사유 선택 모달 (UI만, 서버엔 REJECTED만 전송) ====== */}
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
@@ -424,7 +403,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 취소/거절 최종 확인 */}
       {showConfirmModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -435,7 +413,7 @@ export default function OwnerReservationDetail() {
                 onClick={async () => {
                   setShowConfirmModal(false);
                   setShowModal(false);
-                  await doReject(); // REJECTED
+                  await doReject(); 
                 }}
                 className={styles.approveBtn}
               >네</button>
@@ -444,7 +422,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 취소/거절 완료 */}
       {showDoneModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -462,7 +439,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 승인 확인 */}
       {showApproveConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -478,7 +454,6 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
-      {/* 착석 확인 (확정/오늘에서만) */}
       {showSeatedConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>

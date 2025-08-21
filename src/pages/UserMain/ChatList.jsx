@@ -1,4 +1,3 @@
-// src/pages/Chat/ChatList.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Chat.module.css";
@@ -40,7 +39,6 @@ export default function ChatList() {
           credentials: "include",
         });
 
-        // 네트워크/권한 확인
         if (!res.ok) {
           if (res.status === 401) {
             setError("로그인이 만료되었어요. 다시 로그인 해주세요.");
