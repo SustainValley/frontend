@@ -1,4 +1,3 @@
-// src/pages/OwnerMain/BlockTime.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./BlockTime.module.css";
@@ -17,13 +16,11 @@ function formatToday() {
   return `${now.getMonth() + 1}월 ${now.getDate()}일 ${day}요일`;
 }
 
-// "HH:mm" -> "HH:mm:00"
 function toIsoTime(hhmm) {
   const [h, m] = (hhmm || "00:00").split(":");
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`;
 }
 
-// 서버 응답(LocalTime 객체 or "HH:mm:ss") -> "HH:mm"
 function toHHMM(serverTime) {
   if (!serverTime) return "00:00";
   if (typeof serverTime === "string") {
@@ -35,7 +32,7 @@ function toHHMM(serverTime) {
 }
 
 function minutesOf(hhmm) {
-  if (!hhmm) return null; // ← 비어있으면 null
+  if (!hhmm) return null; 
   const [h, m] = hhmm.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   return h * 60 + m;
@@ -64,10 +61,9 @@ export default function BlockTime() {
     Number(localStorage.getItem("cafeId")) ||
     0;
 
-  // ✅ 비어있는 상태를 지원하기 위해 기본값을 ""로 둠
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [status, setStatus] = useState("AVAILABLE"); // AVAILABLE | UNAVAILABLE
+  const [status, setStatus] = useState("AVAILABLE");
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMsg, setModalMsg] = useState("");
@@ -93,7 +89,6 @@ export default function BlockTime() {
       const st = data?.reservationStatus || "AVAILABLE";
       setStatus(st);
 
-      // ✅ 서버가 00:00~00:00 & AVAILABLE이면 UI는 "비어있음"으로 표시
       if (st === "AVAILABLE" && s === "00:00" && e === "00:00") {
         setStart("");
         setEnd("");
@@ -134,7 +129,6 @@ export default function BlockTime() {
     return true;
   };
 
-  // AVAILABLE → 차단(UNAVAILABLE), UNAVAILABLE → 해제(AVAILABLE)
   const handlePrimary = async () => {
     if (status === "AVAILABLE" && !validateRange()) return;
     try {
@@ -167,7 +161,6 @@ export default function BlockTime() {
       );
       setModalOpen(true);
 
-      // UNAVAILABLE → AVAILABLE로 해제 시, UI도 즉시 비우기
       if (nextStatus === "AVAILABLE") {
         setStart("");
         setEnd("");
@@ -182,7 +175,6 @@ export default function BlockTime() {
     }
   };
 
-  // ✅ 초기화: 서버엔 AVAILABLE+00:00, UI는 완전히 비움
   const handleReset = async () => {
     try {
       setSubmitting(true);
@@ -199,12 +191,10 @@ export default function BlockTime() {
       setModalMsg(data?.message || "시간 설정이 모두 초기화되었어요.");
       setModalOpen(true);
 
-      // 즉시 UI 비움
       setStatus("AVAILABLE");
       setStart("");
       setEnd("");
 
-      // 서버값 동기화 (서버는 00:00/00:00로 남음)
       await fetchAbletime();
     } catch (e) {
       setModalMsg("초기화에 실패했어요. 잠시 후 다시 시도해주세요.");
@@ -277,7 +267,6 @@ export default function BlockTime() {
                     onChange={(e) => setStart(e.target.value)}
                     disabled={submitting || status === "UNAVAILABLE"}
                   >
-                    {/* ✅ placeholder 옵션 */}
                     <option value="">시작 선택</option>
                     {hours.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>
@@ -293,7 +282,6 @@ export default function BlockTime() {
                     onChange={(e) => setEnd(e.target.value)}
                     disabled={submitting || status === "UNAVAILABLE"}
                   >
-                    {/* ✅ placeholder 옵션 */}
                     <option value="">종료 선택</option>
                     {hours.map((h) => <option key={h} value={h}>{h}</option>)}
                   </select>

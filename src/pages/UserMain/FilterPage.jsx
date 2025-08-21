@@ -2,14 +2,12 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './FilterPage.module.css';
 
-/* ▼ 이미지 아이콘 (프로젝트 경로에 맞게 조정) */
 import backArrow   from '../../assets/chevron.svg';
 import iconOpen    from '../../assets/tabler_messages.svg';
 import iconQuiet   from '../../assets/tabler_messages-off.svg';
 import iconRoom    from '../../assets/tabler_door.svg';
 import iconLimited from '../../assets/tabler_message-dots.svg';
 
-/* 아이콘은 단일 이미지만 사용(활성/비활성 동일) */
 const SPACE_OPTIONS = [
   { key: 'open',    title: '오픈된 공간',      sub: '타 고객과 함께 사용', img: iconOpen },
   { key: 'quiet',   title: '조용한 공간',      sub: '집중 업무용',         img: iconQuiet },
@@ -22,7 +20,6 @@ export default function FilterPage() {
   const location = useLocation();
   const initial = useMemo(() => location.state?.filters || {}, [location.state]);
 
-  // 복수 선택은 Set으로 관리
   const [spaces, setSpaces] = useState(new Set(initial.spaces || []));
   const [people, setPeople] = useState(initial.people ?? 0);
 
@@ -45,7 +42,7 @@ export default function FilterPage() {
   
   return (
     <div className={styles.wrap}>
-      {/* 앱바 */}
+
       <header className={styles.appBar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="뒤로가기">
           <img src={backArrow} alt="" aria-hidden className={styles.backIcon} />
@@ -55,7 +52,6 @@ export default function FilterPage() {
         <div className={styles.appBarRight} />
       </header>
 
-      {/* 본문 */}
       <main className={styles.body}>
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>공간</h2>
@@ -115,7 +111,6 @@ export default function FilterPage() {
         </section>
       </main>
 
-      {/* 하단 고정 버튼 */}
       <footer className={styles.footer}>
         <button className={styles.applyBtn} onClick={apply}>필터 적용하기</button>
       </footer>

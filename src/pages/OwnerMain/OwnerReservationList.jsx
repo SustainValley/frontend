@@ -1,4 +1,3 @@
-// src/pages/OwnerMain/OwnerReservationList.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./OwnerReservationList.module.css";
@@ -23,7 +22,6 @@ const todayStr = new Intl.DateTimeFormat("ko-KR", {
   .replace(/\s/g, "")
   .replace(/-$/g, "");
 
-// "YYYY-MM-DD" (타임존 고려)
 function getTodayISODate(tzName = "Asia/Seoul") {
   const now = new Date();
   const y = new Intl.DateTimeFormat("en-CA", { timeZone: tzName, year: "numeric" }).format(now);
@@ -32,13 +30,12 @@ function getTodayISODate(tzName = "Asia/Seoul") {
   return `${y}-${m}-${d}`;
 }
 
-// HH:mm[:ss] → HH:mm:ss 로 표준화
 const toHms = (t) => {
   if (!t) return "";
   if (typeof t === "string") {
-    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;      // 이미 HH:mm:ss
-    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;    // HH:mm → HH:mm:ss
-    return t.slice(0, 8);                              // 혹시 모를 이상 포맷 방어
+    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;      
+    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;   
+    return t.slice(0, 8);                            
   }
   if (typeof t === "object" && t !== null) {
     const hh = String(t.hour ?? 0).padStart(2, "0");
@@ -49,7 +46,6 @@ const toHms = (t) => {
   return "";
 };
 
-// 서버 상태값 상수
 const RESV = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
@@ -67,8 +63,8 @@ const OwnerReservationList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState("today"); // request | confirmed | today
-  const [todayTab, setTodayTab] = useState("using");   // before | using | done
+  const [activeTab, setActiveTab] = useState("today"); 
+  const [todayTab, setTodayTab] = useState("using");  
 
   const [showModal, setShowModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
@@ -88,11 +84,10 @@ const OwnerReservationList = () => {
   const [loadErr, setLoadErr] = useState("");
   const [actErr, setActErr] = useState("");
 
-  // 진행바/남은시간 실시간 갱신용 타임스탬프 (10초마다 업데이트)
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
     if (!(activeTab === "today" && todayTab === "using")) return;
-    setNowTs(Date.now()); // 탭 진입 즉시 갱신
+    setNowTs(Date.now()); 
     const id = setInterval(() => setNowTs(Date.now()), 10_000);
     return () => clearInterval(id);
   }, [activeTab, todayTab]);
@@ -114,7 +109,6 @@ const OwnerReservationList = () => {
     return null;
   };
 
-  // API → 내부 표준 형태로 매핑
   const mapApiItem = (it) => {
     const date = typeof it.date === "string" ? it.date : getTodayISODate();
 
@@ -123,7 +117,6 @@ const OwnerReservationList = () => {
 
     const timeText = st && et ? `${st.slice(0, 5)}-${et.slice(0, 5)}` : "";
 
-    // 예약 상태 매핑 (PENDING/APPROVED/REJECTED)
     const status =
       it.reservationStatus === RESV.PENDING
         ? "request"
@@ -131,22 +124,21 @@ const OwnerReservationList = () => {
         ? "confirmed"
         : "other";
 
-    // 이용 상태 매핑 (BEFORE_USE/IN_USE/COMPLETED)
     let todayStatus = undefined;
     if (it.attendanceStatus === ATT.BEFORE_USE) todayStatus = "before";
     else if (it.attendanceStatus === ATT.IN_USE) todayStatus = "using";
     else if (it.attendanceStatus === ATT.COMPLETED) todayStatus = "done";
 
     return {
-      id: it.reservationsId, // ✅ 서버 키: reservationsId
+      id: it.reservationsId, 
       name: it.userName ?? "고객",
       phone: "",
       people: it.peopleCount,
       date,
       time: timeText,
-      status,       // request | confirmed | other
-      todayStatus,  // before | using | done
-      start: st ? `${date}T${st}` : undefined, // 절대 ":00" 추가하지 않음!
+      status,      
+      todayStatus, 
+      start: st ? `${date}T${st}` : undefined, 
       end: et ? `${date}T${et}` : undefined,
       raw: it,
     };
@@ -176,7 +168,6 @@ const OwnerReservationList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 쿼리 → 상태 초기화/동기화
   useEffect(() => {
     const tab = searchParams.get("tab");
     const sub = searchParams.get("sub");
@@ -189,7 +180,6 @@ const OwnerReservationList = () => {
     }
   }, [searchParams]);
 
-  // 탭 변경 시 URL 동기화
   const goTab = (tab) => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
@@ -206,7 +196,6 @@ const OwnerReservationList = () => {
     setSearchParams(params);
   };
 
-  // "오늘 예약" 필터: 오늘 날짜 + APPROVED(=confirmed)만
   const todayISO = getTodayISODate(tz);
 
   const computedList = useMemo(() => {
@@ -216,13 +205,11 @@ const OwnerReservationList = () => {
     if (activeTab === "confirmed") {
       return reservations.filter((r) => r.status === "confirmed");
     }
-    // today
     return reservations.filter(
       (r) => r.status === "confirmed" && r.date === todayISO && r.todayStatus === todayTab
     );
   }, [reservations, activeTab, todayTab, todayISO]);
 
-  // 진행률/남은시간 계산 (nowMs 전달)
   const getProgressAndRemain = (r, nowMs) => {
     if (!r.start || !r.end) return { remain: 0, percent: 0 };
     const start = Date.parse(r.start);
@@ -239,13 +226,12 @@ const OwnerReservationList = () => {
     return { remain, percent };
   };
 
-  // ===== 예약 상태 업데이트 (승인/거절) =====
   const updateReservationStatus = async ({ id, status }) => {
     setActErr("");
     try {
       const payload = {
         reservationsId: id,
-        reservationStatus: status, // "APPROVED" | "REJECTED"
+        reservationStatus: status, 
       };
       await instance.patch(`/api/reservation/owner/update`, payload, {
         headers: { "Content-Type": "application/json" },
@@ -259,8 +245,6 @@ const OwnerReservationList = () => {
     }
   };
 
-  // ===== 이용 상태 업데이트 (착석/완료 등) =====
-  // PATCH /api/reservation/owner/today/{reservationId}?attendance=BEFORE_USE|IN_USE|COMPLETED
   const updateAttendance = async ({ id, attendance }) => {
     setActErr("");
     try {
@@ -277,7 +261,6 @@ const OwnerReservationList = () => {
     }
   };
 
-  // ===== 취소(=거절) 실행 (요청/확정 공통) =====
   const doCancel = async () => {
     if (!actionTarget) return;
     const ok = await updateReservationStatus({
@@ -287,7 +270,6 @@ const OwnerReservationList = () => {
     if (ok) setShowDoneModal(true);
   };
 
-  // ===== 승인 실행 (요청 탭) =====
   const doApprove = async () => {
     if (!actionTarget) return;
     const ok = await updateReservationStatus({
@@ -297,7 +279,6 @@ const OwnerReservationList = () => {
     if (ok) setShowApproveDone(true);
   };
 
-  // ===== 착석 실행 (확정/오늘 before 탭) → IN_USE
   const doSeated = async () => {
     if (!actionTarget) return;
     const ok = await updateAttendance({
@@ -498,7 +479,6 @@ const OwnerReservationList = () => {
         )}
       </div>
 
-      {/* 취소 사유 모달 (UI만, 서버엔 REJECTED만 전송) */}
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
@@ -539,7 +519,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 취소 최종 확인 */}
       {showConfirmModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -552,7 +531,7 @@ const OwnerReservationList = () => {
                 onClick={async () => {
                   setShowConfirmModal(false);
                   setShowModal(false);
-                  await doCancel(); // REJECTED로 전송
+                  await doCancel(); 
                 }}
                 className={styles.approveBtn}
               >
@@ -563,7 +542,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 취소 완료 안내 */}
       {showDoneModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -584,7 +562,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 승인 확인 */}
       {showApproveConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -596,7 +573,7 @@ const OwnerReservationList = () => {
               <button
                 onClick={async () => {
                   setShowApproveConfirm(false);
-                  await doApprove(); // APPROVED 전송
+                  await doApprove();
                 }}
                 className={styles.approveBtn}
               >
@@ -607,7 +584,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 승인 완료 안내 */}
       {showApproveDone && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -627,7 +603,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 착석 확인 */}
       {showSeatedConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -639,7 +614,7 @@ const OwnerReservationList = () => {
               <button
                 onClick={async () => {
                   setShowSeatedConfirm(false);
-                  await doSeated(); // IN_USE로 전송
+                  await doSeated(); 
                 }}
                 className={styles.approveBtn}
               >
@@ -650,7 +625,6 @@ const OwnerReservationList = () => {
         </div>
       )}
 
-      {/* 착석 완료 안내 */}
       {showSeatedDone && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
