@@ -1,3 +1,4 @@
+// src/pages/Chat/ChatList.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Chat.module.css";
@@ -7,12 +8,16 @@ import { useAuth } from "../../context/AuthContext";
 export default function ChatList() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error,   setError]   = useState(null);
 
   useEffect(() => {
-    const uid = user?.userId || localStorage.getItem("user_id");
+    const uid =
+      user?.userId ||
+      Number(localStorage.getItem("user_id")) ||
+      Number(localStorage.getItem("userId"));
 
     if (!uid) {
       setLoading(false);
@@ -22,29 +27,45 @@ export default function ChatList() {
 
     const fetchChats = async () => {
       try {
+        const token =
+          localStorage.getItem("accessToken") ||
+          localStorage.getItem("token") ||
+          "";
+
         const res = await fetch(`/hackathon/api/chat/${uid}`, {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+            Authorization: token ? `Bearer ${token}` : "",
           },
+          credentials: "include",
         });
+
+        // 네트워크/권한 확인
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError("로그인이 만료되었어요. 다시 로그인 해주세요.");
+          } else {
+            setError(`채팅방을 불러올 수 없습니다. (HTTP ${res.status})`);
+          }
+          setLoading(false);
+          return;
+        }
 
         const data = await res.json();
 
         if (data.isSuccess) {
-          const mapped = (data.result || []).map((chat) => ({
+          const mapped = (data.result ?? []).map((chat) => ({
             id: chat.roomId,
-            // title이 null이면 문자열 "null"로 표시
             name: chat.title === null ? "null" : (chat.title ?? ""),
-            // lastMessage는 null/undefined면 빈 문자열, 빈 문자열("")은 그대로 유지
             preview: chat.lastMessage ?? "",
-            unread: chat.unread ?? false,
+            unread: !!chat.unread,
           }));
           setChats(mapped);
         } else {
           setError(data.message || "채팅방을 불러올 수 없습니다.");
         }
       } catch (err) {
+        console.error(err);
         setError("서버 오류가 발생했습니다.");
       } finally {
         setLoading(false);
@@ -61,7 +82,7 @@ export default function ChatList() {
           <img src={backIcon} alt="뒤로가기" />
         </button>
         <div className={styles.title}>채팅 문의</div>
-        <div style={{ width: "40px" }} />
+        <div style={{ width: 40 }} />
       </div>
 
       {loading && <div className={styles.chatList}>불러오는 중...</div>}
@@ -75,9 +96,7 @@ export default function ChatList() {
             chats.map((chat) => (
               <div
                 key={chat.id}
-                className={`${styles.chatItem} ${
-                  chat.unread ? styles.unread : styles.read
-                }`}
+                className={`${styles.chatItem} ${chat.unread ? styles.unread : styles.read}`}
                 onClick={() => navigate(`/chat/${chat.id}`)}
               >
                 <div className={styles.chatName}>{chat.name}</div>
