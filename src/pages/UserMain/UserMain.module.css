@@ -30,14 +30,11 @@
   cursor: pointer;
 }
 
-.topIcon {
-  width: 24px;
-  height: 24px;
-}
+.topIcon { width: 24px; height: 24px; }
 
 .topTitle {
   text-align: center;
-  color: var(--gray-90, #232526);
+  color: #232526;
   font-family: Pretendard;
   font-size: 18px;
   font-weight: 600;
@@ -61,27 +58,21 @@
   z-index: 10;
 }
 
-.icon {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 auto;
-}
+.icon { width: 24px; height: 24px; flex: 0 0 auto; }
 
 .searchInput {
   flex: 1 1 auto;
   border: 0;
   outline: none;
   background: transparent;
-  color: var(--gray-50, #000);
+  color: #000;
   font-family: Pretendard, system-ui, -apple-system, "Noto Sans KR", Segoe UI, Roboto, Arial, sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
 }
 
-.searchInput::placeholder {
-  color: #9aa3a7;
-}
+.searchInput::placeholder { color: #9aa3a7; }
 
 .vline {
   width: 1px;
@@ -113,18 +104,11 @@
   z-index: 8;
 }
 
-.bottomSheet {
-  position: absolute;
-  inset: 0;
-  z-index: 9;
-  pointer-events: none;
-}
+.bottomSheet { position: absolute; inset: 0; z-index: 9; pointer-events: none; }
 
 .sheetPanel {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0; right: 0; bottom: 0;
   pointer-events: auto;
   background: #fff;
   border-top-left-radius: 24px;
@@ -139,7 +123,7 @@
   flex: 0 0 auto;
   width: 88px;
   height: 4px;
-  background: var(--Color-GrayScale-Gray100, #E4E6E7);
+  background: #E4E6E7;
   border-radius: 999px;
   margin: 10px auto;
   cursor: grab;
@@ -153,16 +137,14 @@
   padding: 0 16px 24px;
 }
 
-.sheetContent::-webkit-scrollbar {
-  display: none;
-}
+.sheetContent::-webkit-scrollbar { display: none; }
 
 .sheetTitle {
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
   margin: 10px 0 16px;
-  color: var(--gray-90, #232526);
+  color: #232526;
 }
 
 .myLocationBtn {
@@ -179,21 +161,13 @@
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   cursor: pointer;
-  transition: top 0.25s ease; 
+  transition: top 0.25s ease;
 }
 
-.myLocationBtn img {
-  width: 24px;
-  height: 24px;
-}
+.myLocationBtn img { width: 24px; height: 24px; }
 
-.withReserve {
-  top: -120px; 
-}
-
-.noReserve {
-  top: -90px;  
-}
+.withReserve { top: -150px; }
+.noReserve { top: -90px; }
 
 .reserveStatus {
   position: absolute;
@@ -209,12 +183,12 @@
   gap: 6px;
   z-index: 19;
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-  color: var(--gray-90, #232526);
+  color: #232526;
   cursor: pointer;
 }
 
 .scheduled {
-  background: linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%);
+  background: linear-gradient(105deg, var(--white, #FFF) 33.63%, var(--limerick-00, #EBF7CE) 93.77%);
 }
 
 .inuse {
@@ -226,27 +200,28 @@
 }
 
 .reserveCafe {
+  color: var(--gray-60, #686F73);
+  font-family: Pretendard;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 20px;
 }
 
 .reserveInfo {
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--Primary-Primary, #3A3E40);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
 }
 
-.time {
-  font-weight: 700;
-  color: #3FA34D;
-}
+.time { font-weight: 700; color: #3FA34D; }
 
 .cafeCard {
   display: grid;
   grid-template-columns: 132px 1fr;
   grid-template-rows: auto auto;
-  grid-template-areas:
-    "thumb info"
-    "btn   btn";
+  grid-template-areas: "thumb info" "btn btn";
   gap: 12px 16px;
   align-items: start;
   border-radius: 24px;
@@ -266,19 +241,9 @@
   background: #ddd;
 }
 
-.info {
-  grid-area: info;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.info { grid-area: info; display: flex; flex-direction: column; gap: 6px; }
 
-.cafeName {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 20px;
-  color: var(--gray-90, #232526);
-}
+.cafeName { font-size: 16px; font-weight: 600; line-height: 20px; color: #232526; }
 
 .reserveBtn {
   grid-area: btn;
@@ -286,7 +251,7 @@
   padding: 12px 14px;
   border: 0;
   border-radius: 12px;
-  background: var(--Primary-Primary, #3A3E40);
+  background: #3A3E40;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
@@ -294,20 +259,11 @@
   cursor: pointer;
 }
 
-.menuBackdrop {
-  position: absolute;
-  top: 0; 
-  left: 0; 
-  right: 0; 
-  bottom: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 30;
-}
+.menuBackdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 30; }
 
 .sideMenu {
   position: absolute;
-  top: 0; 
-  left: 0;
+  top: 0; left: 0;
   width: 70%;
   max-width: 280px;
   height: 100%;
@@ -321,13 +277,8 @@
   transition: transform 0.25s ease;
 }
 
-.sideMenu.open {
-  transform: translateX(0);
-}
-
-.sideMenu.close {
-  transform: translateX(-100%);
-}
+.sideMenu.open { transform: translateX(0); }
+.sideMenu.close { transform: translateX(-100%); }
 
 .menuItem {
   padding: 12px 16px;
@@ -341,9 +292,7 @@
   cursor: pointer;
 }
 
-.menuItem + .menuItem {
-  margin-top: 12px;
-}
+.menuItem + .menuItem { margin-top: 12px; }
 
 .cardGhost {
   display: flex;
@@ -353,7 +302,7 @@
   border-radius: 16px;
   background: #fafafa;
   border: 1px dashed rgba(0,0,0,0.15);
-  color: var(--gray-70, #5f6368);
+  color: #5f6368;
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
@@ -364,9 +313,7 @@
 
 .detailSheet {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0; right: 0; bottom: 0;
   height: 87%;
   background: #fff;
   border-radius: 24px 24px 0 0;
@@ -377,9 +324,7 @@
   overflow-y: auto;
 }
 
-.detailHeader {
-  margin-bottom: 10px;
-}
+.detailHeader { margin-bottom: 10px; }
 
 .detailHeader p:first-child {
   font-family: Pretendard;
@@ -388,16 +333,10 @@
   line-height: 0px;
 }
 
-.today {
-  color: #000000;
-}
-
-.time {
-  color: var(--Sub-Sub-1, #A4CC08);
-}
+.today { color: #000000; }
 
 .detailHeader p:last-child {
-  color: var(--Sub-Sub-1, #000000);
+  color: #000000;
   font-family: Pretendard;
   font-size: 20px;
   font-weight: 600;
@@ -420,17 +359,12 @@
   object-fit: cover;
 }
 
-.detailCafeCard .info {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-}
+.detailCafeCard .info { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
 
 .detailContent h4 {
   margin-top: 20px;
   margin-bottom: 6px;
-  color: var(--gray-90, #232526);
+  color: #232526;
   font-family: Pretendard;
   font-size: 16px;
   font-weight: 600;
@@ -439,16 +373,16 @@
 
 .detailContent p {
   margin: 8px 0;
-  color: var(--gray-80, #3A3E40);
+  color: #3A3E40;
   font-family: Pretendard;
   font-size: 14px;
   font-weight: 600;
-  line-height: 20px; 
+  line-height: 20px;
 }
 
 .detailContent p b {
   margin-right: 6px;
-  color: var(--gray-50, #7F888C);
+  color: #7F888C;
   font-family: Pretendard;
   font-size: 14px;
   font-weight: 500;
@@ -456,29 +390,26 @@
 }
 
 .cancelBtn {
-  display :flex;
-  min-width: 250px;           /* ✅ 버튼이 너무 꽉 차지 않도록 */
-  margin: 20px auto 10px auto; /* ✅ 위아래 여백, 중앙 정렬 */
+  display: flex;
+  min-width: 250px;
+  margin: 20px auto 10px auto;
   padding: 10px 20px;
   border: none;
   border-radius: 8px;
-  background: var(--gray-10, #E2E9EC);
-  color: var(--system-red, #E74C3C);
+  background: #E2E9EC;
+  color: #E74C3C;
   font-family: Pretendard;
   font-size: 15px;
   font-weight: 600;
   line-height: 22px;
   cursor: pointer;
-  justify-content: center; 
+  justify-content: center;
 }
 
-
 .modalOverlay {
-  position: absolute;     
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
   background: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
@@ -498,25 +429,24 @@
 .modalHeader {
   position: relative;
   display: flex;
-  justify-content: center;   
+  justify-content: center;
   align-items: center;
-  background: var(--Primary-Primary, #3A3E40);
+  background: #3A3E40;
   color: #fff;
   padding: 12px 16px;
 }
 
 .modalHeader h3 {
   margin: 0;
-  color: var(--white, #FFF);
+  color: #FFF;
   font-family: Pretendard;
   font-size: 14px;
-  font-style: normal;
   font-weight: 600;
-  line-height: 20px; 
+  line-height: 20px;
 }
 
 .closeIcon {
-  position: absolute;        
+  position: absolute;
   right: 16px;
   top: 50%;
   transform: translateY(-50%);
@@ -536,24 +466,18 @@
 
 .cancelReasons li {
   padding: 12px 0;
-  color: var(--gray-90, #232526);
+  color: #232526;
   font-family: Pretendard;
   font-size: 14px;
-  font-style: normal;
   font-weight: 500;
   line-height: 20px;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
-.cancelReasons li:hover {
-  background: rgba(0,0,0,0.05);
-}
+.cancelReasons li:hover { background: rgba(0,0,0,0.05); }
 
-.reasonSelected {
-  background: rgba(255, 42, 42, 0.08);
-  font-weight: 700;
-}
+.reasonSelected { background: rgba(255, 42, 42, 0.08); font-weight: 700; }
 
 .closeBtn {
   width: 100%;
@@ -579,27 +503,82 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--gray-80, #3A3E40);
+  color: #3A3E40;
 }
 
-.metaIcon {
-  width: 20px !important;
-  height: 20px !important;
+.metaIcon { width: 20px !important; height: 20px !important; }
+
+.completeBody { padding: 5px; text-align: center; font-size: 14px; line-height: 1.6; color: #333; }
+.completeBody p { margin: 8px 0; }
+.completeBody strong { font-weight: 600; color: #000; }
+
+/* 가로 예약 스트립 */
+.reserveStrip {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  right: 16px;
+  z-index: 19;
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  user-select: none;
 }
 
-.completeBody {
-  padding: 5px;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #333;
+.reserveStrip::-webkit-scrollbar { height: 6px; }
+.reserveStrip::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 999px; }
+
+.dragging { cursor: grabbing; }
+
+.reserveChip {
+  width: 330px;
+  border-radius: 16px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  color: var(--gray-90, #232526);
+  border: none;
+  text-align: left;
+  flex-shrink: 0;
 }
 
-.completeBody p {
-  margin: 8px 0;
+.scheduled {
+  border-radius: 12px;
+  border: 1px solid var(--Sub-Sub-2, #BFD194);
+  background: linear-gradient(105deg, var(--white, #FFF) 33.63%, var(--limerick-00, #EBF7CE) 93.77%);
+  box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
 }
 
-.completeBody strong {
+.inuse { background: linear-gradient(135deg, #FFF5F5 0%, #FFEAEA 100%); }
+.pending {
+  background: #fff;
+  border: 1px solid rgba(84,170,37,0.28);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+}
+.done { background: linear-gradient(135deg, #F7F7F7 0%, #EFEFEF 100%); }
+
+/* 칩 타이포/간격 통일 */
+.reserveChip .reserveCafe {
+  font-size: 13px;
+  line-height: 18px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: none;
+}
+.reserveChip.inuse .reserveCafe,
+.reserveChip.pending .reserveCafe { border-bottom: none; }
+
+.reserveChip .reserveInfo,
+.reserveChip .timeStrong { font-size: 16px; line-height: 22px; }
+
+.timeStrong {
+  color: var(--limerick-40, #95AC39);
+  font-family: Pretendard;
   font-weight: 600;
-  color: #000;
 }
