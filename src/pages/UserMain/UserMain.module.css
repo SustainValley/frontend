@@ -139,7 +139,12 @@
 
 .sheetContent::-webkit-scrollbar { display: none; }
 
+/* >>> 변경: 제목 줄과 '전체 보기' 버튼이 양 끝 정렬로 자연스럽게 배치되도록 */
 .sheetTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   font-size: 18px;
   font-weight: 600;
   line-height: 24px;
@@ -527,6 +532,7 @@
   -webkit-overflow-scrolling: touch;
   cursor: grab;
   user-select: none;
+  touch-action: pan-x;
 }
 
 .reserveStrip::-webkit-scrollbar { height: 6px; }
@@ -581,4 +587,97 @@
   color: var(--limerick-40, #95AC39);
   font-family: Pretendard;
   font-weight: 600;
+}
+
+/* =========================
+   전체 보기 버튼 (예쁘게)
+   ========================= */
+.smallClearBtn {
+  appearance: none;
+  border: 0;
+  outline: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+
+  color: #111;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow:
+    0 0.5px 0 rgba(255,255,255,0.6) inset,
+    0 1px 2px rgba(0,0,0,0.06),
+    0 8px 20px rgba(0,0,0,0.08);
+  backdrop-filter: blur(6px);
+
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.smallClearBtn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.65), transparent 60%);
+  opacity: 0.9;
+}
+
+.smallClearBtn:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0.5px 0 rgba(255,255,255,0.7) inset,
+    0 4px 10px rgba(0,0,0,0.10),
+    0 12px 28px rgba(0,0,0,0.12);
+  border-color: rgba(0,0,0,0.12);
+}
+
+.smallClearBtn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 0.5px 0 rgba(255,255,255,0.6) inset,
+    0 2px 6px rgba(0,0,0,0.10),
+    0 8px 18px rgba(0,0,0,0.10);
+}
+
+.smallClearBtn:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+.smallClearBtn > svg,
+.smallClearBtn > img {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* 다크 모드 */
+@media (prefers-color-scheme: dark) {
+  .smallClearBtn {
+    color: #f5f5f5;
+    background: linear-gradient(180deg, rgba(28,28,28,0.9), rgba(28,28,28,0.7));
+    border-color: rgba(255,255,255,0.12);
+    box-shadow:
+      0 0.5px 0 rgba(255,255,255,0.05) inset,
+      0 1px 2px rgba(0,0,0,0.5),
+      0 8px 20px rgba(0,0,0,0.6);
+  }
+  .smallClearBtn:focus-visible {
+    outline: 2px solid #fff;
+  }
+}
+
+/* 작은 화면에서 터치 타깃 확보 */
+@media (max-width: 420px) {
+  .smallClearBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }

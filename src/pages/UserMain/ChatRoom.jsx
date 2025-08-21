@@ -1,127 +1,377 @@
-import React, { useState, useRef, useEffect } from "react";
+// src/pages/Chat/ChatRoom.jsx
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
-import axios from "axios";
+import { Stomp } from "@stomp/stompjs";
 import styles from "./Chat.module.css";
+import { useAuth } from "../../context/AuthContext";
 
 import backIcon from "../../assets/chevron.svg";
 import sendIcon from "../../assets/tabler_send.svg";
 
+/* ========= 환경 ========= */
+const IS_DEV = process.env.NODE_ENV === "development";
+const API_HOST = ISDEV_HACK();
+function ISDEV_HACK() {
+  return process.env.NODE_ENV === "development" ? "http://3.27.150.124:8080" : "";
+}
+const API_PREFIX = `${API_HOST}/hackathon/api`;
+const WS_URL = `${
+  IS_DEV
+    ? "ws://3.27.150.124:8080"
+    : (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host
+}/hackathon/api/ws-stomp`;
+
+/* ========= 유틸 ========= */
+const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g; // 제로폭 문자
+const NL_REGEX = /\r\n|\r/g;
+const WS_REGEX = /[ \t]+/g;
+const normalizeText = (s = "") =>
+  s.replace(ZW_REGEX, "").replace(NL_REGEX, "\n").replace(WS_REGEX, " ").trim();
+
+const safeText = (obj) =>
+  normalizeText(obj?.message ?? obj?.text ?? obj?.content ?? obj?.body ?? "");
+
+const toISO = (v) => (v ? new Date(v).toISOString() : new Date().toISOString());
+const uuid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+const num = (v) => (v === null || v === undefined ? null : Number(v));
+
+/** 동일성 판정: serverId(또는 id) 우선, 없으면 (sender + createdAt) */
+const sameByIdentity = (a, b) => {
+  const aSid = a.serverId ?? a.id;
+  const bSid = b.serverId ?? b.id;
+  if (aSid && bSid) return String(aSid) === String(bSid);
+  return (num(a.sender) ?? null) === (num(b.sender) ?? null) && String(a.createdAt) === String(b.createdAt);
+};
+
+/** pending 매칭: tempId가 1순위, 그 외엔 (내가 보냄 + 텍스트 동일 + 시간차 ≤ 10초) */
+const isMatchPending = (pending, incoming, myId) => {
+  if (pending.state !== "pending") return false;
+
+  // tempId round-trip
+  if (pending.clientId && incoming.tempId && String(pending.clientId) === String(incoming.tempId)) {
+    return true;
+  }
+
+  // 보낸 사람=나
+  const sameSenderIsMe = num(pending.sender) === num(myId) && num(incoming.sender) === num(myId);
+  if (!sameSenderIsMe) return false;
+
+  // 텍스트 동일
+  if (normalizeText(pending.text ?? pending.message) !== normalizeText(incoming.text ?? incoming.message)) {
+    return false;
+  }
+
+  // 시간 여유 10초
+  const dt = Math.abs(new Date(incoming.createdAt).getTime() - new Date(pending.createdAt).getTime());
+  return dt <= 10000;
+};
+
 export default function ChatRoom() {
   const navigate = useNavigate();
-  const { chatId } = useParams();
-  const roomId = Number(chatId);
+  const params = useParams();
+  const roomId = Number(params.chatId ?? params.roomId);
 
-  const clientRef = useRef(null);
+  const { user } = useAuth();
+  const globalUserId =
+    user?.userId ?? num(localStorage.getItem("user_id")) ?? num(localStorage.getItem("userId")) ?? null;
+
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
+
+  const stompRef = useRef(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const subscribedRef = useRef(false);
 
+  const [chatRoomUserId, setChatRoomUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [sender, setSender] = useState(1); // 👉 로그인 유저 ID로 교체 필요
 
-  // ✅ 웹소켓 연결
-  useEffect(() => {
-    const client = new Client({
-      // ✅ SockJS factory 사용
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws-stomp"),
-      reconnectDelay: 5000,
-      debug: (str) => console.log(str),
-      onConnect: () => {
-        console.log("✅ WebSocket Connected with SockJS");
+  const isMine = (payload) => {
+    const candidates = [
+      num(payload?.sender),
+      num(payload?.userId),
+      num(payload?.fromUserId),
+      num(payload?.authorId),
+    ].filter((v) => Number.isFinite(v));
+    return candidates.some((id) => id === num(chatRoomUserId) || id === num(globalUserId));
+  };
 
-        // 메시지 구독
-        client.subscribe(`/sub/chatroom/${roomId}`, (msg) => {
-          const newMessage = JSON.parse(msg.body);
-          console.log("📩 받은 메시지:", newMessage);
-          setMessages((prev) => [
-            ...prev,
-            {
-              from: newMessage.sender === sender ? "me" : "store",
-              name: newMessage.sender === sender ? "나" : "상대방",
-              text: newMessage.message,
-              createdAt: newMessage.createdAt,
-            },
-          ]);
-        });
+  /* ========= chatRoomUserId 확보 ========= */
+  const loadChatRoomUserId = async () => {
+    if (!globalUserId || !roomId) return;
+    try {
+      const res = await fetch(`${API_PREFIX}/chat/${globalUserId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const row = (data.result || []).find((r) => r.roomId === roomId);
+      if (row?.chatRoomUserId) setChatRoomUserId(row.chatRoomUserId);
+    } catch {}
+  };
 
-        // 에러 구독
-        client.subscribe(`/user/queue/errors`, (err) => {
+  /* ========= 읽음 처리 ========= */
+  const markEnter = async () => {
+    if (!roomId || !globalUserId) return;
+    try {
+      await fetch(`${API_PREFIX}/chat/room/${roomId}/enter?userId=${globalUserId}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      });
+    } catch {}
+  };
+
+  /* ========= 서버 리스트와 기존 병합 (텍스트 기반 중복 제거 없음) ========= */
+  function reconcileWithServer(prev, serverList) {
+    let out = [...prev];
+
+    for (const s of serverList) {
+      // 1) pending → sent 교체 (tempId/시간/텍스트 기준)
+      const pIdx = out.findIndex((m) => isMatchPending(m, s, chatRoomUserId ?? globalUserId));
+      if (pIdx !== -1) {
+        const copy = [...out];
+        copy[pIdx] = { ...copy[pIdx], ...s, state: "sent" };
+        out = copy;
+        continue;
+      }
+
+      // 2) 동일 ID(또는 sender+createdAt)면 이미 존재 → 스킵
+      const already = out.some((m) => sameByIdentity(m, s));
+      if (!already) out.push(s);
+    }
+
+    out.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+    return out;
+  }
+
+  /* ========= 초기 메시지 로드 ========= */
+  const fetchMessages = async () => {
+    if (!roomId) return;
+    try {
+      const res = await fetch(`${API_PREFIX}/chat/room?id=${roomId}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = (data.result || []).map((m) => {
+        const text = safeText(m);
+        const mine = isMine(m);
+        return {
+          serverId: m.id ?? undefined,
+          id: m.id ?? undefined,
+          tempId: m.tempId ?? undefined,
+          sender: num(m.sender) ?? num(m.userId) ?? undefined,
+          message: text,
+          text,
+          createdAt: toISO(m.createdAt ?? m.timestamp),
+          from: mine ? "me" : "store",
+          name: mine ? "나" : "상대방",
+          state: "sent",
+        };
+      });
+      setMessages((prev) => reconcileWithServer(prev, list));
+    } catch {}
+  };
+
+  /* ========= STOMP 연결 ========= */
+  const connect = () => {
+    if (!roomId || subscribedRef.current) return;
+    const ws = new WebSocket(WS_URL);
+    const client = Stomp.over(ws);
+
+    client.heartbeat.outgoing = 0;
+    client.heartbeat.incoming = 0;
+    client.debug = (s) => console.log(s);
+
+    stompRef.current = client;
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    client.connect(
+      headers,
+      () => {
+        client.subscribe(`/sub/chatroom/${roomId}`, (frame) => {
           try {
-            const errorMsg = JSON.parse(err.body);
-            alert(`❌ 에러 발생: ${errorMsg.message}`);
-          } catch {
-            alert(`❌ 에러 발생: ${err.body}`);
+            const payload = JSON.parse(frame.body);
+            const text = safeText(payload);
+            const mine = isMine(payload);
+
+            const incoming = {
+              serverId: payload.id ?? undefined,
+              id: payload.id ?? undefined,
+              tempId: payload.tempId ?? undefined, // ★ 서버가 tempId를 에코해주면 1:1 매칭 가능
+              sender: num(payload.sender) ?? num(payload.userId) ?? undefined,
+              message: text,
+              text,
+              createdAt: toISO(payload.createdAt ?? payload.timestamp),
+              from: mine ? "me" : "store",
+              name: mine ? "나" : "상대방",
+              state: "sent",
+            };
+
+            setMessages((prev) => {
+              // 1) tempId/시간/텍스트 기반으로 pending 치환
+              const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, chatRoomUserId ?? globalUserId));
+              if (pIdx !== -1) {
+                const copy = [...prev];
+                copy[pIdx] = { ...copy[pIdx], ...incoming, state: "sent" };
+                return copy;
+              }
+
+              // 2) 동일 ID(또는 sender+createdAt)면 중복 스킵
+              const dup = prev.some((m) => sameByIdentity(m, incoming));
+              if (dup) return prev;
+
+              // 3) Fallback: 내 pending 중 '같은 텍스트'가 정확히 하나면 그걸 치환
+              const myId = chatRoomUserId ?? globalUserId;
+              const sameTextPendings = prev
+                .map((m, idx) => ({ m, idx }))
+                .filter(
+                  ({ m }) =>
+                    m.state === "pending" &&
+                    num(m.sender) === num(myId) &&
+                    normalizeText(m.text ?? m.message) === normalizeText(incoming.text ?? incoming.message)
+                );
+              if (sameTextPendings.length === 1) {
+                const copy = [...prev];
+                const { idx } = sameTextPendings[0];
+                copy[idx] = { ...copy[idx], ...incoming, state: "sent" };
+                return copy;
+              }
+
+              // 4) 매칭 실패 시 새로 추가
+              return [...prev, incoming];
+            });
+          } catch (e) {
+            console.error("메시지 파싱 오류:", e, frame.body);
           }
         });
+
+        client.subscribe(`/user/queue/errors`, (err) => {
+          try {
+            const p = JSON.parse(err.body);
+            alert(`❌ 에러: ${p.message ?? "알 수 없는 오류"}`);
+          } catch {
+            alert(`❌ 에러: ${err.body}`);
+          }
+        });
+
+        subscribedRef.current = true;
       },
-      onStompError: (frame) => {
-        console.error("❌ Broker error:", frame.headers["message"]);
-        console.error("Details:", frame.body);
-      },
-    });
-
-    client.activate();
-    clientRef.current = client;
-
-    // ✅ 기존 메시지 로드
-    axios
-      .get(`/hackathon/api/chat/room?id=${roomId}`)
-      .then((res) => {
-        const prevMsgs = res.data.result.map((m) => ({
-          from: m.sender === sender ? "me" : "store",
-          name: m.sender === sender ? "나" : "상대방",
-          text: m.message,
-          createdAt: m.createdAt,
-        }));
-        setMessages(prevMsgs);
-      })
-      .catch((e) => console.error("❌ 이전 메시지 로드 실패", e));
-
-    return () => {
-      if (clientRef.current) {
-        clientRef.current.deactivate();
-        console.log("❌ WebSocket Disconnected");
+      (err) => {
+        console.error("STOMP connect error:", err);
       }
-    };
-  }, [roomId, sender]);
+    );
+  };
 
-  // ✅ 메시지 보내기
+  const disconnect = () => {
+    try {
+      subscribedRef.current = false;
+      stompRef.current?.disconnect(() => console.log("WebSocket disconnected"));
+    } catch {}
+  };
+
+  /* ========= 마운트 ========= */
+  useEffect(() => {
+    if (!roomId || Number.isNaN(roomId)) return;
+    (async () => {
+      await loadChatRoomUserId();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, globalUserId]);
+
+  useEffect(() => {
+    if (!roomId || !chatRoomUserId) return;
+    connect();
+    (async () => {
+      await markEnter();
+      await fetchMessages();
+    })();
+    return () => disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, chatRoomUserId]);
+
+  /* ========= 전송 ========= */
   const sendMessage = () => {
-    if (!input.trim() || !clientRef.current?.connected) return;
-    const body = { roomId, message: input.trim(), sender };
+    const textRaw = input;
+    const text = normalizeText(textRaw);
+    if (!text) return;
 
-    clientRef.current.publish({
-      destination: `/pub/chatroom/${roomId}`,
-      body: JSON.stringify(body),
-    });
+    const sc = stompRef.current;
+    if (!sc) {
+      alert("연결 상태가 불안정해요. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+    if (!chatRoomUserId) {
+      alert("방 참여자 정보를 아직 못 찾았어요. 잠시 후 다시 시도해주세요.");
+      return;
+    }
 
+    const nowISO = new Date().toISOString();
+    const clientId = uuid();
+
+    // 낙관적 UI (pending)
     setMessages((prev) => [
       ...prev,
-      { from: "me", name: "나", text: input.trim() },
+      {
+        clientId,
+        sender: chatRoomUserId,
+        message: text,
+        text,
+        createdAt: nowISO,
+        from: "me",
+        name: "나",
+        state: "pending",
+      },
     ]);
+
+    // tempId/createdAt 함께 전송 (서버가 그대로 에코해주면 완벽 매칭)
+    sc.send(
+      "/pub/message",
+      {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "content-type": "application/json",
+      },
+      JSON.stringify({ roomId, message: text, sender: chatRoomUserId, tempId: clientId, createdAt: nowISO })
+    );
+
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    // 백업 재조회
+    setTimeout(fetchMessages, 1500);
+
+    // 7초 후 pending이면 failed 처리
+    setTimeout(() => {
+      setMessages((prev) => {
+        // 이미 동일 텍스트의 sent(내 메시지)가 있으면 실패표시 안 함
+        const hasSameSent = prev.some(
+          (m) => m.state === "sent" && m.from === "me" && normalizeText(m.text ?? m.message) === normalizeText(text)
+        );
+        if (hasSameSent) return prev;
+        return prev.map((m) => (m.clientId === clientId && m.state === "pending" ? { ...m, state: "failed" } : m));
+      });
+    }, 7000);
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      if (e.nativeEvent.isComposing) return;
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  // 입력창 자동 높이
+  /* ========= 입력창 자동 높이 ========= */
   useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    textarea.style.height = textarea.scrollHeight + "px";
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
   }, [input]);
 
-  // 항상 최신 메시지로 스크롤
+  /* ========= 최신 메시지로 스크롤 ========= */
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -134,32 +384,38 @@ export default function ChatRoom() {
           <img src={backIcon} alt="뒤로가기" />
         </button>
         <div className={styles.title}>채팅 문의</div>
-        <div style={{ width: "40px" }} />
+        <div style={{ width: 40 }} />
       </div>
 
       {/* 메시지 영역 */}
       <div className={styles.chatWindow}>
-        {messages.map((msg, i) =>
-          msg.from === "store" ? (
-            <div key={i} className={styles.messageRow}>
+        {messages.map((msg, i) => {
+          const key =
+            (msg.serverId ?? msg.id)
+              ? `sid-${msg.serverId ?? msg.id}`
+              : msg.clientId
+              ? `cid-${msg.clientId}`
+              : `at-${msg.createdAt}-${i}`;
+
+          return msg.from === "store" ? (
+            <div key={key} className={styles.messageRow}>
               <div className={styles.profile}></div>
               <div className={styles.messageContent}>
                 <div className={styles.senderName}>{msg.name || "상대방"}</div>
-                <div className={`${styles.bubble} ${styles.store}`}>
-                  {msg.text}
-                </div>
+                <div className={`${styles.bubble} ${styles.store}`}>{msg.text ?? msg.message}</div>
               </div>
             </div>
           ) : (
-            <div
-              key={i}
-              className={styles.messageRow}
-              style={{ justifyContent: "flex-end" }}
-            >
-              <div className={`${styles.bubble} ${styles.me}`}>{msg.text}</div>
+            <div key={key} className={styles.messageRow} style={{ justifyContent: "flex-end" }}>
+              <div className={`${styles.bubble} ${styles.me}`}>
+                {msg.text ?? msg.message}
+                {/* 전송중/실패 배지는 '텍스트'로 넣지 않음 → 말풍선 모서리에 고정 */}
+                {msg.state === "pending" && <i className={styles.pendingDot} aria-label="전송 중" />}
+                {msg.state === "failed" && <span title="전송 실패" className={styles.failedBadge}>!</span>}
+              </div>
             </div>
-          )
-        )}
+          );
+        })}
         <div ref={chatEndRef} />
       </div>
 
@@ -169,9 +425,15 @@ export default function ChatRoom() {
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder="메시지 보내기"
           rows={1}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              if (e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              sendMessage();
+            }
+          }}
         />
         <button onClick={sendMessage}>
           <img src={sendIcon} alt="보내기" />

@@ -9,228 +9,129 @@ import React, {
 import useKakaoLoader from '../../hooks/useKakaoLoader';
 import pin from '../../assets/map-pin.svg';
 
+/* 주소→좌표 지오코딩(세션 캐시) */
+const geocodeAddress = (() => {
+  const key = (addr) => `geo:${addr}`;
+  return (geocoder, address) =>
+    new Promise((resolve) => {
+      if (!address) return resolve(null);
+      const k = key(address);
+      const cached = sessionStorage.getItem(k);
+      if (cached) {
+        try { return resolve(JSON.parse(cached)); } catch {}
+      }
+      geocoder.addressSearch(address, (results, status) => {
+        if (status === kakao.maps.services.Status.OK && results?.[0]) {
+          const r = results[0];
+          // x=lng(경도), y=lat(위도)
+          resolve({ x: parseFloat(r.x), y: parseFloat(r.y) });
+        } else {
+          resolve(null);
+        }
+      });
+    });
+})();
+
+/**
+ * props:
+ *  - cafes: [{ cafeId, name, address, operatingHours, imageUrl, maxSeats, spaceType }]
+ *  - initialLevel?, initialCenter?
+ *  - onPlaceClick?: (cafeWithCoords) => void
+ *
+ * ref: kakao.maps.Map 반환 (부모에서 panTo 안 씀)
+ */
 const KakaoMap = forwardRef(function KakaoMap(
-  {
-    keyword,
-    initialLevel = 4,
-    initialCenter,
-    onPlacesFound,
-    onPlaceClick,
-    reSearchOnMove = true,
-    idleDebounceMs = 400,
-  },
+  { cafes = [], initialLevel = 4, initialCenter, onPlaceClick },
   ref
 ) {
   const ready = useKakaoLoader();
   const mapContainerRef = useRef(null);
   const [map, setMap] = useState(null);
 
-  const [markers, setMarkers] = useState([]);
-  const markersRef = useRef([]);
-  useEffect(() => {
-    markersRef.current = markers;
-  }, [markers]);
-
-  const clustererRef = useRef(null);
-  const idleTimerRef = useRef(null);
+  const cafeMarkersRef = useRef([]); // [{ cafe, marker, pos }]
+  const userMarkerRef = useRef(null);
 
   useImperativeHandle(ref, () => map, [map]);
 
+  /* 맵 초기화 (지도는 사용자 의도 유지: 자동 이동 X) */
   useEffect(() => {
     if (!ready || !mapContainerRef.current || map) return;
 
+    const center =
+      initialCenter?.lat && initialCenter?.lng
+        ? new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng)
+        : new kakao.maps.LatLng(37.5665, 126.9780); // 초기만 서울 시청
+
     const m = new kakao.maps.Map(mapContainerRef.current, {
-      center: new kakao.maps.LatLng(37.5665, 126.9780),
+      center,
       level: initialLevel,
     });
     setMap(m);
 
-    clustererRef.current = new kakao.maps.MarkerClusterer({
-      map: m,
-      averageCenter: true,
-      minLevel: 6,
-    });
-
+    // 현재 위치 핀(지도 이동 없음)
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          const locPosition = new kakao.maps.LatLng(latitude, longitude);
-          m.setCenter(locPosition);
-          new kakao.maps.Marker({
-            map: m,
-            position: locPosition,
-          });
+          const loc = new kakao.maps.LatLng(latitude, longitude);
+          userMarkerRef.current = new kakao.maps.Marker({ map: m, position: loc, zIndex: 3 });
         },
-        (err) => {
-          console.warn("위치 에러:", err);
-          alert("현재 위치를 불러올 수 없습니다.");
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
+        () => {},
+        { enableHighAccuracy: true, timeout: 4000 }
       );
     }
 
-    setTimeout(() => {
-      try {
-        m.relayout?.();
-      } catch {}
-    }, 0);
-
-    const onResize = () => {
-      try {
-        m.relayout?.();
-      } catch {}
-    };
+    // relayout 안전 처리
+    setTimeout(() => { try { m.relayout?.(); } catch {} }, 0);
+    const onResize = () => { try { m.relayout?.(); } catch {} };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [ready, initialLevel, map]);
+  }, [ready, initialLevel, initialCenter, map]);
 
-  const esc = (s) => (s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const makeNameRegex = (kw) => {
-    const k = esc((kw || '').trim());
-    if (!k) return null;
-    return new RegExp(`${k}(?!구)`, 'i');
-  };
-
-  const clearMarkers = () => {
-    markersRef.current.forEach(({ marker }) => marker.setMap(null));
-    clustererRef.current?.clear();
-    setMarkers([]);
-  };
-
-  const searchCafesInBounds = (bounds) => {
-    const places = new kakao.maps.services.Places();
-    const collected = [];
-    const nextMarkers = [];
-    const resultBounds = new kakao.maps.LatLngBounds();
-
-    const markerImage = new kakao.maps.MarkerImage(
-      pin,
-      new kakao.maps.Size(36, 44),
-      { offset: new kakao.maps.Point(18, 44) }
-    );
-
-    const handle = (data, status, pagination) => {
-      if (status === kakao.maps.services.Status.OK) {
-        data.forEach((p) => {
-          const pos = new kakao.maps.LatLng(+p.y, +p.x);
-          if (bounds.contain(pos)) {
-            collected.push(p);
-          }
-        });
-        if (pagination?.hasNextPage) {
-          pagination.nextPage();
-          return;
-        }
-      }
-
-      if (!collected.length) {
-        clearMarkers();
-        onPlacesFound?.([]);
-        return;
-      }
-
-      collected.forEach((place) => {
-        const pos = new kakao.maps.LatLng(+place.y, +place.x);
-        const marker = new kakao.maps.Marker({ position: pos, image: markerImage });
-        kakao.maps.event.addListener(marker, 'click', () => onPlaceClick?.(place));
-        nextMarkers.push({ place, marker });
-        resultBounds.extend(pos);
-      });
-
-      clustererRef.current?.addMarkers(nextMarkers.map((m) => m.marker));
-      setMarkers(nextMarkers);
-      onPlacesFound?.(collected);
-    };
-
-    places.categorySearch('CE7', handle, { bounds });
-  };
-
-  const runBoundedSearch = useRef(null);
-  runBoundedSearch.current = () => {
+  /* 리스트(cafes)만 마커 표시 — 자동 이동/확대 없음 */
+  useEffect(() => {
     if (!map) return;
 
-    const qRaw = (keyword || '').trim();
-    const bounds = map.getBounds();
+    // 기존 마커 제거
+    cafeMarkersRef.current.forEach(({ marker }) => marker.setMap(null));
+    cafeMarkersRef.current = [];
 
-    if (!qRaw) {
-      clearMarkers();
-      searchCafesInBounds(bounds);
-      return;
-    }
-    const nameRx = makeNameRegex(qRaw);
+    if (!cafes.length) return;
 
-    clearMarkers();
-
-    const places = new kakao.maps.services.Places();
-    const collected = [];
-    const nextMarkers = [];
-    const resultBounds = new kakao.maps.LatLngBounds();
-
+    const geocoder = new kakao.maps.services.Geocoder();
     const markerImage = new kakao.maps.MarkerImage(
-      pin,
-      new kakao.maps.Size(36, 44),
-      { offset: new kakao.maps.Point(18, 44) }
+      pin, new kakao.maps.Size(36, 44), { offset: new kakao.maps.Point(18, 44) }
     );
 
-    const passStrict = (p) => {
-      if (!nameRx) return true;
-      const name = p.place_name || '';
-      return nameRx.test(name);
-    };
+    let cancelled = false;
 
-    const finalize = () => {
-      if (!collected.length) {
-        clearMarkers();
-        onPlacesFound?.([]);
-        return;
-      }
+    (async () => {
+      const results = await Promise.all(
+        cafes.map(async (cafe) => {
+          const coords = await geocodeAddress(geocoder, cafe.address);
+          if (!coords) return null;
+          const lat = Number(coords.y); // 위도
+          const lng = Number(coords.x); // 경도
+          const pos = new kakao.maps.LatLng(lat, lng);
+          return { cafe, coords: { lat, lng }, pos };
+        })
+      );
 
-      collected.forEach((place) => {
-        const pos = new kakao.maps.LatLng(+place.y, +place.x);
-        const marker = new kakao.maps.Marker({ position: pos, image: markerImage });
-        kakao.maps.event.addListener(marker, 'click', () => onPlaceClick?.(place));
-        nextMarkers.push({ place, marker });
-        resultBounds.extend(pos);
-      });
+      if (cancelled) return;
 
-      clustererRef.current?.addMarkers(nextMarkers.map((m) => m.marker));
-      setMarkers(nextMarkers);
-      onPlacesFound?.(collected);
-    };
-
-    const handle = (data, status, pagination) => {
-      if (status === kakao.maps.services.Status.OK) {
-        data.forEach((p) => {
-          const latlng = new kakao.maps.LatLng(+p.y, +p.x);
-          if (bounds.contain(latlng) && passStrict(p)) {
-            collected.push(p);
-          }
+      const valid = results.filter(Boolean);
+      valid.forEach(({ cafe, coords, pos }) => {
+        const marker = new kakao.maps.Marker({ position: pos, image: markerImage, map });
+        // ✅ 마커 클릭 → 상위에만 알려주고 지도는 그대로 둠
+        kakao.maps.event.addListener(marker, 'click', () => {
+          onPlaceClick?.({ ...cafe, latitude: coords.lat, longitude: coords.lng });
         });
-        if (pagination?.hasNextPage) {
-          pagination.nextPage();
-          return;
-        }
-      }
-      finalize();
-    };
+        cafeMarkersRef.current.push({ cafe, marker, pos });
+      });
+    })();
 
-    places.keywordSearch(qRaw, handle, { bounds });
-  };
-
-  useEffect(() => {
-    if (map) runBoundedSearch.current?.();
-  }, [map, keyword]);
-
-  useEffect(() => {
-    if (!map || !reSearchOnMove) return;
-    const onIdle = () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      idleTimerRef.current = setTimeout(() => runBoundedSearch.current?.(), idleDebounceMs);
-    };
-    kakao.maps.event.addListener(map, 'idle', onIdle);
-    return () => kakao.maps.event.removeListener(map, 'idle', onIdle);
-  }, [map, keyword, reSearchOnMove, idleDebounceMs]);
+    return () => { cancelled = true; };
+  }, [map, cafes, onPlaceClick]);
 
   return (
     <div
