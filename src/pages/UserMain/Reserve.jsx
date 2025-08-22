@@ -1,3 +1,4 @@
+// src/pages/Reserve/Reserve.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import styles from "./Reserve.module.css";
@@ -16,8 +17,7 @@ const CalendarIcon = () => (
 );
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-
-const TIME_STEP = 30; 
+const TIME_STEP = 30;
 const timeSlots = Array.from({ length: (24 * 60) / TIME_STEP }, (_, i) => {
   const m = i * TIME_STEP;
   const hh = String(Math.floor(m / 60)).padStart(2, "0");
@@ -26,17 +26,10 @@ const timeSlots = Array.from({ length: (24 * 60) / TIME_STEP }, (_, i) => {
 });
 
 const defaultCafe = {
+  id: null,
   name: "풍치커피익스프레스공릉점",
   addr: "서울 노원구 동일로176길 19-20",
-  photos: [
-    "https://picsum.photos/seed/meeting1/1200/900",
-    "https://picsum.photos/seed/meeting2/1200/900",
-    "https://picsum.photos/seed/meeting3/1200/900",
-    "https://picsum.photos/seed/meeting4/1200/900",
-    "https://picsum.photos/seed/meeting5/1200/900",
-    "https://picsum.photos/seed/meeting6/1200/900",
-    "https://picsum.photos/seed/meeting7/1200/900",
-  ],
+  photos: [], // ✅ 기본 사진 제거(없으면 검정 화면만)
   hours: {
     weekly: [
       ["월", "12:00 - 18:00"],
@@ -102,13 +95,8 @@ function getRowSegment(fromMin, toMin, rowStartH, rowEndH) {
 
 function buildWeeklyFromOperating(op) {
   const dayMap = [
-    ["월", "mon"],
-    ["화", "tue"],
-    ["수", "wed"],
-    ["목", "thu"],
-    ["금", "fri"],
-    ["토", "sat"],
-    ["일", "sun"],
+    ["월", "mon"], ["화", "tue"], ["수", "wed"],
+    ["목", "thu"], ["금", "fri"], ["토", "sat"], ["일", "sun"],
   ];
   const toHHMM = (v) => {
     if (!v) return null;
@@ -127,7 +115,7 @@ function buildWeeklyFromOperating(op) {
 
   if (!op || typeof op !== "object") return defaultCafe.hours.weekly;
 
-  const weekly = dayMap.map(([label, key]) => {
+  return dayMap.map(([label, key]) => {
     const isOpen = Boolean(op[`${key}IsOpen`]);
     if (!isOpen) return [label, "휴무일"];
     const open = toHHMM(op[`${key}Open`]);
@@ -135,24 +123,33 @@ function buildWeeklyFromOperating(op) {
     if (!open || !close) return [label, "휴무일"];
     return [label, `${open} - ${close}`];
   });
-
-  return weekly;
 }
 
+const IS_DEV = process.env.NODE_ENV === "development";
+const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "";
+const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+/** ✅ 카페 API → UI용 cafe 객체 변환 (images만 사용, id 포함) */
 function toUiCafe(api) {
   const photos =
-    Array.isArray(api?.imageUrls) && api.imageUrls.length
-      ? api.imageUrls
-      : defaultCafe.photos;
+    Array.isArray(api?.images) && api.images.length
+      ? api.images
+          .map((img) => {
+            const url = typeof img === "string" ? img : img?.url;
+            if (!url) return null;
+            return url.startsWith("http") ? url : `${API_HOST}${url}`;
+          })
+          .filter(Boolean)
+      : []; // ✅ 없으면 빈 배열(=검정 화면)
 
-  const storeUserId =
-    api?.storeUserId ?? api?.ownerUserId ?? api?.ownerId ?? null;
+  const storeUserId = api?.storeUserId ?? api?.ownerUserId ?? api?.ownerId ?? null;
 
   return {
+    id: api?.id ?? null, // ✅ cafe id 포함
     name: api?.name ?? defaultCafe.name,
     addr: api?.location ?? defaultCafe.addr,
     photos,
-    hours: { weekly: defaultCafe.hours.weekly }, 
+    hours: { weekly: defaultCafe.hours.weekly }, // 별도 요청으로 갱신
     ppl: Number(api?.maxSeats) > 0 ? Number(api.maxSeats) : defaultCafe.ppl,
     minOrder: api?.minOrder || defaultCafe.minOrder,
     spaceType: api?.spaceType || defaultCafe.spaceType,
@@ -160,10 +157,6 @@ function toUiCafe(api) {
     storeUserId,
   };
 }
-
-const IS_DEV = process.env.NODE_ENV === "development";
-const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "";
-const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 export default function Reserve() {
   const navigate = useNavigate();
@@ -201,9 +194,11 @@ export default function Reserve() {
         if (!resInfo.ok) throw new Error(`HTTP ${resInfo.status}`);
         const info = await resInfo.json();
         if (aborted) return;
+
         const ui = toUiCafe(info);
         setCafe(ui);
 
+        // 운영시간 추가 로드
         try {
           const resOp = await fetch(`${API_PREFIX}/cafe/${resolvedCafeId}/operating`, {
             method: "GET",
@@ -233,12 +228,14 @@ export default function Reserve() {
     return () => { aborted = true; };
   }, [resolvedCafeId]);
 
-  const photos = Array.isArray(cafe.photos) && cafe.photos.length ? cafe.photos : [defaultCafe.photos[0]];
+  /** ===== 사진 캐러셀 ===== */
+  const photos = Array.isArray(cafe.photos) && cafe.photos.length ? cafe.photos : [];
   const [idx, setIdx] = useState(0);
   const totalSlides = photos.length;
   const goTo = (i) => setIdx(Math.max(0, Math.min(i, totalSlides - 1)));
   const prevSlide = () => goTo(idx - 1);
   const nextSlide = () => goTo(idx + 1);
+
   const dragRef = useRef({ down: false, x: 0, startIdx: 0 });
   const onPointerDown = (e) => {
     const x = e.touches ? e.touches[0].clientX : e.clientX;
@@ -255,6 +252,7 @@ export default function Reserve() {
   };
   const onPointerUp = () => { dragRef.current.down = false; };
 
+  /** ===== 탭 & 잉크바 ===== */
   const [activeTab, setActiveTab] = useState("detail");
   const tabsRef = useRef(null);
   const inkRef = useRef(null);
@@ -289,6 +287,7 @@ export default function Reserve() {
       obs.disconnect();
       window.removeEventListener("resize", onResize);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const scrollToSection = (ref, tabName) => {
@@ -298,6 +297,7 @@ export default function Reserve() {
     requestAnimationFrame(() => moveInk(tabName));
   };
 
+  /** ===== 예약 폼 상태 ===== */
   const [type, setType] = useState("프로젝트 회의");
   const [date, setDate] = useState(() => {
     const d = new Date();
@@ -313,6 +313,7 @@ export default function Reserve() {
     setHeadcount((h) => Math.min(Math.max(1, h), maxHeadcount));
   }, [maxHeadcount]);
 
+  /** ===== 운영 시간 계산 ===== */
   const weekly = cafe.hours?.weekly ?? defaultCafe.hours.weekly;
 
   const dayEntry = useMemo(() => getEntryForDate(weekly, date), [weekly, date]);
@@ -366,6 +367,7 @@ export default function Reserve() {
     return () => clearInterval(timer);
   }, [todayRange]);
 
+  /** ===== 시간 선택 유효성 ===== */
   const isStartEnabled = (hhmm) => {
     if (!openRange) return false;
     const t = hhmmToMin(hhmm);
@@ -399,13 +401,15 @@ export default function Reserve() {
     return newEnd;
   };
 
+  /** ===== 요금 계산(예시) ===== */
   const price = useMemo(() => {
     const s = hhmmToMin(start);
     const e = hhmmToMin(end);
     const hours = Math.max(0, (e - s) / 60);
-    return Math.round(hours * 6000); 
+    return Math.round(hours * 6000);
   }, [start, end]);
 
+  /** ===== 타임라인 표시 ===== */
   const selStartMin = hhmmToMin(start);
   const selEndMin = hhmmToMin(end);
   const morningSelected = getRowSegment(selStartMin, selEndMin, 0, 12);
@@ -417,6 +421,7 @@ export default function Reserve() {
   const afternoonUnA = getRowSegment(0, openRange ? openRange.s : FULL_DAY_END, 12, 24);
   const afternoonUnB = openRange ? getRowSegment(openRange.e, FULL_DAY_END, 12, 24) : { show: false, left: 0, width: 0 };
 
+  /** ===== 유저 ID ===== */
   const getUserId = () => {
     const a = window.localStorage.getItem("user_id");
     const b = window.localStorage.getItem("userId");
@@ -425,14 +430,27 @@ export default function Reserve() {
     return parsedA ?? parsedB ?? null;
   };
 
+  /** ===== 채팅방 생성 ===== */
   const [creatingChat, setCreatingChat] = useState(false);
 
-  async function tryFindExistingRoom(userId, storeUserId) {
+  async function tryFindExistingRoom(userId, storeUserId, cafeId) {
+    const headers = { accept: "*/*" };
     try {
+      if (cafeId) {
+        const urlWithCafe = `${API_PREFIX}/chat/room/find?userId=${encodeURIComponent(
+          userId
+        )}&storeUserId=${encodeURIComponent(storeUserId)}&cafeId=${encodeURIComponent(cafeId)}`;
+        const res1 = await fetch(urlWithCafe, { method: "GET", headers });
+        if (res1.ok) {
+          const data1 = await res1.json();
+          const roomId1 = data1?.result?.roomId ?? data1?.roomId ?? null;
+          if (roomId1) return roomId1;
+        }
+      }
       const url = `${API_PREFIX}/chat/room/find?userId=${encodeURIComponent(
         userId
       )}&storeUserId=${encodeURIComponent(storeUserId)}`;
-      const res = await fetch(url, { method: "GET", headers: { accept: "*/*" } });
+      const res = await fetch(url, { method: "GET", headers });
       if (!res.ok) return null;
       const data = await res.json();
       const roomId = data?.result?.roomId ?? data?.roomId ?? null;
@@ -445,65 +463,82 @@ export default function Reserve() {
   const handleCreateChat = async () => {
     const userId = getUserId();
     const storeUserId = cafe.storeUserId ?? null;
+    const cafeId = resolvedCafeId ?? cafe.id ?? null;
 
-    if (!userId) {
-      alert("로그인이 필요해요. (user_id를 찾을 수 없음)");
-      return;
-    }
-    if (!storeUserId) {
-      alert("판매자 정보를 찾을 수 없어요. (storeUserId 없음)");
-      return;
-    }
+    if (!userId) return alert("로그인이 필요해요. (user_id를 찾을 수 없음)");
+    if (!storeUserId) return alert("판매자 정보를 찾을 수 없어요. (storeUserId 없음)");
+    if (!cafeId) return alert("유효한 카페 ID가 없어요. (cafeId 없음)");
     if (creatingChat) return;
 
     setCreatingChat(true);
     try {
       const res = await fetch(`${API_PREFIX}/chat/room/create`, {
         method: "POST",
-        headers: {
-          accept: "*/*",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, storeUserId }),
+        headers: { accept: "*/*", "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, storeUserId, cafeId }), // ✅ cafeId 함께 전송
       });
 
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
 
-      if (res.ok && (data?.result?.roomId ?? data?.roomId)) {
-        const roomId = data.result?.roomId ?? data.roomId;
-        navigate(`/chat/room/${roomId}`);
+      const ok = res.ok && data?.isSuccess === true && data?.result?.roomId;
+      if (ok) {
+        navigate(`/chat/room/${data.result.roomId}`);
         return;
       }
 
-      if (!res.ok && (data?.code === "CHAT-ROOM409" || res.status === 409)) {
+      if (data?.code === "USER404") {
+        alert("유저 정보를 찾지 못했어요. 다시 로그인해 주세요.");
+        return;
+      }
+      if (data?.code === "CHAT-ROOM409") {
         const resRoomId = data?.result?.roomId ?? data?.roomId ?? null;
         if (resRoomId) {
           navigate(`/chat/room/${resRoomId}`);
           return;
         }
-        const found = await tryFindExistingRoom(userId, storeUserId);
+        const found = await tryFindExistingRoom(userId, storeUserId, cafeId);
         if (found) {
           navigate(`/chat/room/${found}`);
           return;
         }
-        navigate(`/chat`);
+        alert("이미 개설된 채팅방이 있어요. 채팅 목록에서 확인해주세요.");
+        navigate("/chat");
         return;
       }
 
-      throw new Error(`채팅방 생성 실패 (HTTP ${res.status})`);
-    } catch (err) {
-      console.error("채팅방 생성 실패:", err);
+      const looksLikeDuplicate500 =
+        res.status === 500 &&
+        /Duplicate entry/i.test(String(data?.result ?? data?.message ?? text ?? ""));
+      if (looksLikeDuplicate500) {
+        const found = await tryFindExistingRoom(userId, storeUserId, cafeId);
+        if (found) {
+          navigate(`/chat/room/${found}`);
+          return;
+        }
+        alert("이미 개설된 채팅방이 있어요. 채팅 목록에서 확인해주세요.");
+        navigate("/chat");
+        return;
+      }
+
+      console.error("채팅방 생성 실패:", res.status, data);
+      alert(`채팅방 생성 실패 (HTTP ${res.status})`);
+    } catch (e) {
+      console.error("채팅방 생성 예외:", e);
       alert("채팅방을 생성하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setCreatingChat(false);
     }
   };
 
+  /** ===== 예약 생성 ===== */
   const [creatingReservation, setCreatingReservation] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!resolvedCafeId) {
+    const cafeId = resolvedCafeId ?? cafe.id;
+    if (!cafeId) {
       alert("유효한 카페 ID가 없습니다.");
       return;
     }
@@ -525,12 +560,12 @@ export default function Reserve() {
 
     const payload = {
       userId,
-      cafeId: resolvedCafeId,
+      cafeId, // ✅ cafe id 포함 보장
       meetingType: type,
       date, // "YYYY-MM-DD"
       peopleCount: headcount,
-      startTime: hhmmToHHMMSS(start), 
-      endTime: hhmmToHHMMSS(end),    
+      startTime: hhmmToHHMMSS(start),
+      endTime: hhmmToHHMMSS(end),
     };
 
     if (creatingReservation) return;
@@ -550,7 +585,7 @@ export default function Reserve() {
         console.error("예약 생성 실패:", res.status, errJson);
         alert(`예약을 생성하지 못했어요. (HTTP ${res.status})`);
         return;
-        }
+      }
 
       const data = await res.json();
       const rid =
@@ -595,55 +630,60 @@ export default function Reserve() {
         </div>
 
         <div className={styles.photoCarousel}>
-          {totalSlides > 0 && (
-            <div className={styles.badge}>{idx + 1}/{totalSlides}</div>
-          )}
-
-          {totalSlides > 1 && (
+          {totalSlides > 0 ? (
             <>
-              <button
-                type="button"
-                className={`${styles.navBtn} ${styles.navLeft}`}
-                onClick={prevSlide}
-                disabled={idx === 0}
-                aria-label="이전 사진"
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M15 6l-6 6 6 6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
+              <div className={styles.badge}>{idx + 1}/{totalSlides}</div>
 
-              <button
-                type="button"
-                className={`${styles.navBtn} ${styles.navRight}`}
-                onClick={nextSlide}
-                disabled={idx === totalSlides - 1}
-                aria-label="다음 사진"
-              >
-                <svg viewBox="0 0 24 24">
-                  <path d="M9 6l6 6-6 6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </>
-          )}
+              {totalSlides > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.navBtn} ${styles.navLeft}`}
+                    onClick={prevSlide}
+                    disabled={idx === 0}
+                    aria-label="이전 사진"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M15 6l-6 6 6 6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
 
-          <div
-            className={styles.slides}
-            style={{ transform: `translateX(-${idx * 100}%)` }}
-            onMouseDown={onPointerDown}
-            onMouseMove={onPointerMove}
-            onMouseUp={onPointerUp}
-            onMouseLeave={onPointerUp}
-            onTouchStart={onPointerDown}
-            onTouchMove={onPointerMove}
-            onTouchEnd={onPointerUp}
-          >
-            {photos.map((src, i) => (
-              <div className={styles.photoSlide} key={`${src}-${i}`}>
-                <img className={styles.photo} src={src} alt={`${cafe.name} 사진 ${i + 1}`} />
+                  <button
+                    type="button"
+                    className={`${styles.navBtn} ${styles.navRight}`}
+                    onClick={nextSlide}
+                    disabled={idx === totalSlides - 1}
+                    aria-label="다음 사진"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M9 6l6 6-6 6" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              <div
+                className={styles.slides}
+                style={{ transform: `translateX(-${idx * 100}%)` }}
+                onMouseDown={onPointerDown}
+                onMouseMove={onPointerMove}
+                onMouseUp={onPointerUp}
+                onMouseLeave={onPointerUp}
+                onTouchStart={onPointerDown}
+                onTouchMove={onPointerMove}
+                onTouchEnd={onPointerUp}
+              >
+                {photos.map((src, i) => (
+                  <div className={styles.photoSlide} key={`${src}-${i}`}>
+                    <img className={styles.photo} src={src} alt={`${cafe.name} 사진 ${i + 1}`} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            // ✅ 사진이 하나도 없으면 검정 배경만
+            <div className={styles.photoSlide} />
+          )}
         </div>
       </div>
 

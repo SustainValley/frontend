@@ -296,18 +296,20 @@ export default function MapExplore() {
   };
 
   /* ====== 리스트/핀을 위한 데이터 구성 ====== */
-  const decorateCafe = (c, i) => ({
-    id: String(c.cafeId ?? i),
-    cafeId: c.cafeId,
-    name: c.name || '이름없는 카페',
-    addr: c.address || '주소 준비중',
-    thumb: c.imageUrl
-      ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
-      : `https://picsum.photos/seed/cafe${(c.cafeId ?? i) + 7}/300/300`,
-    hours: c.operatingHours || '영업시간 등록 전 입니다',
-    spaceType: c.spaceType || '',
-    ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
-  });
+ // === decorateCafe 함수 수정 ===
+const decorateCafe = (c, i) => ({
+  id: String(c.cafeId ?? i),
+  cafeId: c.cafeId,
+  name: c.name || '이름없는 카페',
+  addr: c.address || '주소 준비중',
+  thumb: c.imageUrl
+    ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
+    : null, // ✅ 이미지 없으면 null
+  hours: c.operatingHours || '영업시간 등록 전 입니다',
+  spaceType: c.spaceType || '',
+  ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
+});
+
   const shortSpace = (s = '') => s.split('(')[0].trim();
 
   const rawList = cafes.map(decorateCafe);
