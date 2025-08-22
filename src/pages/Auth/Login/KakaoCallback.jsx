@@ -2,13 +2,15 @@
 import React, { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { setTokens } from "../../../lib/axios";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function KakaoCallback() {
   const navigate = useNavigate();
+  const { refreshNow } = useAuth();        // ✅ 컨텍스트 갱신용
   const onceRef = useRef(false);
 
   useEffect(() => {
-    if (onceRef.current) return;        // React StrictMode 등 이중 마운트 1차 차단
+    if (onceRef.current) return;
     onceRef.current = true;
 
     const run = async () => {
@@ -23,11 +25,7 @@ export default function KakaoCallback() {
 
       const LOCK_KEY = `kakao_code_lock_${code}`;
       const DONE_KEY = `kakao_code_done_${code}`;
-
-      // 이미 이 code 처리 완료면 아무 것도 하지 않음 (뒤로가기/새로고침 대비)
       if (sessionStorage.getItem(DONE_KEY) === "1") return;
-
-      // 처리중이면 재진입 차단
       if (sessionStorage.getItem(LOCK_KEY)) return;
       sessionStorage.setItem(LOCK_KEY, "1");
 
@@ -37,7 +35,7 @@ export default function KakaoCallback() {
         const { accessToken, refreshToken, userId, type, cafeId } = payload || {};
         if (!accessToken || !refreshToken) throw new Error("토큰이 응답에 없습니다.");
 
-        // 토큰/유저 저장
+        // 1) 로컬 저장 + axios 세팅
         localStorage.setItem("access_token", accessToken);
         localStorage.setItem("refresh_token", refreshToken);
         if (userId != null) localStorage.setItem("user_id", String(userId));
@@ -45,28 +43,22 @@ export default function KakaoCallback() {
         if (cafeId != null) localStorage.setItem("cafe_id", String(cafeId));
         setTokens({ accessToken, refreshToken, userId, type, cafeId });
 
-        // URL의 ?code 제거 (뒤로가기 시 재호출 방지)
-        window.history.replaceState({}, document.title, url.pathname);
+        // 2) 🔥 컨텍스트 즉시 갱신 (isAuthenticated/role 업데이트)
+        await refreshNow();
 
-        // ✅ 성공 처리 완료 마킹
+        // 3) URL 정리 + 완료 마킹 + 이동
+        window.history.replaceState({}, document.title, url.pathname);
         sessionStorage.setItem(DONE_KEY, "1");
 
-        // 홈으로 이동 (이후 동일 code로 재요청이 와도 아무 것도 안 함)
-        navigate("/user/home", { replace: true });
+        const dest = type === "COR" ? "/owner/home" : "/user/home";
+        navigate(dest, { replace: true });
       } catch (err) {
         console.error("카카오 로그인 실패:", err?.response?.data || err);
-
-        // ⚠ 이미 성공 처리(DONE_KEY) 되어 있으면 에러 무시하고 끝낸다. (두 번째 실패가 성공을 덮지 않게)
-        if (sessionStorage.getItem(DONE_KEY) === "1") return;
-
-        // 실패한 경우에만 락 해제 (다시 시도 가능)
+        if (sessionStorage.getItem(DONE_KEY) === "1") return; // 이미 성공했으면 에러 무시
         sessionStorage.removeItem(LOCK_KEY);
-
         alert(
           `카카오 로그인 실패: ${
-            err?.response?.data?.message ||
-            err?.message ||
-            "알 수 없는 오류"
+            err?.response?.data?.message || err?.message || "알 수 없는 오류"
           }`
         );
         navigate("/login", { replace: true });
@@ -74,7 +66,7 @@ export default function KakaoCallback() {
     };
 
     run();
-  }, [navigate]);
+  }, [navigate, refreshNow]);
 
   return <div>카카오 로그인 처리 중...</div>;
 }
