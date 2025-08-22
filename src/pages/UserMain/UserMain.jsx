@@ -296,19 +296,19 @@ export default function MapExplore() {
   };
 
   /* ====== 리스트/핀을 위한 데이터 구성 ====== */
- // === decorateCafe 함수 수정 ===
-const decorateCafe = (c, i) => ({
-  id: String(c.cafeId ?? i),
-  cafeId: c.cafeId,
-  name: c.name || '이름없는 카페',
-  addr: c.address || '주소 준비중',
-  thumb: c.imageUrl
-    ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
-    : null, // ✅ 이미지 없으면 null
-  hours: c.operatingHours || '영업시간 등록 전 입니다',
-  spaceType: c.spaceType || '',
-  ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
-});
+  // === decorateCafe 함수 수정 ===
+  const decorateCafe = (c, i) => ({
+    id: String(c.cafeId ?? i),
+    cafeId: c.cafeId,
+    name: c.name || '이름없는 카페',
+    addr: c.address || '주소 준비중',
+    thumb: c.imageUrl
+      ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
+      : null, // ✅ 이미지 없으면 null
+    hours: c.operatingHours || '영업시간 등록 전 입니다',
+    spaceType: c.spaceType || '',
+    ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
+  });
 
   const shortSpace = (s = '') => s.split('(')[0].trim();
 
@@ -391,21 +391,42 @@ const decorateCafe = (c, i) => ({
   };
 
   /* ====== 취소 API 호출 ====== */
-  const reasonToCode = (text) => {
-    // 서버 enum 가정치. 모르면 OTHER 로 보냄
-    if (!text) return 'OTHER';
-    const map = [
+  // 전송 스펙: PATCH /reservation/delete/{reservationId}?userId={userId}
+  // Body: { "cancelReason": "<ENUM>" }
+  // ENUM 전체:
+  // CLOSED_TIME, OUT_OF_BUSINESS, CROWDED, EQUIPMENT_UNAVAILABLE, MAINTENANCE, PEAK_LIMIT,
+  // NO_SHOW, SCHEDULE_CHANGE, PERSONAL_REASON, TIME_MISTAKE, LOCATION_CHANGE,
+  // LACK_OF_ATTENDEES, BUDGET_ISSUE, DUPLICATE
+  const reasonToCode = (text = '') => {
+    const t = String(text).trim();
+
+    // 사용자 노출 문구 ↔ 서버 ENUM (우선순위: 사용자 사유)
+    const pairs = [
       ['일정 변경', 'SCHEDULE_CHANGE'],
       ['개인 사정', 'PERSONAL_REASON'],
-      ['시간 착오', 'WRONG_TIME'],
+      ['예약 시간 착오', 'TIME_MISTAKE'],
+      ['시간 착오', 'TIME_MISTAKE'],
       ['장소 변경', 'LOCATION_CHANGE'],
-      ['인원 부족', 'NOT_ENOUGH_PEOPLE'],
+      ['참석 인원 부족', 'LACK_OF_ATTENDEES'],
+      ['인원 부족', 'LACK_OF_ATTENDEES'],
       ['비용', 'BUDGET_ISSUE'],
+      ['예산', 'BUDGET_ISSUE'],
       ['중복 예약', 'DUPLICATE'],
-      ['영업시간', 'CLOSED_TIME'],
+      ['중복', 'DUPLICATE'],
+
+      // 점주/시스템 사유(필요 시 매칭)
+      ['해당 시간대 예약 마감', 'CLOSED_TIME'],
+      ['영업시간 외', 'OUT_OF_BUSINESS'],
+      ['매장 혼잡', 'CROWDED'],
+      ['요청 장비', 'EQUIPMENT_UNAVAILABLE'],
+      ['시설 점검', 'MAINTENANCE'],
+      ['피크타임', 'PEAK_LIMIT'],
+      ['노쇼', 'NO_SHOW'],
     ];
-    const found = map.find(([k]) => text.includes(k));
-    return found ? found[1] : 'OTHER';
+
+    const hit = pairs.find(([key]) => t.includes(key));
+    // 서버 목록에 OTHER 없음 → 안전 폴백: PERSONAL_REASON
+    return hit ? hit[1] : 'PERSONAL_REASON';
   };
 
   const cancelReservation = async ({ reservationId, userId, reasonText }) => {
@@ -790,6 +811,7 @@ const decorateCafe = (c, i) => ({
         </div>
       )}
 
+      {/* ====== 취소 완료 모달 ====== */}
       {showResultModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.cancelModal}>

@@ -131,8 +131,8 @@ const OwnerReservationList = () => {
 
     return {
       id: it.reservationsId, 
-      name: it.userName ?? "고객",
-      phone: "",
+      name: it.nickname ?? it.userName ?? "고객",
+      phone: it.phoneNumber ?? "",
       people: it.peopleCount,
       date,
       time: timeText,

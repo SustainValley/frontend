@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OwnerAnalysis.module.css";
 
@@ -24,8 +24,32 @@ const hourlyFailData = [
   { time: "22-01", value: 2 },
 ];
 
+// MeetingType 매핑
+const meetingTypeMap = {
+  PROJECT: "프로젝트 회의",
+  STUDY: "과제/스터디",
+  MEETING: "외부 미팅",
+  INTERVIEW: "면담/인터뷰",
+  NETWORKING: "네트워킹",
+  ETC: "기타",
+};
+
 const OwnerAnalysis = () => {
   const navigate = useNavigate();
+
+  const [promotion, setPromotion] = useState(null);
+
+  useEffect(() => {
+    const cafeId = 7; // TODO: localStorage나 context에서 cafe_id 가져오면 교체
+    fetch(
+      `https://port-0-analysis-api-mar0zdvm42447885.sel4.cloudtype.app/promotion/${cafeId}`
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        setPromotion(data);
+      })
+      .catch((err) => console.error("프로모션 데이터 불러오기 실패:", err));
+  }, []);
 
   const maxVal = Math.max(...hourlyFailData.map((d) => d.value));
   const chartWidth = 290;
@@ -53,30 +77,40 @@ const OwnerAnalysis = () => {
       </div>
 
       <div className={styles.scrollArea}>
+        {/* ===== 상권 상태 & 프로모션 ===== */}
         <div className={styles.section}>
           <p className={styles.subtitle}>현재 공릉동은..</p>
           <div className={styles.highlightCard}>
             <p className={styles.highlightTitle}>
-              상권 비활성화 시간이에요. <br /> 고객 유치에 힘써보세요!
+              {promotion
+                ? `상권 ${promotion.commercial_status}인 시간이에요.`
+                : "상권 정보를 불러오는 중이에요..."}
+              <br /> 고객 유치에 힘써보세요!
             </p>
-            <p className={styles.time}>수 17:00~20:00</p>
+            {promotion && (
+              <p className={styles.time}>
+                {promotion.dayOfWeek} {promotion.timeSlot}
+              </p>
+            )}
 
-            <div className={styles.promoCard}>
-            <div className={styles.promoHeader}>프로모션 추천</div>
-            <p className={styles.promoText}>
-                예약 목적 중 과제/스터디 비중이 30% 이상이에요! <br />
-                대학생 이벤트로{" "}
-                <span className={styles.blue}>
-                3시간 이상 이용 시 아메리카노 증정
-                </span>{" "}
-                이벤트는 어떤가요?
-            </p>
-            </div>
+            {promotion && (
+              <div className={styles.promoCard}>
+                <div className={styles.promoHeader}>프로모션 추천</div>
+                <p className={styles.promoText}>
+                  예약 목적 중{" "}
+                  {meetingTypeMap[promotion.main_purpose] ??
+                    promotion.main_purpose}{" "}
+                  비중이 {promotion.percent} 이에요! <br />
+                  {promotion.rec_promotion}
+                </p>
+              </div>
+            )}
 
             <button className={styles.promoBtn}>프로모션 입력하기</button>
           </div>
         </div>
 
+        {/* ===== 예약 실패 분석 ===== */}
         <div className={styles.section}>
           <h3 className={styles.sectionTitle}>예약 실패 분석</h3>
 
@@ -111,10 +145,7 @@ const OwnerAnalysis = () => {
                 viewBox={`0 0 ${chartWidth} ${chartHeight + 40}`}
                 preserveAspectRatio="xMidYMid meet"
               >
-                <polyline
-                  className={styles.linePath}
-                  points={linePoints}
-                />
+                <polyline className={styles.linePath} points={linePoints} />
 
                 {hourlyFailData.map((d, i) => {
                   const x = i * stepX;
@@ -135,16 +166,16 @@ const OwnerAnalysis = () => {
 
           <div className={styles.alertContainer}>
             <div className={styles.alert}>
-                <img
+              <img
                 src={warningIcon}
                 alt="경고"
                 className={styles.alertIcon}
-                />
-                <span className={styles.alertText}>
+              />
+              <span className={styles.alertText}>
                 자리 부족 | 4인 테이블 추가 배치를 추천드려요!
-                </span>
+              </span>
             </div>
-        </div>
+          </div>
         </div>
       </div>
     </div>

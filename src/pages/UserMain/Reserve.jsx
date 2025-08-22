@@ -25,6 +25,16 @@ const timeSlots = Array.from({ length: (24 * 60) / TIME_STEP }, (_, i) => {
   return `${hh}:${mm}`;
 });
 
+// ✅ 프론트 라벨 -> 백엔드 Enum 값 매핑 (백엔드 제공 표에 맞춤)
+const MEETING_TYPE_ENUM = {
+  "프로젝트 회의": "PROJECT",
+  "과제/스터디": "STUDY",
+  "외부 미팅": "MEETING",
+  "면담/인터뷰": "INTERVIEW",
+  "네트워킹": "NETWORKING",
+  "기타": "ETC",
+};
+
 const defaultCafe = {
   id: null,
   name: "풍치커피익스프레스공릉점",
@@ -558,10 +568,17 @@ export default function Reserve() {
       return;
     }
 
+    // ✅ 라벨을 서버 Enum 문자열로 변환
+    const mappedMeetingType = MEETING_TYPE_ENUM[type];
+    if (!mappedMeetingType) {
+      alert("회의 종류 매핑을 찾을 수 없습니다. 관리자에게 문의해주세요.");
+      return;
+    }
+
     const payload = {
       userId,
       cafeId, // ✅ cafe id 포함 보장
-      meetingType: type,
+      meetingType: mappedMeetingType, // ✅ 서버 Enum 값 사용
       date, // "YYYY-MM-DD"
       peopleCount: headcount,
       startTime: hhmmToHHMMSS(start),
