@@ -1,7 +1,8 @@
+// src/lib/axios.js
 import axios from "axios";
 
 const BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "/hackathon"; 
+  process.env.REACT_APP_API_BASE_URL || "/hackathon";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
@@ -55,13 +56,12 @@ export const clearAuth = () => {
 
 // === Axios instances ===
 const instance = axios.create({
-  baseURL: BASE_URL,         
+  baseURL: BASE_URL,
   timeout: 10000,
-  // withCredentials: true,    
 });
 
 export const refreshClient = axios.create({
-  baseURL: BASE_URL,        
+  baseURL: BASE_URL,
   timeout: 10000,
 });
 
@@ -71,7 +71,7 @@ async function refreshAccessToken() {
   if (!rt) throw new Error("No refresh token available");
 
   const { data } = await refreshClient.post(
-    "/api/users/refresh",     
+    "/api/users/refresh",
     {},
     { headers: { Authorization: `Bearer ${rt}` } }
   );
@@ -124,6 +124,7 @@ instance.interceptors.response.use(
     const original = config || {};
     const status = response.status;
 
+    // 401만 리프레시 시도 (이미 시도했다면 그대로 실패 반환)
     if (status !== 401 || original._retry) {
       throw error;
     }
@@ -147,7 +148,11 @@ instance.interceptors.response.use(
     } catch (e) {
       flushQueue(e, null);
       clearAuth();
-      if (typeof window !== "undefined") window.location.href = "/login";
+      // ❌ 하드 리다이렉트 금지
+      // ✅ SPA에 알림만 보냄 → 상위(App/Auth)에서 라우팅 처리
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+      }
       throw e;
     } finally {
       isRefreshing = false;

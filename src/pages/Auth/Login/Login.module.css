@@ -47,6 +47,7 @@
   border-radius: 12px;
   background: var(--gray-00, #F7F7F8);
   box-sizing: border-box;
+  outline: none;
 }
 
 .inputBox::placeholder {

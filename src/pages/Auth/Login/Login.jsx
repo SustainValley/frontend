@@ -11,6 +11,7 @@ const Login = () => {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const canSubmit = useMemo(
     () => id.trim().length > 0 && pw.trim().length > 0,
@@ -29,28 +30,28 @@ const Login = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || loading) return;
+
     setErr('');
+    setLoading(true);
+
     try {
       await login(id, pw);
-      // role, cafeId 등은 login 내부에서 저장/세팅됨
+      setErr('');
     } catch (_error) {
       setErr('아이디 또는 비밀번호가 일치하지 않습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // 🔴 여기만 네가 원하는대로 “백엔드 콜백 URL(이미 code 포함)”로 바로 이동
   const handleKakaoLogin = () => {
-    const REST_API_KEY = process.env.REACT_APP_KAKAO_REST_API_KEY;
-    const REDIRECT_URI = process.env.REACT_APP_KAKAO_REDIRECT_URI;
-
-    if (!REST_API_KEY || !REDIRECT_URI) {
-      console.error('[KAKAO] 환경변수(REACT_APP_KAKAO_REST_API_KEY, REACT_APP_KAKAO_REDIRECT_URI)가 설정되지 않았습니다.');
-      return;
-    }
-
+    // ✅ 네가 지정한 링크로만 이동
     window.location.href =
-      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+      "https://kauth.kakao.com/oauth/authorize?client_id=7b56421a48b08f9dc4dd3e9f246b3a54&redirect_uri=http://localhost:3000/oauth/kakao/callback&response_type=code";
   };
+  
 
   return (
     <div className={styles.loginContainer}>
@@ -61,23 +62,17 @@ const Login = () => {
           <input
             type="text"
             placeholder="아이디 (또는 사업자번호)"
-            className={styles.inputBox}
+            className={`${styles.inputBox} ${err ? styles.inputError : ''}`}
             value={id}
-            onChange={(e) => {
-              setId(e.target.value);
-              if (err) setErr('');
-            }}
+            onChange={(e) => setId(e.target.value)}
             autoComplete="username"
           />
           <input
             type="password"
             placeholder="비밀번호"
-            className={styles.inputBox}
+            className={`${styles.inputBox} ${err ? styles.inputError : ''}`}
             value={pw}
-            onChange={(e) => {
-              setPw(e.target.value);
-              if (err) setErr('');
-            }}
+            onChange={(e) => setPw(e.target.value)}
             autoComplete="current-password"
           />
 
@@ -86,10 +81,9 @@ const Login = () => {
           <button
             type="submit"
             className={styles.loginButton}
-            disabled={!canSubmit}
-            aria-disabled={!canSubmit}
+            disabled={!canSubmit || loading}
           >
-            로그인
+            {loading ? '로그인 중...' : '로그인'}
           </button>
         </form>
 
@@ -99,7 +93,11 @@ const Login = () => {
           <hr className={styles.line} />
         </div>
 
-        <button type="button" onClick={handleKakaoLogin} className={styles.kakaoButton}>
+        <button
+          type="button"
+          onClick={handleKakaoLogin}
+          className={styles.kakaoButton}
+        >
           <img src={kakaoLogo} alt="카카오 로그인" className={styles.kakaoIcon} />
           카카오 로그인
         </button>
