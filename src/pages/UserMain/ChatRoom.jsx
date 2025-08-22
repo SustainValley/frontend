@@ -1,7 +1,7 @@
 // src/pages/Chat/ChatRoom.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Stomp } from "@stomp/stompjs";
+import { Client } from "@stomp/stompjs";
 import styles from "./Chat.module.css";
 import { useAuth } from "../../context/AuthContext";
 
@@ -13,14 +13,16 @@ const API_HOST = ISDEV_HACK();
 function ISDEV_HACK() {
   return process.env.NODE_ENV === "development" ? "http://3.27.150.124:8080" : "";
 }
-const API_PREFIX = `${API_HOST}/hackathon/api`;
-const WS_URL = `${
-  IS_DEV
-    ? "ws://3.27.150.124:8080"
-    : (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host
-}/hackathon/api/ws-stomp`;
 
-const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g; 
+const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+// ====== 순수 WS-STOMP 접속 설정 ======
+const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://" + window.location.host;
+const WS_PATH = "/hackathon/api/ws-stomp"; // 서버가 이렇게 열려있다고 가정 (필요 시 /hackathon/ws-stomp 로 변경)
+const WS_URL = `${WS_BASE}${WS_PATH}`;
+
+// ====== 유틸 ======
+const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g;
 const NL_REGEX = /\r\n|\r/g;
 const WS_REGEX = /[ \t]+/g;
 const normalizeText = (s = "") =>
@@ -69,7 +71,7 @@ export default function ChatRoom() {
 
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
 
-  const stompRef = useRef(null);
+  const stompRef = useRef(null);     // Client 인스턴스 저장
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
   const subscribedRef = useRef(false);
@@ -168,97 +170,96 @@ export default function ChatRoom() {
     } catch {}
   };
 
+  // ====== 순수 WS-STOMP 연결 ======
   const connect = () => {
     if (!roomId || subscribedRef.current) return;
-    const ws = new WebSocket(WS_URL);
-    const client = Stomp.over(ws);
 
-    client.heartbeat.outgoing = 0;
-    client.heartbeat.incoming = 0;
-    client.debug = (s) => console.log(s);
+    const client = new Client({
+      brokerURL: WS_URL,            // 순수 WS는 brokerURL 사용
+      reconnectDelay: 2000,         // 자동 재연결
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      debug: () => {},              // 필요하면 (msg) => console.log(msg)
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+    });
 
+    client.onConnect = () => {
+      // 구독
+      client.subscribe(`/sub/chatroom/${roomId}`, (frame) => {
+        try {
+          const payload = JSON.parse(frame.body);
+          const text = safeText(payload);
+          const mine = isMine(payload);
+
+          const incoming = {
+            serverId: payload.id ?? undefined,
+            id: payload.id ?? undefined,
+            tempId: payload.tempId ?? undefined,
+            sender: num(payload.sender) ?? num(payload.userId) ?? undefined,
+            message: text,
+            text,
+            createdAt: toISO(payload.createdAt ?? payload.timestamp),
+            from: mine ? "me" : "store",
+            name: mine ? "나" : "상대방",
+            state: "sent",
+          };
+
+          setMessages((prev) => {
+            const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, chatRoomUserId ?? globalUserId));
+            if (pIdx !== -1) {
+              const copy = [...prev];
+              copy[pIdx] = { ...copy[pIdx], ...incoming, state: "sent" };
+              return copy;
+            }
+
+            const dup = prev.some((m) => sameByIdentity(m, incoming));
+            if (dup) return prev;
+
+            const myId = chatRoomUserId ?? globalUserId;
+            const sameTextPendings = prev
+              .map((m, idx) => ({ m, idx }))
+              .filter(
+                ({ m }) =>
+                  m.state === "pending" &&
+                  num(m.sender) === num(myId) &&
+                  normalizeText(m.text ?? m.message) === normalizeText(incoming.text ?? incoming.message)
+              );
+            if (sameTextPendings.length === 1) {
+              const copy = [...prev];
+              const { idx } = sameTextPendings[0];
+              copy[idx] = { ...copy[idx], ...incoming, state: "sent" };
+              return copy;
+            }
+
+            return [...prev, incoming];
+          });
+        } catch (e) {
+          console.error("메시지 파싱 오류:", e, frame.body);
+        }
+      });
+
+      subscribedRef.current = true;
+    };
+
+    client.onStompError = (frame) => {
+      console.error("STOMP error:", frame.headers?.message, frame.body);
+    };
+    client.onWebSocketError = (evt) => {
+      console.error("WS error:", evt);
+    };
+    client.onWebSocketClose = (evt) => {
+      console.warn("WS closed:", evt.code, evt.reason);
+    };
+
+    client.activate();
     stompRef.current = client;
-
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-    client.connect(
-      headers,
-      () => {
-        client.subscribe(`/sub/chatroom/${roomId}`, (frame) => {
-          try {
-            const payload = JSON.parse(frame.body);
-            const text = safeText(payload);
-            const mine = isMine(payload);
-
-            const incoming = {
-              serverId: payload.id ?? undefined,
-              id: payload.id ?? undefined,
-              tempId: payload.tempId ?? undefined,
-              sender: num(payload.sender) ?? num(payload.userId) ?? undefined,
-              message: text,
-              text,
-              createdAt: toISO(payload.createdAt ?? payload.timestamp),
-              from: mine ? "me" : "store",
-              name: mine ? "나" : "상대방",
-              state: "sent",
-            };
-
-            setMessages((prev) => {
-              const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, chatRoomUserId ?? globalUserId));
-              if (pIdx !== -1) {
-                const copy = [...prev];
-                copy[pIdx] = { ...copy[pIdx], ...incoming, state: "sent" };
-                return copy;
-              }
-
-              const dup = prev.some((m) => sameByIdentity(m, incoming));
-              if (dup) return prev;
-
-              const myId = chatRoomUserId ?? globalUserId;
-              const sameTextPendings = prev
-                .map((m, idx) => ({ m, idx }))
-                .filter(
-                  ({ m }) =>
-                    m.state === "pending" &&
-                    num(m.sender) === num(myId) &&
-                    normalizeText(m.text ?? m.message) === normalizeText(incoming.text ?? incoming.message)
-                );
-              if (sameTextPendings.length === 1) {
-                const copy = [...prev];
-                const { idx } = sameTextPendings[0];
-                copy[idx] = { ...copy[idx], ...incoming, state: "sent" };
-                return copy;
-              }
-
-              // 4) 매칭 실패 시 새로 추가
-              return [...prev, incoming];
-            });
-          } catch (e) {
-            console.error("메시지 파싱 오류:", e, frame.body);
-          }
-        });
-
-        client.subscribe(`/user/queue/errors`, (err) => {
-          try {
-            const p = JSON.parse(err.body);
-            alert(`❌ 에러: ${p.message ?? "알 수 없는 오류"}`);
-          } catch {
-            alert(`❌ 에러: ${err.body}`);
-          }
-        });
-
-        subscribedRef.current = true;
-      },
-      (err) => {
-        console.error("STOMP connect error:", err);
-      }
-    );
   };
 
   const disconnect = () => {
     try {
       subscribedRef.current = false;
-      stompRef.current?.disconnect(() => console.log("WebSocket disconnected"));
+      // Client(deprecated disconnect 대신) deactivate 사용
+      stompRef.current?.deactivate();
     } catch {}
   };
 
@@ -287,7 +288,7 @@ export default function ChatRoom() {
     if (!text) return;
 
     const sc = stompRef.current;
-    if (!sc) {
+    if (!sc || !sc.connected) {
       alert("연결 상태가 불안정해요. 잠시 후 다시 시도해주세요.");
       return;
     }
@@ -313,14 +314,15 @@ export default function ChatRoom() {
       },
     ]);
 
-    sc.send(
-      "/pub/message",
-      {
+    // Client.publish API 사용 (순수 WS-STOMP)
+    sc.publish({
+      destination: "/pub/message",
+      headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "content-type": "application/json",
       },
-      JSON.stringify({ roomId, message: text, sender: chatRoomUserId, tempId: clientId, createdAt: nowISO })
-    );
+      body: JSON.stringify({ roomId, message: text, sender: chatRoomUserId, tempId: clientId, createdAt: nowISO }),
+    });
 
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -380,7 +382,6 @@ export default function ChatRoom() {
             <div key={key} className={styles.messageRow} style={{ justifyContent: "flex-end" }}>
               <div className={`${styles.bubble} ${styles.me}`}>
                 {msg.text ?? msg.message}
-                {/* 전송중/실패 배지는 '텍스트'로 넣지 않음 → 말풍선 모서리에 고정 */}
                 {msg.state === "pending" && <i className={styles.pendingDot} aria-label="전송 중" />}
                 {msg.state === "failed" && <span title="전송 실패" className={styles.failedBadge}>!</span>}
               </div>
