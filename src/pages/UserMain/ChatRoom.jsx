@@ -9,19 +9,18 @@ import backIcon from "../../assets/chevron.svg";
 import sendIcon from "../../assets/tabler_send.svg";
 
 const IS_DEV = process.env.NODE_ENV === "development";
-const API_HOST = ISDEV_HACK();
-function ISDEV_HACK() {
-  return process.env.NODE_ENV === "development" ? "http://3.27.150.124:8080" : "";
-}
 
+// 백엔드 베이스 (개발=EC2, 배포=백엔드 도메인)
+const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "https://mocacafe.site";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-// ====== 순수 WS-STOMP 접속 설정 ======
-const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://" + window.location.host;
-const WS_PATH = "/hackathon/api/ws-stomp"; // 서버가 이렇게 열려있다고 가정 (필요 시 /hackathon/ws-stomp 로 변경)
+// 순수 WS-STOMP 접속 (배포는 반드시 백엔드 도메인으로 직접 연결)
+const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://mocacafe.site";
+// 실제 서버 매핑에 맞게 경로 확인 필요: /hackathon/api/ws-stomp 또는 /hackathon/ws-stomp
+const WS_PATH = "/hackathon/api/ws-stomp";
 const WS_URL = `${WS_BASE}${WS_PATH}`;
 
-// ====== 유틸 ======
+// ===== 유틸 =====
 const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g;
 const NL_REGEX = /\r\n|\r/g;
 const WS_REGEX = /[ \t]+/g;
@@ -71,7 +70,7 @@ export default function ChatRoom() {
 
   const token = localStorage.getItem("accessToken") || localStorage.getItem("token") || "";
 
-  const stompRef = useRef(null);     // Client 인스턴스 저장
+  const stompRef = useRef(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
   const subscribedRef = useRef(false);
@@ -131,7 +130,8 @@ export default function ChatRoom() {
       }
 
       const already = out.some((m) => sameByIdentity(m, s));
-      if (!already) out.push(s);
+      if (already) continue;
+      out.push(s);
     }
 
     out.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
@@ -170,21 +170,20 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  // ====== 순수 WS-STOMP 연결 ======
+  // ===== 순수 WS-STOMP 연결 =====
   const connect = () => {
     if (!roomId || subscribedRef.current) return;
 
     const client = new Client({
-      brokerURL: WS_URL,            // 순수 WS는 brokerURL 사용
-      reconnectDelay: 2000,         // 자동 재연결
+      brokerURL: WS_URL,
+      reconnectDelay: 2000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
-      debug: () => {},              // 필요하면 (msg) => console.log(msg)
+      debug: () => {},
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     client.onConnect = () => {
-      // 구독
       client.subscribe(`/sub/chatroom/${roomId}`, (frame) => {
         try {
           const payload = JSON.parse(frame.body);
@@ -258,7 +257,6 @@ export default function ChatRoom() {
   const disconnect = () => {
     try {
       subscribedRef.current = false;
-      // Client(deprecated disconnect 대신) deactivate 사용
       stompRef.current?.deactivate();
     } catch {}
   };
@@ -314,7 +312,6 @@ export default function ChatRoom() {
       },
     ]);
 
-    // Client.publish API 사용 (순수 WS-STOMP)
     sc.publish({
       destination: "/pub/message",
       headers: {
@@ -391,7 +388,6 @@ export default function ChatRoom() {
         <div ref={chatEndRef} />
       </div>
 
-      {/* 입력창 */}
       <div className={styles.inputBar}>
         <textarea
           ref={textareaRef}
