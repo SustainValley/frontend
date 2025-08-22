@@ -45,12 +45,18 @@ const Login = () => {
     }
   };
 
-  // 🔴 여기만 네가 원하는대로 “백엔드 콜백 URL(이미 code 포함)”로 바로 이동
-  const handleKakaoLogin = () => {
-    // ✅ 네가 지정한 링크로만 이동
-    window.location.href =
-      "https://kauth.kakao.com/oauth/authorize?client_id=7b56421a48b08f9dc4dd3e9f246b3a54&redirect_uri=http://localhost:3000/oauth/kakao/callback&response_type=code";
-  };
+const handleKakaoLogin = () => {
+  const CLIENT_ID = "7b56421a48b08f9dc4dd3e9f246b3a54"; // 프론트에서 써도 되는 공개키
+  const REDIRECT_URI = `${window.location.origin}/oauth/kakao/callback`; 
+  // dev: http://localhost:3000/..., prod: https://mocacafe.vercel.app/... 로 자동
+
+  window.location.href =
+    "https://kauth.kakao.com/oauth/authorize"
+    + `?client_id=${CLIENT_ID}`
+    + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+    + `&response_type=code`;
+};
+
   
 
   return (
