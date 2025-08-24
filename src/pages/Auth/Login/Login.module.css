@@ -8,24 +8,28 @@
 .logo {
   position: absolute;
   top: 8px;
-  left: 16px;
+  left: 0;
   width: 136px;
   height: 44px;
-  background: #D9D9D9;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+}
+
+.logoImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .content {
   flex: 1;
-  margin-top: 196px;    
+  margin-top: 196px;
   display: flex;
   flex-direction: column;
-  align-items: center;   
-  overflow-y: auto;
+  align-items: center;
   padding: 0 16px;
+  overflow-y: auto;
 }
 
 .form {
@@ -38,26 +42,27 @@
   width: 100%;
   margin-bottom: 12px;
   padding: 16px;
-  color: var(--gray-40, #000000);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
-  font-weight: 400;
   line-height: 20px;
   border: none;
   border-radius: 12px;
-  background: var(--gray-00, #F7F7F8);
+  background: #f7f7f8;
+  color: #000;
   box-sizing: border-box;
   outline: none;
 }
 
 .inputBox::placeholder {
-  color: var(--gray-40, #96A1A6);
+  color: #96a1a6;
+}
+
+.inputError {
+  border: 1px solid #ff4d4f;
 }
 
 .errorText {
-  align-self: stretch;  
   text-align: left;
-  margin: 4px 0 0;     
+  margin: 4px 0 0;
   font-size: 12px;
   color: #ff4d4f;
 }
@@ -65,24 +70,21 @@
 .loginButton {
   width: 100%;
   height: 45px;
+  margin: 56px 0 16px;
   border: none;
   border-radius: 12px;
-  background: var(--Primary-Primary, #3A3E40);
-  color: #FFF;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #3a3e40;
+  color: #fff;
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
-  margin-top: 56px;     
-  margin-bottom: 16px;
   cursor: pointer;
 }
 
 .loginButton:disabled {
-  background: #E6E8EA;
-  color: #B0B8BC;
+  background: #e6e8ea;
+  color: #b0b8bc;
   cursor: not-allowed;
-  opacity: 1;
 }
 
 .divider {
@@ -95,26 +97,23 @@
 .line {
   flex-grow: 1;
   border: none;
-  border-top: 1px solid #B0B8BC;
+  border-top: 1px solid #b0b8bc;
 }
 
 .orText {
   margin: 0 8px;
-  color: var(--gray-50, #7F888C);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 12px;
   font-weight: 600;
-  line-height: 150%;
+  color: #7f888c;
 }
 
 .kakaoButton {
   width: 100%;
   height: 45px;
-  background: #FEE500;
+  margin-bottom: 32px;
   border: none;
   border-radius: 12px;
-  color: rgba(0, 0, 0, 0.85);
-  font-family: "Apple SD Gothic Neo", -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #fee500;
   font-size: 15px;
   font-weight: 600;
   display: flex;
@@ -122,8 +121,6 @@
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  margin-bottom: 32px;
-  line-height: normal;
   padding: 0 16px;
   box-sizing: border-box;
 }
@@ -131,28 +128,19 @@
 .kakaoIcon {
   width: 18px;
   height: 18px;
-  object-fit: contain;
-  display: block;
   flex-shrink: 0;
-  position: relative;
-  top: -1px; 
 }
 
 .signupText {
-  color: var(--gray-50, #7F888C);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  margin-bottom: 20px;
   font-size: 12px;
   font-weight: 600;
-  line-height: 150%;
-  margin-bottom: 20px;
+  color: #7f888c;
 }
 
 .signupLink {
-  color: var(--system-blue, #3C70B5);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #3c70b5;
   font-size: 12px;
   font-weight: 600;
-  line-height: 150%;
-  text-decoration-line: underline;
-  text-underline-offset: auto;
+  text-decoration: underline;
 }

@@ -1,12 +1,16 @@
 import React from 'react';
-import styles from './Signup.module.css';
 import { Link } from 'react-router-dom';
+import styles from './Signup.module.css';
+
 import arrowRight from '../../../assets/arrow-narrow-right.svg';
+import logoImg from '../../../assets/Logo-main-fin.svg';
 
 const Signup = () => {
   return (
     <div className={styles.signUpContainer}>
-      <div className={styles.logo}>Logo</div>
+      <div className={styles.logo}>
+        <img src={logoImg} alt="서비스 로고" className={styles.logoImg} />
+      </div>
 
       <div className={styles.buttonWrapper}>
         <Link to="/signup/user" className={styles.cardButton}>

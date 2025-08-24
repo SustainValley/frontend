@@ -153,7 +153,7 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       role,
       user,
-      cafeId,     // ✅ 노출
+      cafeId,    
       login,
       logout,
       refreshNow,

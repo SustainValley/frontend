@@ -56,7 +56,6 @@
   text-overflow: ellipsis;
 }
 
-/* (기존 hero/heroTrack/slide는 사용 안 해도 무방) */
 .hero {
   position: relative;
   overflow: hidden;
@@ -725,14 +724,12 @@
   line-height: 20px;
 }
 
-/* 오류 텍스트 (Reserve.jsx에서 사용) */
 .errorText {
   margin: 8px 0;
   color: #d92d20;
   font-size: 13px;
 }
 
-/* ====== 사진 캐러셀 (StoreInfo 룩과 동일) ====== */
 .photoCarousel {
   position: relative;
   width: 100%;
@@ -803,4 +800,38 @@
 .navBtn:disabled {
   opacity: 0.35;
   pointer-events: none;
+}
+
+.promoCard {
+  margin: -16px -16px 16px;
+  padding: 16px;
+  background: #eaf6d4;
+  border: 0;
+  border-radius: 0; 
+  box-shadow: none;
+  white-space: pre-wrap;
+}
+
+
+.promoTitle {
+  margin: 0 0 8px 0;
+  color: var(--gray-90, #232526);
+
+font-family: Pretendard;
+font-size: 16px;
+font-style: normal;
+font-weight: 600;
+line-height: 24px; 
+}
+
+.promoText {
+  margin: 0;
+  color: var(--gray-90, #232526);
+
+font-family: Pretendard;
+font-size: 14px;
+font-style: normal;
+font-weight: 500;
+line-height: 20px; 
+  white-space: pre-wrap; 
 }

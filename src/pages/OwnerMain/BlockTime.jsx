@@ -77,7 +77,6 @@ export default function BlockTime() {
       return;
     }
     fetchAbletime();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cafeId]);
 
   const fetchAbletime = async () => {

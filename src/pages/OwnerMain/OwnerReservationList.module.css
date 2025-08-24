@@ -328,4 +328,16 @@
     margin-bottom: 16px;
     color: #232526;
   }
+  .nowBadge {
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: #95c11f; 
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    display: inline-flex;
+    align-items: center;
+  }
   

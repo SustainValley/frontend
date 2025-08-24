@@ -1,215 +1,241 @@
 .page {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    background: #fff;
-  }
-  
-  .appbar {
-    display: grid;
-    grid-template-columns: 40px 1fr 40px;
-    align-items: center;
-    min-height: 48px;
-    background: #fff;
-    border-bottom: none;
-  }
-  
-  .backBtn {
-    border: none;
-    background: transparent;
-    width: 24px;
-  }
-  
-  .title {
-    text-align: center;
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 18px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px;
-  }
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;            
+  background: #fff;
+  overflow: hidden;         
+}
 
-  .chatList {
-    flex: 1;
-    overflow-y: auto;
-  }
-  
-  .chatItem {
-    padding: 16px;
-    border: none;
-    cursor: pointer;
-  }
-  
-  .chatItem.unread {
-    background: var(--limerick-00, #EBF7CE);
-  }
-  .chatItem.unread .chatName {
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-  }
-  .chatItem.unread .chatPreview {
-    color: var(--gray-90, #232526);
-    font-weight: 500;
-  }
-  
-  .chatItem.read {
-    background: var(--gray-00, #F7F7F8);
-  }
-  .chatItem.read .chatName {
-    color: var(--gray-90, #232526);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-  }
-  .chatItem.read .chatPreview {
-    overflow: hidden;
-    color: var(--gray-70, #515659);
-    text-overflow: ellipsis;
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 20px;
-  }
-  
-  .chatName {
-    font-family: Pretendard;
-    font-size: 14px;
-    line-height: 20px;
-  }
-  
-  .chatPreview {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: Pretendard;
-    font-size: 14px;
-    line-height: 20px;
-  }
-  
-  .chatWindow {
-    flex: 1;
-    padding: 16px;
-    background: #E9F0F3; 
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .messageRow {
-    display: flex;
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
-  
-  .profile {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #ccc;
-    margin-right: 8px;
-    flex-shrink: 0;
-  }
-  
-  .messageContent {
-    display: flex;
-    flex-direction: column;
-    max-width: 70%;
-  }
-  
-  .senderName {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: var(--gray-90, #232526);
-  }
-  
-  .bubble {
-    max-width: 287px;        
-    padding: 6px 12px;
-    margin-bottom: 8px;
-    word-break: break-word;
-    white-space: pre-wrap;     
-  }
-  
-  .bubble.me {
-    border-radius: 16px 4px 16px 16px;
-    background: var(--Sub-Sub-1, #A4CC08);
-    color: var(--gray-00, #FFF);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-    align-self: flex-end;
-    margin-left: auto;
-  }
-  
-  .bubble.store {
-    color: var(--gray-00, #F7F7F8);
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 20px;
-    align-self: flex-start;
-    border-radius: 4px 16px 16px 16px;
-    background: var(--gray-60, #686F73);
-  }
-  
-  .inputBar {
-    display: flex;
-    align-items: flex-end;
-    border : none;
-    padding: 8px 16px;
-    background: #fff;
-    position: sticky;
-    bottom: 0;
-    margin-bottom: 20px;
-  }
-  
-  .inputBar textarea {
-    flex: 1;
-    border: none;
-    resize: none;
-    overflow-y: auto;  
-    font-family: Pretendard;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 35px;         
-    outline: none;
-    border-radius: 18px;
-    background: var(--gray-00, #F7F7F8);
-    margin-right: 8px;
-    height: 35px;              
-    max-height: 120px;
-    padding: 0 12px;           
-  
-    scrollbar-width: none;      
-    -ms-overflow-style: none;   
-  }
-  
-  .inputBar textarea::-webkit-scrollbar {
-    display: none;           
-  }
-  
-  
-  
-  .inputBar button {
-    border: none;
-    background: #232526;
-    color: #fff;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .inputBar button img {
-    width: 24px;
-    height: 24px;
-  }
-  
+.appbar {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  min-height: 48px;
+  background: #fff;
+  border-bottom: none;
+
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.backBtn {
+  border: none;
+  background: transparent;
+  width: 24px;
+}
+
+.title {
+  text-align: center;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 18px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.chatList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.chatItem {
+  padding: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.chatItem.unread {
+  background: var(--limerick-00, #EBF7CE);
+}
+.chatItem.unread .chatName {
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.chatItem.unread .chatPreview {
+  color: var(--gray-90, #232526);
+  font-weight: 500;
+}
+
+.chatItem.read {
+  background: var(--gray-00, #F7F7F8);
+}
+.chatItem.read .chatName {
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+.chatItem.read .chatPreview {
+  overflow: hidden;
+  color: var(--gray-70, #515659);
+  text-overflow: ellipsis;
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.chatName {
+  font-family: Pretendard;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.chatPreview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: Pretendard;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.chatWindow {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background: #E9F0F3;
+  display: flex;
+  flex-direction: column;
+
+
+  scrollbar-width: none;  
+  -ms-overflow-style: none;   
+}
+.chatWindow::-webkit-scrollbar {
+  display: none;            
+}
+
+.messageRow {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+
+.messageContent {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+}
+
+.senderName {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--gray-90, #232526);
+}
+
+.bubble {
+  max-width: 287px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.bubble.me {
+  border-radius: 16px 4px 16px 16px;
+  background: var(--Sub-Sub-1, #A4CC08);
+  color: var(--gray-00, #FFF);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.bubble.store {
+  color: var(--gray-00, #F7F7F8);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  align-self: flex-start;
+  border-radius: 4px 16px 16px 16px;
+  background: var(--gray-60, #686F73);
+}
+
+.inputBar {
+  display: flex;
+  align-items: flex-end;
+  border: none;
+  padding: 8px 16px;
+  background: #fff;
+
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.inputBar textarea {
+  flex: 1;
+  border: none;
+  resize: none;
+  overflow-y: auto;
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 35px;
+  outline: none;
+  border-radius: 18px;
+  background: var(--gray-00, #F7F7F8);
+  margin-right: 8px;
+  height: 35px;
+  max-height: 120px;
+  padding: 0 12px;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.inputBar textarea::-webkit-scrollbar {
+  display: none;
+}
+
+.inputBar button {
+  border: none;
+  background: #232526;
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.inputBar button img {
+  width: 24px;
+  height: 24px;
+}
+
+/* 전송 상태 표시 */
+.pendingDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+  margin-left: 6px;
+  animation: blink 1s infinite;
+}
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.failedBadge {
+  color: red;
+  font-weight: bold;
+  margin-left: 6px;
+}

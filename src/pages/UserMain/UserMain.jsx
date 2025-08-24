@@ -1,4 +1,3 @@
-// src/pages/UserMain/UserMain.jsx
 import React, {
   useEffect,
   useLayoutEffect,
@@ -20,6 +19,81 @@ import clockIcon from '../../assets/clock.svg';
 import peopleIcon from '../../assets/people.svg';
 import chatIcon2 from '../../assets/chat.svg';
 
+import defaultCafeLogo from '../../assets/Logo-gray.svg';
+
+const KST = 'Asia/Seoul';
+const dayMap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+
+function nowInKST() {
+  const d = new Date();
+  const h = Number(new Intl.DateTimeFormat('en-GB',{ timeZone:KST, hour:'2-digit', hour12:false }).format(d));
+  const m = Number(new Intl.DateTimeFormat('en-GB',{ timeZone:KST, minute:'2-digit' }).format(d));
+  const w = new Intl.DateTimeFormat('en-US',{ timeZone:KST, weekday:'short' }).format(d);
+  return { minutes: h * 60 + m, dow: dayMap[w] ?? d.getDay() };
+}
+
+function daysFromTextKo(t) {
+  const days = new Set(); let hit = false;
+  if (/매일|연중무휴/.test(t)) { [0,1,2,3,4,5,6].forEach(d => days.add(d)); hit = true; }
+  if (/평일/.test(t)) { [1,2,3,4,5].forEach(d => days.add(d)); hit = true; }
+  if (/주말/.test(t)) { [0,6].forEach(d => days.add(d)); hit = true; }
+  const ko = { '일':0,'월':1,'화':2,'수':3,'목':4,'금':5,'토':6 };
+  const range = t.match(/([일월화수목금토])\s*[~\-–—]\s*([일월화수목금토])/);
+  if (range) {
+    const a = ko[range[1]], b = ko[range[2]]; hit = true;
+    if (a <= b) for (let i=a; i<=b; i++) days.add(i);
+    else { for (let i=a; i<=6; i++) days.add(i); for (let i=0; i<=b; i++) days.add(i); }
+  }
+  Object.entries(ko).forEach(([k, v]) => {
+    if (t.includes(k+'요일') || t.includes(k)) { days.add(v); hit = true; }
+  });
+  return hit ? days : null;
+}
+
+function isOpenNowByText(rawText, nowMin, nowDow) {
+  const s = String(rawText || '').replace(/\s+/g, ' ').trim();
+  if (!s) return false;
+  if (/상시|24\s*시간|24h/i.test(s)) return true;
+
+  const segs = s.split(/[\/\|,\n]/).map(x => x.trim()).filter(Boolean);
+  let openRanges = [];
+
+  for (const seg0 of segs.length ? segs : [s]) {
+    const seg = seg0.replace(/브레이크\s*타임.*$/i, '');
+    const days = daysFromTextKo(seg);
+    const applies = days == null || days.has(nowDow);
+    if (!applies) continue;
+
+    if (/휴무|쉼|닫음|closed/i.test(seg)) {
+      continue;
+    }
+
+    const regex = /(\d{1,2})(?::?(\d{2}))?\s*[~\-–—]\s*(\d{1,2})(?::?(\d{2}))?/g;
+    for (const m of seg.matchAll(regex)) {
+      const sh = Number(m[1]); const sm = Number(m[2] || '0');
+      const eh = Number(m[3]); const em = Number(m[4] || '0');
+      if (Number.isNaN(sh) || Number.isNaN(eh)) continue;
+      let start = sh * 60 + sm;
+      let end   = eh * 60 + em;
+      openRanges.push({ start, end });
+    }
+  }
+
+  if (openRanges.length === 0) {
+    if (/영업\s*중|open/i.test(s) && !/휴무/.test(s)) return true;
+    return false;
+  }
+
+  for (const { start, end } of openRanges) {
+    if (start <= end) {
+      if (nowMin >= start && nowMin < end) return true;
+    } else {
+      if (nowMin >= start || nowMin < end) return true; 
+    }
+  }
+  return false;
+}
+
 const IS_DEV = process.env.NODE_ENV === 'development';
 const API_HOST = IS_DEV ? 'http://3.27.150.124:8080' : '';
 const API_PREFIX = `${API_HOST}/hackathon/api`;
@@ -30,25 +104,27 @@ export default function MapExplore() {
   const { logout } = useAuth();
   const filters = location.state?.filters || { spaces: [], people: 0 };
 
-  // ==== 검색어 (실시간 반영) ====
   const [input, setInput] = useState('');
-
-  // 서버 카페 목록 & 선택
   const [cafes, setCafes] = useState([]);
   const [selectedCafeId, setSelectedCafeId] = useState(null);
 
-  // 맵/레이아웃
   const wrapRef = useRef(null);
   const mapRef = useRef(null);
   const [ch, setCh] = useState(800);
 
-  // 사이드메뉴
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const openMenu = () => { setMenuVisible(true); requestAnimationFrame(() => setIsMenuOpen(true)); };
   const closeMenu = () => { setIsMenuOpen(false); setTimeout(() => setMenuVisible(false), 250); };
 
-  /* ====== 서버 카페 리스트 로드 ====== */
+
+  const [{ minutes: nowMin, dow: nowDow }, setNowInfo] = useState(nowInKST());
+  useEffect(() => {
+    const t = setInterval(() => setNowInfo(nowInKST()), 30 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -68,7 +144,6 @@ export default function MapExplore() {
     return () => { abort = true; };
   }, []);
 
-  /* ====== 레이아웃 / 바텀시트 ====== */
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -113,7 +188,7 @@ export default function MapExplore() {
     setSheetTop(sheetTop <= mid1 ? SNAP.FULL_TOP : sheetTop <= mid2 ? SNAP.MID_TOP : SNAP.PEEK_TOP);
   };
 
-  /* ====== 내 위치 이동 (사용자 의도일 때만 지도 이동) ====== */
+  /* ====== 내 위치 이동 ====== */
   const moveToMyLocation = () => {
     if (!('geolocation' in navigator)) {
       alert('이 브라우저는 위치 정보를 지원하지 않아요.');
@@ -166,7 +241,6 @@ export default function MapExplore() {
     })();
   };
 
-  /* ====== 예약 영역 (원래 플로우 복구) ====== */
   const [reservations, setReservations] = useState([]);
   const [activeReservation, setActiveReservation] = useState(null);
   const [loadingRsv, setLoadingRsv] = useState(false);
@@ -176,7 +250,7 @@ export default function MapExplore() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [showResultModal, setShowResultModal] = useState(false);
-  const [cancelInFlight, setCancelInFlight] = useState(false); // 🔄 취소 요청 로딩
+  const [cancelInFlight, setCancelInFlight] = useState(false);
 
   const fmtHHMM = (t = '') => {
     if (!t) return '';
@@ -256,16 +330,16 @@ export default function MapExplore() {
             if (!status) return null;
             const time = `${fmtHHMM(row.startTime)} - ${fmtHHMM(row.endTime)}`;
             return {
-              id: String(row.reservationsId ?? idx), // ← API에서 쓸 id
-              cafe: `카페 #${row.cafeId ?? '-'}`,
+              id: String(row.reservationsId ?? idx),
+              cafe: row.cafeName || `카페 #${row.cafeId ?? '-'}`,
               time,
-              status, // 'inuse' | 'scheduled' | 'pending'
+              status,
               people: row.peopleCount ?? 0,
               meetingType: row.meetingType || '',
               dateText: dateWithWeekday(row.date),
               durationText: durationFromTimes(row.startTime, row.endTime),
-              phone: '',
-              name: row.userName ?? '',
+              phone: row.phoneNumber || '',
+              name: row.nickname || '',
               thumb: `https://picsum.photos/seed/rsv${row.reservationsId}/200/200`,
               startTime: fmtHHMM(row.startTime),
               endTime: fmtHHMM(row.endTime),
@@ -295,26 +369,40 @@ export default function MapExplore() {
     if (['scheduled', 'inuse', 'pending'].includes(r.status)) setShowDetailSheet(true);
   };
 
-  /* ====== 리스트/핀을 위한 데이터 구성 ====== */
-  // === decorateCafe 함수 수정 ===
-  const decorateCafe = (c, i) => ({
-    id: String(c.cafeId ?? i),
-    cafeId: c.cafeId,
-    name: c.name || '이름없는 카페',
-    addr: c.address || '주소 준비중',
-    thumb: c.imageUrl
-      ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
-      : null, // ✅ 이미지 없으면 null
-    hours: c.operatingHours || '영업시간 등록 전 입니다',
-    spaceType: c.spaceType || '',
-    ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
-  });
+  const decorateCafe = (c, i) => {
+    const raw = c.operatingHours ?? '';
+    const str = String(raw || '').trim();
+    let hoursKind = 'OPEN_TEXT';
+    let hoursHint = str;
+
+    if (!str) {
+      hoursKind = 'UNREGISTERED';
+      hoursHint = '영업시간 미등록';
+    } else if (str.includes('휴무')) {
+      hoursKind = 'CLOSED';
+      hoursHint = '휴무일';
+    }
+
+    return ({
+      id: String(c.cafeId ?? i),
+      cafeId: c.cafeId,
+      name: c.name || '이름없는 카페',
+      addr: c.address || '주소 준비중',
+      thumb: c.imageUrl
+        ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
+        : null,
+      hours: hoursHint,
+      hoursRaw: raw, 
+      hoursKind,
+      spaceType: c.spaceType || '',
+      ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
+    });
+  };
 
   const shortSpace = (s = '') => s.split('(')[0].trim();
 
   const rawList = cafes.map(decorateCafe);
 
-  // 검색 필터 (이름/주소 포함)
   const norm = (s = '') => s.toLowerCase().trim();
   const q = norm(input);
   const bySearch = q
@@ -323,7 +411,6 @@ export default function MapExplore() {
       )
     : rawList;
 
-  // 공간/인원 필터
   const spaceKeyFromCafe = (cafe) => {
     const s = cafe.spaceType || '';
     if (s.includes('오픈')) return 'open';
@@ -337,14 +424,10 @@ export default function MapExplore() {
     return matchSpace && matchPeople;
   });
 
-  // 리스트 표시 규칙:
-  // - 핀(마커)을 누르면 그 한 개만 표시
-  // - 아니면 검색/필터 결과 전체 표시
   const listForRender = selectedCafeId
     ? byFilters.filter((c) => String(c.cafeId) === String(selectedCafeId))
     : byFilters;
 
-  // 지도에 넘기는 핀도 리스트와 동일해야 하므로 같은 배열 사용
   const cafesForMap = listForRender.map((c) => ({
     cafeId: c.cafeId,
     name: c.name,
@@ -357,12 +440,10 @@ export default function MapExplore() {
 
   const sheetHeight = Math.max(0, ch - sheetTop);
 
-  // 지도(마커) 클릭 콜백: KakaoMap에서 넘어옴 (지도는 이동 X, 리스트만 바꿈)
   const handlePlaceClick = (cafe) => {
     setSelectedCafeId(cafe.cafeId ?? null);
   };
 
-  // =========== 예약 스트립(가로 드래그) 드래그 핸들러 =============
   const stripRef = useRef(null);
   const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
   const dragMovedRef = useRef(false);
@@ -390,17 +471,8 @@ export default function MapExplore() {
     el?.classList.remove(styles.dragging);
   };
 
-  /* ====== 취소 API 호출 ====== */
-  // 전송 스펙: PATCH /reservation/delete/{reservationId}?userId={userId}
-  // Body: { "cancelReason": "<ENUM>" }
-  // ENUM 전체:
-  // CLOSED_TIME, OUT_OF_BUSINESS, CROWDED, EQUIPMENT_UNAVAILABLE, MAINTENANCE, PEAK_LIMIT,
-  // NO_SHOW, SCHEDULE_CHANGE, PERSONAL_REASON, TIME_MISTAKE, LOCATION_CHANGE,
-  // LACK_OF_ATTENDEES, BUDGET_ISSUE, DUPLICATE
   const reasonToCode = (text = '') => {
     const t = String(text).trim();
-
-    // 사용자 노출 문구 ↔ 서버 ENUM (우선순위: 사용자 사유)
     const pairs = [
       ['일정 변경', 'SCHEDULE_CHANGE'],
       ['개인 사정', 'PERSONAL_REASON'],
@@ -413,19 +485,8 @@ export default function MapExplore() {
       ['예산', 'BUDGET_ISSUE'],
       ['중복 예약', 'DUPLICATE'],
       ['중복', 'DUPLICATE'],
-
-      // 점주/시스템 사유(필요 시 매칭)
-      ['해당 시간대 예약 마감', 'CLOSED_TIME'],
-      ['영업시간 외', 'OUT_OF_BUSINESS'],
-      ['매장 혼잡', 'CROWDED'],
-      ['요청 장비', 'EQUIPMENT_UNAVAILABLE'],
-      ['시설 점검', 'MAINTENANCE'],
-      ['피크타임', 'PEAK_LIMIT'],
-      ['노쇼', 'NO_SHOW'],
     ];
-
     const hit = pairs.find(([key]) => t.includes(key));
-    // 서버 목록에 OTHER 없음 → 안전 폴백: PERSONAL_REASON
     return hit ? hit[1] : 'PERSONAL_REASON';
   };
 
@@ -448,13 +509,14 @@ export default function MapExplore() {
       const msg = `취소 실패 (HTTP ${res.status})`;
       throw new Error(msg);
     }
-    // 응답 스킴: { isSuccess, code, message, result }
     const data = await res.json().catch(() => ({}));
     if (data?.isSuccess === false) {
       throw new Error(data?.message || '취소 실패');
     }
     return data;
   };
+
+  const [showDetail, setShowDetail] = useState(false); 
 
   const handleConfirmCancel = async () => {
     if (!activeReservation) return;
@@ -467,7 +529,6 @@ export default function MapExplore() {
         reasonText: selectedReason,
       });
 
-      // 성공: 리스트에서 제거, UI 업데이트
       setReservations((prev) => prev.filter((r) => r.id !== String(reservationId)));
       setActiveReservation(null);
       setShowCancelModal(false);
@@ -475,15 +536,20 @@ export default function MapExplore() {
     } catch (err) {
       console.error(err);
       alert(err?.message || '예약을 취소할 수 없어요. 잠시 후 다시 시도해 주세요.');
-      // 실패 시 모달은 그대로 유지
     } finally {
       setCancelInFlight(false);
     }
   };
 
+  const handleImgErrorToLogo = (e) => {
+    const img = e.currentTarget;
+    if (img.dataset.fallbackApplied) return;
+    img.dataset.fallbackApplied = '1';
+    img.src = defaultCafeLogo;
+  };
+
   return (
     <div ref={wrapRef} className={styles.wrap}>
-      {/* 상단 바 */}
       <div className={styles.topbar}>
         <button className={styles.topBtn} aria-label="메뉴 열기" onClick={openMenu}>
           <img src={menuIcon} alt="" className={styles.topIcon} />
@@ -494,29 +560,28 @@ export default function MapExplore() {
         </button>
       </div>
 
-      {/* 지도: 리스트에 보이는 것만 핀 표시, 핀 클릭해도 지도는 그대로 */}
       <KakaoMap ref={mapRef} cafes={cafesForMap} onPlaceClick={handlePlaceClick} />
 
-      {/* 사이드 메뉴 */}
       {menuVisible && (
         <>
           <div className={styles.menuBackdrop} onClick={closeMenu} />
           <div className={`${styles.sideMenu} ${isMenuOpen ? styles.open : styles.close}`}>
-            <button
-              className={styles.menuItem}
-              onClick={() => {
-                closeMenu();
-                logout();
-                navigate('/login');
-              }}
-            >
-              로그아웃
-            </button>
+            <div className={styles.sideMenuInner}>
+              <button
+                className={styles.menuItem}
+                onClick={() => {
+                  closeMenu();
+                  logout();
+                  navigate('/login');
+                }}
+              >
+                로그아웃
+              </button>
+            </div>
           </div>
         </>
       )}
 
-      {/* 검색바 */}
       <div className={styles.searchBar}>
         <img src={searchIcon} alt="" className={styles.icon} />
         <input
@@ -544,7 +609,7 @@ export default function MapExplore() {
         </button>
       </div>
 
-      <div className={styles.backdrop} style={{ height: `${sheetHeight}px` }} aria-hidden />
+      <div className={styles.backdrop} style={{ height: `${Math.max(0, ch - sheetTop)}px` }} aria-hidden />
 
       <div className={styles.bottomSheet}>
         <div
@@ -559,7 +624,6 @@ export default function MapExplore() {
             aria-hidden
           />
 
-          {/* 내 위치 버튼 — 예약 스트립 유무로 자동 위치 조정 */}
           <button
             className={`${styles.myLocationBtn} ${
               visibleReservations.length ? styles.withReserve : styles.noReserve
@@ -569,7 +633,6 @@ export default function MapExplore() {
             <img src={locationIcon} alt="내 위치" />
           </button>
 
-          {/* ✅ 예약 스트립 — 예약 있을 때만 렌더 (원래 플로우 유지) */}
           {visibleReservations.length > 0 && (
             <div
               ref={stripRef}
@@ -606,7 +669,6 @@ export default function MapExplore() {
             </div>
           )}
 
-          {/* 리스트 */}
           <div className={styles.sheetContent}>
             <div className={styles.sheetTitle}>
               회의 가능한 카페를 둘러보세요!
@@ -630,7 +692,14 @@ export default function MapExplore() {
             ) : (
               listForRender.map((cafe) => (
                 <div key={cafe.id} className={styles.cafeCard}>
-                  <img className={styles.thumb} src={cafe.thumb} alt={cafe.name} />
+
+                  <img
+                    className={styles.thumb}
+                    src={cafe.thumb || defaultCafeLogo}
+                    alt={cafe.name}
+                    onError={handleImgErrorToLogo}
+                  />
+
                   <div className={styles.info}>
                     <div className={styles.cafeName}>{cafe.name}</div>
 
@@ -650,19 +719,46 @@ export default function MapExplore() {
                     </div>
                   </div>
 
-                  {/* ✅ 방법 1: state + localStorage로 cafeId 전달 */}
-                  <button
-                    className={styles.reserveBtn}
-                    onClick={() => {
-                      // 폴백까지 단단하게
-                      try {
-                        localStorage.setItem('cafe_id', String(cafe.cafeId));
-                      } catch {}
-                      navigate('/user/reserve', { state: { cafeId: cafe.cafeId } });
-                    }}
-                  >
-                    예약하기
-                  </button>
+                  <div className={styles.btnGroup}>
+                    <button
+                      className={styles.reserveBtn}
+                      disabled={cafe.hoursKind === 'UNREGISTERED'}
+                      onClick={() => {
+                        if (cafe.hoursKind === 'UNREGISTERED') return;
+                        try { localStorage.setItem('cafe_id', String(cafe.cafeId)); } catch {}
+                        navigate('/user/reserve', {
+                          state: {
+                            cafeId: cafe.cafeId,
+                            hoursStatus: cafe.hoursKind === 'UNREGISTERED' ? '미등록' : '등록됨',
+                            hoursKind: cafe.hoursKind,
+                            hoursHint: cafe.hours,
+                          },
+                        });
+                      }}
+                    >
+                      예약하기
+                    </button>
+
+                    <button
+                      className={styles.useNowBtn}
+                      disabled={!isOpenNowByText(cafe.hoursRaw ?? cafe.hours, nowMin, nowDow)}
+                      onClick={() => {
+                        if (!isOpenNowByText(cafe.hoursRaw ?? cafe.hours, nowMin, nowDow)) return;
+                        try { localStorage.setItem('cafe_id', String(cafe.cafeId)); } catch {}
+                        navigate('/user/reserve', {
+                          state: {
+                            cafeId: cafe.cafeId,
+                            quick: true,
+                            hoursStatus: cafe.hoursKind === 'UNREGISTERED' ? '미등록' : '등록됨',
+                            hoursKind: cafe.hoursKind,
+                            hoursHint: cafe.hours,
+                          },
+                        });
+                      }}
+                    >
+                      바로 이용하기
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -670,7 +766,6 @@ export default function MapExplore() {
         </div>
       </div>
 
-      {/* ====== 예약 상세 시트(원래 플로우 유지) ====== */}
       {showDetailSheet && activeReservation && (
         <div className={styles.detailSheet}>
           <div
@@ -680,7 +775,6 @@ export default function MapExplore() {
             tabIndex={0}
           />
 
-          {/* 헤더 */}
           <div className={styles.detailHeader}>
             {activeReservation.status === 'pending' && (
               <p style={{ fontWeight: 600, marginBottom: 8 }}>
@@ -696,13 +790,13 @@ export default function MapExplore() {
             <p>{statusLabelKo(activeReservation.status)}</p>
           </div>
 
-          {/* 카드: 요청 중이면 숨김, 예정/이용중이면 표시 */}
           {activeReservation.status !== 'pending' && (
             <div className={styles.detailCafeCard}>
               <img
                 className={styles.thumb}
                 src={activeReservation.thumb}
                 alt={activeReservation.cafe}
+                onError={handleImgErrorToLogo}
               />
               <div className={styles.info}>
                 <div className={styles.cafeName}>{activeReservation.cafe}</div>
@@ -718,7 +812,6 @@ export default function MapExplore() {
             </div>
           )}
 
-          {/* 본문 공통 */}
           <div className={styles.detailContent}>
             <h4>예약자 정보</h4>
             <p>
@@ -752,7 +845,7 @@ export default function MapExplore() {
               className={styles.cancelBtn}
               onClick={() => {
                 setShowDetailSheet(false);
-                setShowCancelModal(true); // ✅ 취소 사유 선택 모달 열기
+                setShowCancelModal(true);
               }}
             >
               {activeReservation.status === 'pending' ? '요청 취소' : '예약 취소'}
@@ -761,7 +854,6 @@ export default function MapExplore() {
         </div>
       )}
 
-      {/* ====== 취소 사유 선택 모달 ====== */}
       {showCancelModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.cancelModal}>
@@ -811,7 +903,6 @@ export default function MapExplore() {
         </div>
       )}
 
-      {/* ====== 취소 완료 모달 ====== */}
       {showResultModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.cancelModal}>

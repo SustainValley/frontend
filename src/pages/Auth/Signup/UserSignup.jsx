@@ -5,6 +5,8 @@ import kakaoLogo from '../../../assets/kakaoLogo.svg';
 import { useSignup } from '../../../context/SignupContext';
 import instance from '../../../lib/axios';
 
+import logoImg from '../../../assets/Logo-main-fin.svg';
+
 const USERNAME_RE = /^[A-Za-z0-9]{5,20}$/;
 const PW_HAS_LETTER = /[A-Za-z]/;
 const PW_HAS_DIGIT = /\d/;
@@ -48,8 +50,14 @@ const UserSignup = () => {
   const [dupStatus, setDupStatus] = useState('idle');
 
   const usernameValid = useMemo(() => validateUsername(username).ok, [username]);
-  const passwordValid = useMemo(() => validatePassword(password, username).ok, [password, username]);
-  const passwordMatch = useMemo(() => password && password2 && password === password2, [password, password2]);
+  const passwordValid = useMemo(
+    () => validatePassword(password, username).ok,
+    [password, username]
+  );
+  const passwordMatch = useMemo(
+    () => password && password2 && password === password2,
+    [password, password2]
+  );
 
   const canClickDup = usernameValid && dupStatus !== 'checking';
   const canNext = usernameValid && passwordValid && passwordMatch && dupStatus === 'available';
@@ -114,18 +122,18 @@ const UserSignup = () => {
     }
   };
 
-const onKakaoLogin = () => {
-  const REST_API_KEY = "c84cef645a77c5d2642041b3b6bc8959"; // 네 REST API 키
-  const REDIRECT_URI = "http://3.27.150.124:8080/hackathon/api/oauth/kakao/callback"; // ✅ 백엔드 콜백 주소
-
-  window.location.href = 
-    `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
-};
-
+  const onKakaoLogin = () => {
+    const REST_API_KEY = 'c84cef645a77c5d2642041b3b6bc8959';
+    const REDIRECT_URI = 'http://3.27.150.124:8080/hackathon/api/oauth/kakao/callback';
+    window.location.href =
+      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+  };
 
   return (
     <div className={styles.userSignupContainer}>
-      <div className={styles.logo}>Logo</div>
+      <div className={styles.logo}>
+        <img src={logoImg} alt="서비스 로고" className={styles.logoImg} />
+      </div>
 
       <div className={styles.formSection}>
         <div className={styles.inputCard}>
@@ -136,7 +144,7 @@ const onKakaoLogin = () => {
               placeholder="아이디"
               className={styles.input}
               value={username}
-              onChange={e => {
+              onChange={(e) => {
                 setUsername(e.target.value);
                 setUserErr('');
                 setDupStatus('idle');
@@ -160,7 +168,11 @@ const onKakaoLogin = () => {
             </button>
           </div>
 
-          {userErr && <div className={styles.errorText} aria-live="assertive">{userErr}</div>}
+          {userErr && (
+            <div className={styles.errorText} aria-live="assertive">
+              {userErr}
+            </div>
+          )}
 
           {!userErr && dupStatus !== 'idle' && dupMsg && (
             <div
@@ -186,7 +198,7 @@ const onKakaoLogin = () => {
             placeholder="비밀번호"
             className={styles.input}
             value={password}
-            onChange={e => {
+            onChange={(e) => {
               setPassword(e.target.value);
               if (pwErr) setPwErr('');
             }}
@@ -201,7 +213,7 @@ const onKakaoLogin = () => {
             placeholder="비밀번호 확인"
             className={styles.input}
             value={password2}
-            onChange={e => {
+            onChange={(e) => {
               setPassword2(e.target.value);
               if (pwErr) setPwErr('');
             }}
@@ -213,7 +225,11 @@ const onKakaoLogin = () => {
             autoComplete="new-password"
           />
 
-          {pwErr && <div className={styles.errorText} aria-live="assertive">{pwErr}</div>}
+          {pwErr && (
+            <div className={styles.errorText} aria-live="assertive">
+              {pwErr}
+            </div>
+          )}
         </div>
       </div>
 
@@ -228,7 +244,11 @@ const onKakaoLogin = () => {
 
         <div className={styles.divider}>또는</div>
 
-        <button className={styles.kakaoButton} type="button" onClick={onKakaoLogin}>
+        <button
+          className={styles.kakaoButton}
+          type="button"
+          onClick={onKakaoLogin}
+        >
           <img src={kakaoLogo} alt="카카오 로고" className={styles.kakaoIcon} />
           카카오톡으로 시작하기
         </button>
