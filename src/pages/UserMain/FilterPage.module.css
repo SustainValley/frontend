@@ -183,7 +183,6 @@
   cursor: pointer;
 }
 
-/* ✅ 비활성화 상태 */
 .stepBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

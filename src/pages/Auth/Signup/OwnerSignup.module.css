@@ -1,3 +1,4 @@
+/* src/pages/Auth/Signup/OwnerSignup.module.css */
 .userSignupContainer {
   display: flex;
   flex-direction: column;
@@ -10,14 +11,18 @@
 .logo {
   position: absolute;
   top: 8px;
-  left: 16px;
+  left: 0px;
   width: 136px;
   height: 44px;
-  background: #D9D9D9;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+}
+
+.logoImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .formSection {
@@ -46,7 +51,7 @@
 .inputRow {
   display: flex;
   gap: 10px;
-  align-items: stretch; /* 입력창과 버튼 높이 일치 */
+  align-items: stretch;
 }
 
 .input {
@@ -84,11 +89,17 @@
   border: none;
   flex-shrink: 0;
   cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.checkButton:hover:not(:disabled) {
+  background: #2f3234;
 }
 
 .checkButton:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .nextButton {
@@ -101,6 +112,35 @@
   line-height: 24px;
   padding: 12px 140px;
   cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+}
+
+.nextButton:hover:not(:disabled) {
+  background: #2f3234;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+}
+
+.nextButton:focus-visible {
+  outline: 3px solid rgba(59,130,246,0.6);
+  outline-offset: 2px;
+}
+
+.nextButton:disabled {
+  background: #E5E7EB;
+  color: #9CA3AF;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.isDisabled {
+  background: #E5E7EB !important;
+  color: #9CA3AF !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+  pointer-events: none;
+  opacity: 1;
 }
 
 .divider {
@@ -148,7 +188,6 @@
   object-fit: contain;
 }
 
-/* ====== 아래 ‘설명/에러/성공’ 텍스트 ====== */
 .subHint {
   margin-top: 6px;
   font-size: 12px;
@@ -170,7 +209,6 @@
   color: #1E7A35;
 }
 
-/* ====== 인증 결과 배지/보조 정보 ====== */
 .verifyBox {
   display: flex;
   gap: 8px;

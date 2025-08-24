@@ -33,9 +33,11 @@ const StoreInfo       = React.lazy(() => import('./pages/OwnerMain/StoreInfo'));
 const OperatingHours  = React.lazy(() => import('./pages/OwnerMain/OperatingHours'));
 const BlockTime       = React.lazy(() => import('./pages/OwnerMain/BlockTime'));
 
+const OwnerReservationList   = React.lazy(() => import('./pages/OwnerMain/OwnerReservationList'));
+const OwnerReservationDetail = React.lazy(() => import('./pages/OwnerMain/OwnerReservationDetail'));
 
-const OwnerReservationList   = React.lazy(() => import('./pages/OwnerMain/OwnerReservationList'));   // 예약 목록
-const OwnerReservationDetail = React.lazy(() => import('./pages/OwnerMain/OwnerReservationDetail')); // 예약 상세
+
+const PromotionPage = React.lazy(() => import('./pages/OwnerMain/PromotionPage'));
 
 const RootRedirect = () => {
   const { isAuthenticated, role, refreshNow } = useAuth();
@@ -67,7 +69,6 @@ const RootRedirect = () => {
       return <Navigate to="/user/home" replace />;
     }
   }
-
   return null;
 };
 
@@ -122,11 +123,13 @@ function App() {
                   <Route path="/owner/home" element={<OwnerMain />} />
                   <Route path="/owner/analysis" element={<OwnerAnalysis />} />
 
+                  <Route path="/owner/promotion" element={<PromotionPage />} />
+
                   <Route path="/owner/store" element={<StoreInfo />} />
                   <Route path="/owner/store/hours" element={<OperatingHours />} />
                   <Route path="/owner/store/block-time" element={<BlockTime />} />
 
-                  <Route path="/owner/reservations" element={<OwnerReservationList />} />  
+                  <Route path="/owner/reservations" element={<OwnerReservationList />} />
                   <Route path="/owner/reservation/:id" element={<OwnerReservationDetail />} />
                 </Route>
 
@@ -134,7 +137,7 @@ function App() {
                   <Route path="/chat" element={<ChatList />} />
                   <Route path="/chat/:chatId" element={<ChatRoom />} />
                 </Route>
-                
+
                 <Route path="*" element={<Navigate to="/login" replace />} />
               </Routes>
             </Suspense>

@@ -25,7 +25,6 @@ const timeSlots = Array.from({ length: (24 * 60) / TIME_STEP }, (_, i) => {
   return `${hh}:${mm}`;
 });
 
-// ✅ 프론트 라벨 -> 백엔드 Enum 값 매핑 (백엔드 제공 표에 맞춤)
 const MEETING_TYPE_ENUM = {
   "프로젝트 회의": "PROJECT",
   "과제/스터디": "STUDY",
@@ -39,7 +38,7 @@ const defaultCafe = {
   id: null,
   name: "풍치커피익스프레스공릉점",
   addr: "서울 노원구 동일로176길 19-20",
-  photos: [], // ✅ 기본 사진 제거(없으면 검정 화면만)
+  photos: [],
   hours: {
     weekly: [
       ["월", "12:00 - 18:00"],
@@ -56,6 +55,7 @@ const defaultCafe = {
   spaceType: "오픈된 공간 (다른 이용자와 함께 사용)",
   phoneNumber: "",
   storeUserId: null,
+  promotion: null,
 };
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -70,6 +70,11 @@ function parseRangeToMinutes(range) {
 function hhmmToMin(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
   return h * 60 + (m || 0);
+}
+function minToHHMM(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${pad2(h)}:${pad2(m)}`;
 }
 function hhmmToHHMMSS(hhmm) {
   const [h, m] = hhmm.split(":");
@@ -102,6 +107,15 @@ function getRowSegment(fromMin, toMin, rowStartH, rowEndH) {
     width: (w / (rowEnd - rowStart)) * 100,
   };
 }
+const roundUpTo = (mins, step = TIME_STEP) => Math.ceil(mins / step) * step;
+
+function getTodayISODate(tz = "Asia/Seoul") {
+  const now = new Date();
+  const y = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric" }).format(now);
+  const m = new Intl.DateTimeFormat("en-CA", { timeZone: tz, month: "2-digit" }).format(now);
+  const d = new Intl.DateTimeFormat("en-CA", { timeZone: tz, day: "2-digit" }).format(now);
+  return `${y}-${m}-${d}`;
+}
 
 function buildWeeklyFromOperating(op) {
   const dayMap = [
@@ -122,9 +136,12 @@ function buildWeeklyFromOperating(op) {
     }
     return null;
   };
-
-  if (!op || typeof op !== "object") return defaultCafe.hours.weekly;
-
+  if (!op || typeof op !== "object") {
+    return [
+      ["월","미등록"],["화","미등록"],["수","미등록"],
+      ["목","미등록"],["금","미등록"],["토","미등록"],["일","미등록"],
+    ];
+  }
   return dayMap.map(([label, key]) => {
     const isOpen = Boolean(op[`${key}IsOpen`]);
     if (!isOpen) return [label, "휴무일"];
@@ -139,7 +156,6 @@ const IS_DEV = process.env.NODE_ENV === "development";
 const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-/** ✅ 카페 API → UI용 cafe 객체 변환 (images만 사용, id 포함) */
 function toUiCafe(api) {
   const photos =
     Array.isArray(api?.images) && api.images.length
@@ -150,21 +166,20 @@ function toUiCafe(api) {
             return url.startsWith("http") ? url : `${API_HOST}${url}`;
           })
           .filter(Boolean)
-      : []; // ✅ 없으면 빈 배열(=검정 화면)
-
+      : [];
   const storeUserId = api?.storeUserId ?? api?.ownerUserId ?? api?.ownerId ?? null;
-
   return {
-    id: api?.id ?? null, // ✅ cafe id 포함
+    id: api?.id ?? null,
     name: api?.name ?? defaultCafe.name,
     addr: api?.location ?? defaultCafe.addr,
     photos,
-    hours: { weekly: defaultCafe.hours.weekly }, // 별도 요청으로 갱신
+    hours: { weekly: defaultCafe.hours.weekly }, 
     ppl: Number(api?.maxSeats) > 0 ? Number(api.maxSeats) : defaultCafe.ppl,
     minOrder: api?.minOrder || defaultCafe.minOrder,
     spaceType: api?.spaceType || defaultCafe.spaceType,
     phoneNumber: api?.phoneNumber || "",
     storeUserId,
+    promotion: (api?.customerPromotion ?? "").toString().trim() || null,
   };
 }
 
@@ -172,6 +187,10 @@ export default function Reserve() {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
+
+  const isQuick = location.state?.quick === true;
+  const forcedHoursStatus = location.state?.hoursStatus ?? null; 
+  const forcedHoursKind = location.state?.hoursKind ?? null;  
 
   const resolvedCafeId = useMemo(() => {
     const byParam = params.cafeId && !Number.isNaN(Number(params.cafeId)) ? Number(params.cafeId) : null;
@@ -208,7 +227,6 @@ export default function Reserve() {
         const ui = toUiCafe(info);
         setCafe(ui);
 
-        // 운영시간 추가 로드
         try {
           const resOp = await fetch(`${API_PREFIX}/cafe/${resolvedCafeId}/operating`, {
             method: "GET",
@@ -221,12 +239,32 @@ export default function Reserve() {
               setCafe((prev) => ({ ...prev, hours: { weekly } }));
             }
           } else {
-            console.warn("operating hours fetch failed:", resOp.status);
+            if (!aborted) {
+              setCafe((prev) => ({
+                ...prev,
+                hours: {
+                  weekly: [
+                    ["월","미등록"],["화","미등록"],["수","미등록"],
+                    ["목","미등록"],["금","미등록"],["토","미등록"],["일","미등록"],
+                  ],
+                },
+              }));
+            }
           }
-        } catch (err) {
-          console.warn("operating hours error:", err);
+        } catch {
+          if (!aborted) {
+            setCafe((prev) => ({
+              ...prev,
+              hours: {
+                weekly: [
+                  ["월","미등록"],["화","미등록"],["수","미등록"],
+                  ["목","미등록"],["금","미등록"],["토","미등록"],["일","미등록"],
+                ],
+              },
+            }));
+          }
         }
-      } catch (e) {
+      } catch {
         if (aborted) return;
         setLoadError("카페 정보를 불러오지 못했어요.");
         setCafe(defaultCafe);
@@ -238,7 +276,6 @@ export default function Reserve() {
     return () => { aborted = true; };
   }, [resolvedCafeId]);
 
-  /** ===== 사진 캐러셀 ===== */
   const photos = Array.isArray(cafe.photos) && cafe.photos.length ? cafe.photos : [];
   const [idx, setIdx] = useState(0);
   const totalSlides = photos.length;
@@ -262,7 +299,6 @@ export default function Reserve() {
   };
   const onPointerUp = () => { dragRef.current.down = false; };
 
-  /** ===== 탭 & 잉크바 ===== */
   const [activeTab, setActiveTab] = useState("detail");
   const tabsRef = useRef(null);
   const inkRef = useRef(null);
@@ -307,13 +343,18 @@ export default function Reserve() {
     requestAnimationFrame(() => moveInk(tabName));
   };
 
-  /** ===== 예약 폼 상태 ===== */
   const [type, setType] = useState("프로젝트 회의");
+
   const [date, setDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    if (!isQuick) d.setDate(d.getDate() + 1);
+    // KST 포맷
+    const y = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric" }).format(d);
+    const m = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", month: "2-digit" }).format(d);
+    const dd = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", day: "2-digit" }).format(d);
+    return `${y}-${m}-${dd}`;
   });
+
   const [start, setStart] = useState("15:00");
   const [end, setEnd] = useState("18:00");
   const [headcount, setHeadcount] = useState(1);
@@ -323,27 +364,41 @@ export default function Reserve() {
     setHeadcount((h) => Math.min(Math.max(1, h), maxHeadcount));
   }, [maxHeadcount]);
 
-  /** ===== 운영 시간 계산 ===== */
   const weekly = cafe.hours?.weekly ?? defaultCafe.hours.weekly;
 
   const dayEntry = useMemo(() => getEntryForDate(weekly, date), [weekly, date]);
+
+  const isAllUnregisteredOrClosed = useMemo(() => {
+    const w = weekly || [];
+    if (!Array.isArray(w) || w.length !== 7) return false;
+    return w.every(([, t]) => !t || t === "미등록" || String(t).includes("휴무"));
+  }, [weekly]);
+
+  const isUnregistered =
+    forcedHoursStatus === "미등록" ||
+    forcedHoursKind === "UNREGISTERED" ||
+    isAllUnregisteredOrClosed;
+
   const openRange = useMemo(() => {
+    if (isUnregistered) return null;
     if (!dayEntry) return null;
     const [, str] = dayEntry;
     if (!str || str.includes("휴무")) return null;
     const [s, e] = parseRangeToMinutes(str);
     return { s, e };
-  }, [dayEntry]);
+  }, [isUnregistered, dayEntry]);
 
+  // 오늘 운영시간 (헤더의 운영중/휴무일/미등록 표시)
   const todayLabel = DAY_LABELS[new Date().getDay()];
   const todayEntry = weekly.find(([day]) => day === todayLabel) || null;
   const todayRange = useMemo(() => {
+    if (isUnregistered) return null;
     if (!todayEntry) return null;
     const [, str] = todayEntry;
     if (!str || str.includes("휴무")) return null;
     const [s, e] = parseRangeToMinutes(str);
     return { s, e };
-  }, [todayEntry]);
+  }, [isUnregistered, todayEntry]);
 
   const [showHours, setShowHours] = useState(false);
   const accInnerRef = useRef(null);
@@ -359,6 +414,11 @@ export default function Reserve() {
   const [runText, setRunText] = useState("휴무일");
   const [isOpenNow, setIsOpenNow] = useState(false);
   useEffect(() => {
+    if (isUnregistered) {
+      setRunText("미등록");
+      setIsOpenNow(false);
+      return;
+    }
     if (!todayRange) {
       setRunText("휴무일");
       setIsOpenNow(false);
@@ -375,7 +435,18 @@ export default function Reserve() {
     update();
     const timer = setInterval(update, 60000);
     return () => clearInterval(timer);
-  }, [todayRange]);
+  }, [isUnregistered, todayRange]);
+
+  // ⭐️ “아래 표”도 미등록이면 요일 전부 미등록로 고정
+  const weeklyForTable = useMemo(() => {
+    if (isUnregistered) {
+      return [
+        ["월","미등록"],["화","미등록"],["수","미등록"],
+        ["목","미등록"],["금","미등록"],["토","미등록"],["일","미등록"],
+      ];
+    }
+    return cafe.hours?.weekly ?? defaultCafe.hours.weekly;
+  }, [isUnregistered, cafe.hours]);
 
   /** ===== 시간 선택 유효성 ===== */
   const isStartEnabled = (hhmm) => {
@@ -411,7 +482,45 @@ export default function Reserve() {
     return newEnd;
   };
 
-  /** ===== 요금 계산(예시) ===== */
+  useEffect(() => {
+    if (!isQuick || !openRange) return;
+
+    const todayIso = getTodayISODate();
+    if (date !== todayIso) setDate(todayIso);
+
+    const now = new Date();
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    let target = roundUpTo(nowM + 15, TIME_STEP);              
+    const latestStart = openRange.e - TIME_STEP;          
+    target = Math.max(openRange.s, Math.min(target, latestStart));
+    const fixedStart = minToHHMM(target);
+
+    setStart(fixedStart);
+
+    if (!isEndEnabled(end, fixedStart)) {
+      const next = findNextEnabledEnd(fixedStart);
+      setEnd(next);
+    }
+  }, [isQuick, openRange]); 
+
+  useEffect(() => {
+    if (!openRange) return;
+    let sMin = hhmmToMin(start);
+    let eMin = hhmmToMin(end);
+
+    if (sMin < openRange.s) sMin = openRange.s;
+    if (sMin > openRange.e - TIME_STEP) sMin = openRange.e - TIME_STEP;
+
+    if (eMin <= sMin) eMin = sMin + TIME_STEP;
+    if (eMin > openRange.e) eMin = openRange.e;
+
+    const newStart = minToHHMM(sMin);
+    const newEnd = minToHHMM(eMin);
+
+    if (newStart !== start) setStart(newStart);
+    if (newEnd !== end) setEnd(newEnd);
+  }, [openRange]); 
+
   const price = useMemo(() => {
     const s = hhmmToMin(start);
     const e = hhmmToMin(end);
@@ -419,7 +528,6 @@ export default function Reserve() {
     return Math.round(hours * 6000);
   }, [start, end]);
 
-  /** ===== 타임라인 표시 ===== */
   const selStartMin = hhmmToMin(start);
   const selEndMin = hhmmToMin(end);
   const morningSelected = getRowSegment(selStartMin, selEndMin, 0, 12);
@@ -431,7 +539,6 @@ export default function Reserve() {
   const afternoonUnA = getRowSegment(0, openRange ? openRange.s : FULL_DAY_END, 12, 24);
   const afternoonUnB = openRange ? getRowSegment(openRange.e, FULL_DAY_END, 12, 24) : { show: false, left: 0, width: 0 };
 
-  /** ===== 유저 ID ===== */
   const getUserId = () => {
     const a = window.localStorage.getItem("user_id");
     const b = window.localStorage.getItem("userId");
@@ -440,7 +547,6 @@ export default function Reserve() {
     return parsedA ?? parsedB ?? null;
   };
 
-  /** ===== 채팅방 생성 ===== */
   const [creatingChat, setCreatingChat] = useState(false);
 
   async function tryFindExistingRoom(userId, storeUserId, cafeId) {
@@ -485,7 +591,7 @@ export default function Reserve() {
       const res = await fetch(`${API_PREFIX}/chat/room/create`, {
         method: "POST",
         headers: { accept: "*/*", "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, storeUserId, cafeId }), // ✅ cafeId 함께 전송
+        body: JSON.stringify({ userId, storeUserId, cafeId }),
       });
 
       const text = await res.text();
@@ -558,7 +664,7 @@ export default function Reserve() {
       return;
     }
     if (!openRange) {
-      alert("선택한 날짜는 휴무일이에요.");
+      alert(isUnregistered ? "운영 시간이 미등록이라 예약할 수 없어요." : "선택한 날짜는 휴무일이에요.");
       return;
     }
     const sOk = isStartEnabled(start);
@@ -568,7 +674,6 @@ export default function Reserve() {
       return;
     }
 
-    // ✅ 라벨을 서버 Enum 문자열로 변환
     const mappedMeetingType = MEETING_TYPE_ENUM[type];
     if (!mappedMeetingType) {
       alert("회의 종류 매핑을 찾을 수 없습니다. 관리자에게 문의해주세요.");
@@ -577,9 +682,9 @@ export default function Reserve() {
 
     const payload = {
       userId,
-      cafeId, // ✅ cafe id 포함 보장
-      meetingType: mappedMeetingType, // ✅ 서버 Enum 값 사용
-      date, // "YYYY-MM-DD"
+      cafeId,
+      meetingType: mappedMeetingType,
+      date,
       peopleCount: headcount,
       startTime: hhmmToHHMMSS(start),
       endTime: hhmmToHHMMSS(end),
@@ -588,7 +693,11 @@ export default function Reserve() {
     if (creatingReservation) return;
     setCreatingReservation(true);
     try {
-      const res = await fetch(`${API_PREFIX}/reservation/create`, {
+      const endpoint = isQuick
+        ? `${API_PREFIX}/reservation/create/now`
+        : `${API_PREFIX}/reservation/create`;
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           accept: "*/*",
@@ -613,7 +722,7 @@ export default function Reserve() {
 
       alert(
         [
-          "✓ 예약이 생성되었어요!",
+          isQuick ? "✓ 바로 이용 예약이 생성되었어요!" : "✓ 예약이 생성되었어요!",
           `- 예약번호: ${rid ?? "(알 수 없음)"}`,
           `- 장소: ${cafe.name}`,
           `- 일자: ${date}`,
@@ -647,11 +756,11 @@ export default function Reserve() {
         </div>
 
         <div className={styles.photoCarousel}>
-          {totalSlides > 0 ? (
+          {photos.length > 0 ? (
             <>
-              <div className={styles.badge}>{idx + 1}/{totalSlides}</div>
+              <div className={styles.badge}>{idx + 1}/{photos.length}</div>
 
-              {totalSlides > 1 && (
+              {photos.length > 1 && (
                 <>
                   <button
                     type="button"
@@ -669,7 +778,7 @@ export default function Reserve() {
                     type="button"
                     className={`${styles.navBtn} ${styles.navRight}`}
                     onClick={nextSlide}
-                    disabled={idx === totalSlides - 1}
+                    disabled={idx === photos.length - 1}
                     aria-label="다음 사진"
                   >
                     <svg viewBox="0 0 24 24">
@@ -698,7 +807,6 @@ export default function Reserve() {
               </div>
             </>
           ) : (
-            // ✅ 사진이 하나도 없으면 검정 배경만
             <div className={styles.photoSlide} />
           )}
         </div>
@@ -730,6 +838,13 @@ export default function Reserve() {
 
       <main className={styles.body}>
         <section ref={detailSecRef} data-tab="detail" className={styles.section} id="detail">
+          {cafe.promotion && (
+            <div className={styles.promoCard} role="region" aria-label="진행중인 이벤트">
+              <p className={styles.promoTitle}>진행중인 이벤트</p>
+              <p className={styles.promoText}>{cafe.promotion}</p>
+            </div>
+          )}
+
           <p className={styles.sectionTitle}>운영 정보</p>
 
           {loadError && <p className={styles.errorText}>{loadError}</p>}
@@ -766,7 +881,7 @@ export default function Reserve() {
                 <div ref={accInnerRef} className={styles.accBodyInner}>
                   <table className={styles.hoursTable} role="table" aria-label="요일별 운영 시간">
                     <tbody>
-                      {(cafe.hours?.weekly ?? defaultCafe.hours.weekly).map(([d, t]) => (
+                      {weeklyForTable.map(([d, t]) => (
                         <tr key={d}>
                           <th scope="row" className={styles.dayCell}>{d}</th>
                           <td className={styles.timeCell}>{t}</td>
@@ -873,53 +988,62 @@ export default function Reserve() {
               <div className={styles.timeRow}>
                 <label className={styles.smallLabel}>시간</label>
 
-                <div className={styles.timeline2} aria-hidden>
-                  <div className={styles.timelineRow}>
-                    <span className={styles.ampm}>오전</span>
-                    <div className={styles.grid24}>
-                      {morningUnA.show && (
-                        <span className={styles.unavailableBand} style={{ left: `${morningUnA.left}%`, width: `${morningUnA.width}%` }} />
-                      )}
-                      {morningUnB.show && (
-                        <span className={styles.unavailableBand} style={{ left: `${morningUnB.left}%`, width: `${morningUnB.width}%` }} />
-                      )}
-                      {morningSelected.show && (
-                        <span className={styles.fillRange} style={{ left: `${morningSelected.left}%`, width: `${morningSelected.width}%` }} />
-                      )}
+                {!isQuick && (
+                  <div className={styles.timeline2} aria-hidden>
+                    <div className={styles.timelineRow}>
+                      <span className={styles.ampm}>오전</span>
+                      <div className={styles.grid24}>
+                        {morningUnA.show && (
+                          <span className={styles.unavailableBand} style={{ left: `${morningUnA.left}%`, width: `${morningUnA.width}%` }} />
+                        )}
+                        {morningUnB.show && (
+                          <span className={styles.unavailableBand} style={{ left: `${morningUnB.left}%`, width: `${morningUnB.width}%` }} />
+                        )}
+                        {morningSelected.show && (
+                          <span className={styles.fillRange} style={{ left: `${morningSelected.left}%`, width: `${morningSelected.width}%` }} />
+                        )}
+                      </div>
+                    </div>
+                    <div className={styles.timelineRow}>
+                      <span className={styles.ampm}>오후</span>
+                      <div className={styles.grid24}>
+                        {afternoonUnA.show && (
+                          <span className={styles.unavailableBand} style={{ left: `${afternoonUnA.left}%`, width: `${afternoonUnA.width}%` }} />
+                        )}
+                        {afternoonUnB.show && (
+                          <span className={styles.unavailableBand} style={{ left: `${afternoonUnB.left}%`, width: `${afternoonUnB.width}%` }} />
+                        )}
+                        {afternoonSelected.show && (
+                          <span className={styles.fillRange} style={{ left: `${afternoonSelected.left}%`, width: `${afternoonSelected.width}%` }} />
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className={styles.timelineRow}>
-                    <span className={styles.ampm}>오후</span>
-                    <div className={styles.grid24}>
-                      {afternoonUnA.show && (
-                        <span className={styles.unavailableBand} style={{ left: `${afternoonUnA.left}%`, width: `${afternoonUnA.width}%` }} />
-                      )}
-                      {afternoonUnB.show && (
-                        <span className={styles.unavailableBand} style={{ left: `${afternoonUnB.left}%`, width: `${afternoonUnB.width}%` }} />
-                      )}
-                      {afternoonSelected.show && (
-                        <span className={styles.fillRange} style={{ left: `${afternoonSelected.left}%`, width: `${afternoonSelected.width}%` }} />
-                      )}
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 <div className={styles.timePickers}>
                   <div className={styles.timePicker}>
                     <span className={`${styles.smallLabel} ${styles.inlineLabel}`}>시작시간</span>
+
                     <div className={styles.selectWrap}>
                       <select
                         value={start}
                         onChange={(e) => {
                           const v = e.target.value;
+                          if (openRange) {
+                            const sMin = hhmmToMin(v);
+                            const eMin = hhmmToMin(end);
+                            if (eMin <= sMin) {
+                              const next = findNextEnabledEnd(v);
+                              setEnd(next);
+                            }
+                          }
                           setStart(v);
-                          if (!openRange) return;
-                          const next = findNextEnabledEnd(v);
-                          if (!isEndEnabled(end, v)) setEnd(next);
                         }}
+                        disabled={isQuick || !openRange}
                       >
                         {timeSlots.map((t) => (
-                          <option key={t} value={t} disabled={openRange ? !isStartEnabled(t) : false}>
+                          <option key={t} value={t} disabled={openRange ? !isStartEnabled(t) : true}>
                             {t}
                           </option>
                         ))}
@@ -945,9 +1069,10 @@ export default function Reserve() {
                           }
                           setEnd(v);
                         }}
+                        disabled={!openRange}
                       >
                         {timeSlots.map((t) => (
-                          <option key={t} value={t} disabled={openRange ? !isEndEnabled(t, start) : false}>
+                          <option key={t} value={t} disabled={openRange ? !isEndEnabled(t, start) : true}>
                             {t}
                           </option>
                         ))}

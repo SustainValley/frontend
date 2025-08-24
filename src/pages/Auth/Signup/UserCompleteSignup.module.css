@@ -3,6 +3,9 @@
   flex-direction: column;
   height: 100%;
   position: relative;
+  background: #fff;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .centerWrap {
@@ -11,62 +14,153 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0px;
+  padding: 0px;
 }
 
-.brandBox {
-  width: 120px;
-  height: 120px;
-  background: #D9D9D9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #3a3e40;
-  font-size: 14px;
+.logo {
+  height: 150px;
+  width: 150px;
+  object-fit: contain;
 }
 
 .title {
-  margin-top: 32px;
+  margin: 8px 0 0;
   color: var(--gray-80, #3A3E40);
   font-family: Pretendard;
   font-size: 20px;
-  font-style: normal;
   font-weight: 600;
   line-height: 24px;
-  text-align: center;
 }
 
 .footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-bottom: 45px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  padding: 8px 10px 10px;
+  box-sizing: border-box;
+  transform: translateY(-30px);
 }
 
 .subText {
-  color: var(--gray-70, #515659);
-  font-family: Pretendard;
-  font-size: 14px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: 20px; 
+  color: #515659;
+  font-size: 12px;
+  line-height: 16px;
   text-align: center;
+  margin: 0;
 }
 
 .nextButton {
   border: none;
-  border-radius: 12px;
-  background: var(--Sub-Sub-1, #A9C247);
+  border-radius: 10px;
+  background: #A9C247;
   color: #FFF;
-  font-family: Pretendard;
-  font-size: 16px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 24px;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+               "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
   cursor: pointer;
-  display: flex;
-  width: 343px;
-  padding: 12px 0;
+  width: 280px;
+  max-width: 100%;
+  padding: 9px 0;
+  display: inline-flex;
   justify-content: center;
   align-items: center;
+  transition: transform 120ms ease, filter 120ms ease;
 }
 
+.nextButton:hover {
+  filter: brightness(1.03);
+}
+
+.nextButton:active {
+  transform: translateY(1px);
+}
+
+.confetti {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.38;
+  filter: blur(0.2px);
+  pointer-events: none;
+  animation-name: fall;
+  animation-duration: 6.5s;
+  animation-timing-function: ease-in;
+  animation-iteration-count: infinite;
+}
+
+.c1 {
+  left: 6%;
+  top: -10px;
+  background: #A9C247;
+  animation-delay: 0s;
+}
+
+.c2 {
+  right: 8%;
+  top: -14px;
+  background: #3C70B5;
+  animation-delay: .4s;
+}
+
+.c3 {
+  left: 28%;
+  top: -18px;
+  background: #8dc63f;
+  animation-delay: .8s;
+}
+
+.c4 {
+  right: 26%;
+  top: -8px;
+  background: #94b4e2;
+  animation-delay: 1.2s;
+}
+
+@keyframes fall {
+  0%   { top: -12px; opacity: 0; }
+  10%  { opacity: .38; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@media (max-height: 620px) {
+  .centerWrap {
+    gap: 8px;
+    padding: 6px 8px 0;
+  }
+
+  .logo {
+    height: 28px;
+  }
+
+  .title {
+    font-size: 14px;
+    line-height: 18px;
+    margin-top: 6px;
+  }
+
+  .footer {
+    gap: 5px;
+    padding: 6px 8px 8px;
+    transform: translateY(-20px);
+  }
+
+  .subText {
+    font-size: 11.5px;
+    line-height: 15px;
+  }
+
+  .nextButton {
+    width: 240px;
+    font-size: 13px;
+    line-height: 18px;
+    padding: 7px 0;
+  }
+
+  .confetti {
+    display: none;
+  }
+}

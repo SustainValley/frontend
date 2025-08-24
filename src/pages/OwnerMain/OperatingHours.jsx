@@ -72,7 +72,7 @@ export default function OperatingHours() {
     setHours(s=>({...s,[i]:{...s[i],close:v}}));
   },[]);
 
-  const buildPayload = (format /* "string" | "object" */) => {
+  const buildPayload = (format) => {
     const json = {};
     KEYMAP.forEach((key, idx) => {
       const { on, open, close } = hours[idx];
@@ -107,7 +107,6 @@ export default function OperatingHours() {
           headers: { Accept: "application/json" },
         });
         const data = res.data || {};
-        // 서버 키 → 인덱스 매핑
         const next = {};
         KEYMAP.forEach((key, idx) => {
           const isOpen = !!data[`${key}IsOpen`];
@@ -123,7 +122,6 @@ export default function OperatingHours() {
       }
     };
     fetchOperating();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSave = async () => {

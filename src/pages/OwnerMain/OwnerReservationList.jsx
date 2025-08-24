@@ -140,6 +140,7 @@ const OwnerReservationList = () => {
       todayStatus, 
       start: st ? `${date}T${st}` : undefined, 
       end: et ? `${date}T${et}` : undefined,
+      immediate: it.immediate === true || it.immediate === "true" || it.immediate === 1,
       raw: it,
     };
   };
@@ -249,7 +250,7 @@ const OwnerReservationList = () => {
     setActErr("");
     try {
       await instance.patch(`/api/reservation/owner/today/${id}`, null, {
-        params: { attendance }, // 쿼리스트링로 전달
+        params: { attendance },
         headers: { "Content-Type": "application/json" },
       });
       await fetchReservations();
@@ -383,6 +384,7 @@ const OwnerReservationList = () => {
                 <div className={styles.infoRow}>
                   <img src={peopleIcon} alt="인원" className={styles.icon} />
                   <span>{r.people}명</span>
+                  {r.immediate && <span className={styles.nowBadge}>바로이용</span>}
                 </div>
                 <div className={styles.infoRow}>
                   <img src={calendarIcon} alt="날짜" className={styles.icon} />

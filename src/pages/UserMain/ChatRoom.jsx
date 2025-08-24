@@ -1,6 +1,6 @@
 // src/pages/Chat/ChatRoom.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Client } from "@stomp/stompjs";
 import styles from "./Chat.module.css";
 import { useAuth } from "../../context/AuthContext";
@@ -10,17 +10,15 @@ import sendIcon from "../../assets/tabler_send.svg";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
-// 백엔드 베이스 (개발=EC2, 배포=백엔드 도메인)
+
 const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "https://mocacafe.site";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-// 순수 WS-STOMP 접속 (배포는 반드시 백엔드 도메인으로 직접 연결)
 const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://mocacafe.site";
-// 실제 서버 매핑에 맞게 경로 확인 필요: /hackathon/api/ws-stomp 또는 /hackathon/ws-stomp
+
 const WS_PATH = "/hackathon/api/ws-stomp";
 const WS_URL = `${WS_BASE}${WS_PATH}`;
 
-// ===== 유틸 =====
 const ZW_REGEX = /[\u200B-\u200D\uFEFF]/g;
 const NL_REGEX = /\r\n|\r/g;
 const WS_REGEX = /[ \t]+/g;
@@ -62,6 +60,8 @@ const isMatchPending = (pending, incoming, myId) => {
 export default function ChatRoom() {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
+
   const roomId = Number(params.chatId ?? params.roomId);
 
   const { user } = useAuth();
@@ -76,6 +76,8 @@ export default function ChatRoom() {
   const subscribedRef = useRef(false);
 
   const [chatRoomUserId, setChatRoomUserId] = useState(null);
+
+  const [roomTitle, setRoomTitle] = useState(location.state?.roomName || "");
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
@@ -102,7 +104,10 @@ export default function ChatRoom() {
       if (!res.ok) return;
       const data = await res.json();
       const row = (data.result || []).find((r) => r.roomId === roomId);
+
       if (row?.chatRoomUserId) setChatRoomUserId(row.chatRoomUserId);
+
+      if (!roomTitle && row?.title) setRoomTitle(row.title);
     } catch {}
   };
 
@@ -162,7 +167,6 @@ export default function ChatRoom() {
           text,
           createdAt: toISO(m.createdAt ?? m.timestamp),
           from: mine ? "me" : "store",
-          name: mine ? "나" : "상대방",
           state: "sent",
         };
       });
@@ -170,7 +174,6 @@ export default function ChatRoom() {
     } catch {}
   };
 
-  // ===== 순수 WS-STOMP 연결 =====
   const connect = () => {
     if (!roomId || subscribedRef.current) return;
 
@@ -199,7 +202,6 @@ export default function ChatRoom() {
             text,
             createdAt: toISO(payload.createdAt ?? payload.timestamp),
             from: mine ? "me" : "store",
-            name: mine ? "나" : "상대방",
             state: "sent",
           };
 
@@ -307,7 +309,6 @@ export default function ChatRoom() {
         text,
         createdAt: nowISO,
         from: "me",
-        name: "나",
         state: "pending",
       },
     ]);
@@ -348,13 +349,15 @@ export default function ChatRoom() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const otherDisplayName = roomTitle || "상대방";
+
   return (
     <div className={styles.page}>
       <div className={styles.appbar}>
         <button className={styles.backBtn} onClick={() => navigate(-1)}>
           <img src={backIcon} alt="뒤로가기" />
         </button>
-        <div className={styles.title}>채팅 문의</div>
+        <div className={styles.title}>{otherDisplayName}</div>
         <div style={{ width: 40 }} />
       </div>
 
@@ -367,11 +370,13 @@ export default function ChatRoom() {
               ? `cid-${msg.clientId}`
               : `at-${msg.createdAt}-${i}`;
 
-          return msg.from === "store" ? (
+          const isStore = msg.from === "store";
+          const senderLabel = isStore ? otherDisplayName : "나"; 
+
+          return isStore ? (
             <div key={key} className={styles.messageRow}>
-              <div className={styles.profile}></div>
               <div className={styles.messageContent}>
-                <div className={styles.senderName}>{msg.name || "상대방"}</div>
+                <div className={styles.senderName}>{senderLabel}</div>
                 <div className={`${styles.bubble} ${styles.store}`}>{msg.text ?? msg.message}</div>
               </div>
             </div>

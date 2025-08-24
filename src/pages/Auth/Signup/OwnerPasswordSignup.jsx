@@ -1,8 +1,8 @@
-// src/pages/Auth/Signup/OwnerPasswordSignup.jsx
-import React, { useState, useMemo } from 'react';
-import styles from './OwnerPasswordSignup.module.css';
-import { useNavigate } from 'react-router-dom';
-import { useOwnerSignup } from '../../../context/OwnerSignupContext';
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import styles from "./OwnerPasswordSignup.module.css";
+import { useOwnerSignup } from "../../../context/OwnerSignupContext";
+import logoImg from "../../../assets/Logo-main-fin.svg";
 
 const PW_HAS_LETTER = /[A-Za-z]/;
 const PW_HAS_DIGIT = /\d/;
@@ -10,20 +10,21 @@ const PW_HAS_SPECIAL = /[^A-Za-z0-9]/;
 const PW_SPACE = /\s/;
 
 function validatePassword(p) {
-  if (!p) return { ok: false, msg: '비밀번호를 입력해주세요.' };
-  if (PW_SPACE.test(p)) return { ok: false, msg: '비밀번호에 공백은 사용할 수 없어요.' };
-  if (p.length < 8 || p.length > 20) return { ok: false, msg: '비밀번호는 8~20자여야 해요.' };
+  if (!p) return { ok: false, msg: "비밀번호를 입력해주세요." };
+  if (PW_SPACE.test(p)) return { ok: false, msg: "비밀번호에 공백은 사용할 수 없어요." };
+  if (p.length < 8 || p.length > 20) return { ok: false, msg: "비밀번호는 8~20자여야 해요." };
   if (!PW_HAS_LETTER.test(p) || !PW_HAS_DIGIT.test(p) || !PW_HAS_SPECIAL.test(p)) {
-    return { ok: false, msg: '영문, 숫자, 특수문자를 각각 1자 이상 포함해주세요.' };
+    return { ok: false, msg: "영문, 숫자, 특수문자를 각각 1자 이상 포함해주세요." };
   }
-  return { ok: true, msg: '' };
+  return { ok: true, msg: "" };
 }
 
 const OwnerPasswordSignup = () => {
   const navigate = useNavigate();
   const { password, setPassword } = useOwnerSignup();
-  const [confirm, setConfirm] = useState('');
-  const [err, setErr] = useState('');
+
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState("");
 
   const pwValid = useMemo(() => validatePassword(password).ok, [password]);
   const match = useMemo(() => password && confirm && password === confirm, [password, confirm]);
@@ -36,16 +37,18 @@ const OwnerPasswordSignup = () => {
       return;
     }
     if (!match) {
-      setErr('비밀번호가 일치하지 않습니다.');
+      setErr("비밀번호가 일치하지 않습니다.");
       return;
     }
-    setErr('');
-    navigate('/signup/owner/phone');
+    setErr("");
+    navigate("/signup/owner/phone");
   };
 
   return (
     <div className={styles.container}>
-      <div className={styles.logo}>Logo</div>
+      <div className={styles.logo}>
+        <img src={logoImg} alt="서비스 로고" className={styles.logoImg} />
+      </div>
 
       <div className={styles.wrapper}>
         <div className={styles.inputCard}>
@@ -59,14 +62,14 @@ const OwnerPasswordSignup = () => {
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              if (err) setErr('');
+              if (err) setErr("");
             }}
             onBlur={() => {
               const v = validatePassword(password);
-              setErr(v.ok ? '' : v.msg);
+              setErr(v.ok ? "" : v.msg);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && valid) onNext();
+              if (e.key === "Enter" && valid) onNext();
             }}
           />
 
@@ -78,22 +81,27 @@ const OwnerPasswordSignup = () => {
             value={confirm}
             onChange={(e) => {
               setConfirm(e.target.value);
-              if (err) setErr('');
+              if (err) setErr("");
             }}
             onBlur={() => {
               if (password && confirm && password !== confirm) {
-                setErr('비밀번호가 일치하지 않습니다.');
+                setErr("비밀번호가 일치하지 않습니다.");
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && valid) onNext();
+              if (e.key === "Enter" && valid) onNext();
             }}
           />
 
-          {err && <div className={styles.errorText} aria-live="assertive">{err}</div>}
+          {err && (
+            <div className={styles.errorText} aria-live="assertive">
+              {err}
+            </div>
+          )}
         </div>
 
         <button
+          type="button"
           className={styles.nextButton}
           onClick={onNext}
           disabled={!valid}

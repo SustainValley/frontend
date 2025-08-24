@@ -1,4 +1,3 @@
-// src/pages/Owner/StoreInfo.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./StoreInfo.module.css";
@@ -15,7 +14,6 @@ export default function StoreInfo() {
   const [open, setOpen] = useState(true);
   useMemo(() => open, [open]);
 
-  // ===== cafeId =====
   const cafeIdRef = useRef(null);
   const [cafeId, setCafeId] = useState(null);
   const [idError, setIdError] = useState("");
@@ -134,7 +132,6 @@ export default function StoreInfo() {
           }
         }
 
-        // 서버 스키마: images: [{id, url}, ...]
         let mapped = [];
         if (Array.isArray(data?.images)) {
           mapped = data.images.map((it) => ({
@@ -171,7 +168,6 @@ export default function StoreInfo() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cafeId]);
 
-  // 업로드: 엔드포인트 명세가 없어서 기존 경로 유지
   const uploadImageFile = async (file) => {
     if (!cafeIdRef.current) throw new Error("카페 ID가 없어 이미지를 업로드할 수 없어요.");
     const form = new FormData();
@@ -303,7 +299,6 @@ export default function StoreInfo() {
     const target = photos[index];
     if (!target) return;
 
-    // 서버에 아직 업로드 안 된(미등록) 프리뷰면 클라이언트에서만 제거
     if (target.id == null) {
       setPhotos((prev) => {
         const next = prev.filter((_, i) => i !== index);
@@ -322,7 +317,6 @@ export default function StoreInfo() {
 
     try {
       setDeleting(true);
-      // ✅ 명세 반영: /api/cafe/{cafeId}/image/{imageId}/delete
       await instance.delete(`/api/cafe/${cafeIdRef.current}/images/${target.id}/delete`);
 
 
@@ -354,7 +348,6 @@ export default function StoreInfo() {
       return;
     }
 
-    // ✅ 서버 스키마에 맞춰 maxSeats 필드로 전송
     const payload = {
       minOrder: (minOrder || "").trim(),
       maxSeats: Number(maxPeople),
