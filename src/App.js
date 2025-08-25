@@ -36,7 +36,6 @@ const BlockTime       = React.lazy(() => import('./pages/OwnerMain/BlockTime'));
 const OwnerReservationList   = React.lazy(() => import('./pages/OwnerMain/OwnerReservationList'));
 const OwnerReservationDetail = React.lazy(() => import('./pages/OwnerMain/OwnerReservationDetail'));
 
-
 const PromotionPage = React.lazy(() => import('./pages/OwnerMain/PromotionPage'));
 
 const RootRedirect = () => {
@@ -84,6 +83,30 @@ const OwnerSignupLayout = () => (
   </OwnerSignupProvider>
 );
 
+function RequirePhone({ children }) {
+  const { isAuthenticated, role } = useAuth();
+  const location = useLocation();
+
+  if (!isAuthenticated || role !== 'user') return children;
+
+  const hasPhoneRaw   = localStorage.getItem('has_phone_number');     
+  const enforcePhone  = localStorage.getItem('phone_enforce') === '1';
+  const isOnPhonePage = location.pathname.startsWith('/signup/user/phone');
+
+  if (enforcePhone && hasPhoneRaw === '0' && !isOnPhonePage) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/signup/user/phone?next=${next}`} replace />;
+  }
+
+  if ((!enforcePhone || hasPhoneRaw === '1') && isOnPhonePage) {
+    const params = new URLSearchParams(location.search);
+    const nextParam = params.get('next') || '/user/home';
+    return <Navigate to={nextParam} replace />;
+  }
+
+  return children;
+}
+
 function App() {
   return (
     <div className="web-wrapper">
@@ -96,7 +119,6 @@ function App() {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-
                 <Route path="/oauth/kakao/callback" element={<KakaoCallback />} />
 
                 <Route element={<UserSignupLayout />}>
@@ -114,28 +136,60 @@ function App() {
                 </Route>
 
                 <Route element={<RoleRoute allow={['user']} />}>
-                  <Route path="/user/home" element={<UserMain />} />
-                  <Route path="/user/filters" element={<FilterPage />} />
-                  <Route path="/user/reserve" element={<Reserve />} />
+                  <Route
+                    path="/user/home"
+                    element={
+                      <RequirePhone>
+                        <UserMain />
+                      </RequirePhone>
+                    }
+                  />
+                  <Route
+                    path="/user/filters"
+                    element={
+                      <RequirePhone>
+                        <FilterPage />
+                      </RequirePhone>
+                    }
+                  />
+                  <Route
+                    path="/user/reserve"
+                    element={
+                      <RequirePhone>
+                        <Reserve />
+                      </RequirePhone>
+                    }
+                  />
                 </Route>
 
                 <Route element={<RoleRoute allow={['owner']} />}>
                   <Route path="/owner/home" element={<OwnerMain />} />
                   <Route path="/owner/analysis" element={<OwnerAnalysis />} />
-
                   <Route path="/owner/promotion" element={<PromotionPage />} />
-
                   <Route path="/owner/store" element={<StoreInfo />} />
                   <Route path="/owner/store/hours" element={<OperatingHours />} />
                   <Route path="/owner/store/block-time" element={<BlockTime />} />
-
                   <Route path="/owner/reservations" element={<OwnerReservationList />} />
                   <Route path="/owner/reservation/:id" element={<OwnerReservationDetail />} />
                 </Route>
 
                 <Route element={<RoleRoute allow={['user','owner']} />}>
-                  <Route path="/chat" element={<ChatList />} />
-                  <Route path="/chat/:chatId" element={<ChatRoom />} />
+                  <Route
+                    path="/chat"
+                    element={
+                      <RequirePhone>
+                        <ChatList />
+                      </RequirePhone>
+                    }
+                  />
+                  <Route
+                    path="/chat/:chatId"
+                    element={
+                      <RequirePhone>
+                        <ChatRoom />
+                      </RequirePhone>
+                    }
+                  />
                 </Route>
 
                 <Route path="*" element={<Navigate to="/login" replace />} />

@@ -30,10 +30,31 @@ function getTodayISODate(tzName = "Asia/Seoul") {
   return `${y}-${m}-${d}`;
 }
 
+function normalizeYMD(input) {
+  if (!input) return getTodayISODate(tz);
+  if (typeof input !== "string") return getTodayISODate(tz);
+
+  const m = input.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) {
+    const mm = String(m[2]).padStart(2, "0");
+    const dd = String(m[3]).padStart(2, "0");
+    return `${m[1]}-${mm}-${dd}`;
+  }
+
+  const m2 = input.match(/^(\d{4})[.](\d{1,2})[.](\d{1,2})/);
+  if (m2) {
+    const mm = String(m2[2]).padStart(2, "0");
+    const dd = String(m2[3]).padStart(2, "0");
+    return `${m2[1]}-${mm}-${dd}`;
+  }
+
+  return getTodayISODate(tz);
+}
+
 const toHms = (t) => {
   if (!t) return "";
   if (typeof t === "string") {
-    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;      
+    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;     
     if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;   
     return t.slice(0, 8);                            
   }
@@ -46,25 +67,44 @@ const toHms = (t) => {
   return "";
 };
 
-const RESV = {
-  PENDING: "PENDING",
-  APPROVED: "APPROVED",
-  REJECTED: "REJECTED",
-};
+const RESV = { PENDING: "PENDING", APPROVED: "APPROVED", REJECTED: "REJECTED" };
+const ATT  = { BEFORE_USE: "BEFORE_USE", IN_USE: "IN_USE", COMPLETED: "COMPLETED" };
 
-const ATT = {
-  BEFORE_USE: "BEFORE_USE",
-  IN_USE: "IN_USE",
-  COMPLETED: "COMPLETED",
-};
+/** 오늘 탭 표시 상태 계산: 시간 기준 + attendance 보정(되돌림 없음) */
+function deriveTodayStatus({ date, startHms, endHms, attendance }) {
+  if (!date) return undefined;
+  const today = getTodayISODate(tz);
+  if (date !== today) return undefined;
+
+  // 시간 기준 기본 상태
+  const start = startHms ? Date.parse(`${date}T${startHms}`) : NaN;
+  const end   = endHms   ? Date.parse(`${date}T${endHms}`)   : NaN;
+
+  let base;
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    base = "before";
+  } else {
+    const now = Date.now();
+    if (now < start) base = "before";
+    else if (now <= end) base = "using";
+    else base = "done";
+  }
+
+  // attendance 우선 보정(진행 되돌리지 않음)
+  if (attendance === ATT.COMPLETED) return "done";
+  if (attendance === ATT.IN_USE) return base === "done" ? "done" : "using";
+  if (attendance === ATT.BEFORE_USE) return base;
+
+  return base;
+}
 
 const OwnerReservationList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState("today"); 
-  const [todayTab, setTodayTab] = useState("using");  
+  const [activeTab, setActiveTab] = useState("today"); // "request" | "confirmed" | "today"
+  const [todayTab, setTodayTab] = useState("using");   // "before" | "using" | "done"
 
   const [showModal, setShowModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
@@ -87,7 +127,7 @@ const OwnerReservationList = () => {
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
     if (!(activeTab === "today" && todayTab === "using")) return;
-    setNowTs(Date.now()); 
+    setNowTs(Date.now());
     const id = setInterval(() => setNowTs(Date.now()), 10_000);
     return () => clearInterval(id);
   }, [activeTab, todayTab]);
@@ -110,8 +150,7 @@ const OwnerReservationList = () => {
   };
 
   const mapApiItem = (it) => {
-    const date = typeof it.date === "string" ? it.date : getTodayISODate();
-
+    const date = normalizeYMD(it.date);
     const st = toHms(it.startTime);
     const et = toHms(it.endTime);
 
@@ -124,22 +163,43 @@ const OwnerReservationList = () => {
         ? "confirmed"
         : "other";
 
-    let todayStatus = undefined;
-    if (it.attendanceStatus === ATT.BEFORE_USE) todayStatus = "before";
-    else if (it.attendanceStatus === ATT.IN_USE) todayStatus = "using";
-    else if (it.attendanceStatus === ATT.COMPLETED) todayStatus = "done";
+    // attendance 정규화
+    const ATT_MAP = {
+      BEFORE_USE: ATT.BEFORE_USE,
+      "BEFORE-USE": ATT.BEFORE_USE,
+      PRE_USE: ATT.BEFORE_USE,
+
+      IN_USE: ATT.IN_USE,
+      "IN-USE": ATT.IN_USE,
+      USING: ATT.IN_USE,
+
+      COMPLETED: ATT.COMPLETED,
+      COMPLETE: ATT.COMPLETED,
+      AFTER_USE: ATT.COMPLETED,
+      DONE: ATT.COMPLETED,
+    };
+    const rawAtt = String(it.attendanceStatus ?? "").toUpperCase();
+    const attendance = ATT_MAP[rawAtt] ?? undefined;
+
+    const todayStatus = deriveTodayStatus({
+      date,
+      startHms: st,
+      endHms: et,
+      attendance,
+    });
 
     return {
-      id: it.reservationsId, 
+      id: it.reservationsId,
       name: it.nickname ?? it.userName ?? "고객",
       phone: it.phoneNumber ?? "",
       people: it.peopleCount,
       date,
       time: timeText,
-      status,      
-      todayStatus, 
-      start: st ? `${date}T${st}` : undefined, 
+      status,
+      todayStatus,
+      start: st ? `${date}T${st}` : undefined,
       end: et ? `${date}T${et}` : undefined,
+      att: attendance, // ✅ 보관
       immediate: it.immediate === true || it.immediate === "true" || it.immediate === 1,
       raw: it,
     };
@@ -169,6 +229,7 @@ const OwnerReservationList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // URL 쿼리(tab, sub) → 상태 적용
   useEffect(() => {
     const tab = searchParams.get("tab");
     const sub = searchParams.get("sub");
@@ -206,9 +267,20 @@ const OwnerReservationList = () => {
     if (activeTab === "confirmed") {
       return reservations.filter((r) => r.status === "confirmed");
     }
-    return reservations.filter(
-      (r) => r.status === "confirmed" && r.date === todayISO && r.todayStatus === todayTab
-    );
+
+    // 오늘 예약
+    return reservations.filter((r) => {
+      // 오늘 날짜만
+      if (r.date !== todayISO) return false;
+
+      const ts = r.todayStatus ?? "before";
+
+      if (todayTab === "done") {
+        // 시간계산으로 done이거나, attendance가 COMPLETED면 표시
+        return ts === "done" || r.att === ATT.COMPLETED;
+      }
+      return ts === todayTab;
+    });
   }, [reservations, activeTab, todayTab, todayISO]);
 
   const getProgressAndRemain = (r, nowMs) => {
@@ -291,56 +363,62 @@ const OwnerReservationList = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => navigate("/owner/home")} aria-label="홈으로 이동">
-          <img src={backIcon} alt="뒤로" />
-        </button>
-        <span className={styles.title}>실시간 예약 확인하기</span>
-      </div>
+      {/* 상단 흰색 영역(헤더+탭) 높이 고정 */}
+      <div className={styles.topWrapWhite}>
+        <div className={styles.header}>
+          <button className={styles.backBtn} onClick={() => navigate("/owner/home")} aria-label="홈으로 이동">
+            <img src={backIcon} alt="뒤로" />
+          </button>
+          <span className={styles.title}>실시간 예약 확인하기</span>
+        </div>
 
-      <div className={styles.tabs}>
-        <button
-          className={`${styles.tab} ${activeTab === "request" ? styles.active : ""}`}
-          onClick={() => goTab("request")}
-        >
-          예약 요청
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === "confirmed" ? styles.active : ""}`}
-          onClick={() => goTab("confirmed")}
-        >
-          확정 예약
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === "today" ? styles.active : ""}`}
-          onClick={() => goTab("today")}
-        >
-          오늘 예약
-        </button>
-      </div>
-
-      {activeTab === "today" && (
-        <div className={styles.subTabs}>
+        <div className={styles.tabs}>
           <button
-            className={`${styles.subTab} ${todayTab === "before" ? styles.subActive : ""}`}
-            onClick={() => goSub("before")}
+            className={`${styles.tab} ${activeTab === "request" ? styles.active : ""}`}
+            onClick={() => goTab("request")}
           >
-            이용 전
+            예약 요청
           </button>
           <button
-            className={`${styles.subTab} ${todayTab === "using" ? styles.subActive : ""}`}
-            onClick={() => goSub("using")}
+            className={`${styles.tab} ${activeTab === "confirmed" ? styles.active : ""}`}
+            onClick={() => goTab("confirmed")}
           >
-            이용 중
+            확정 예약
           </button>
           <button
-            className={`${styles.subTab} ${todayTab === "done" ? styles.subActive : ""}`}
-            onClick={() => goSub("done")}
+            className={`${styles.tab} ${activeTab === "today" ? styles.active : ""}`}
+            onClick={() => goTab("today")}
           >
-            이용 완료
+            오늘 예약
           </button>
         </div>
-      )}
+      </div>
+
+      {/* 서브탭: 오늘일 때만 내용 표시(컨테이너는 유지해도 OK) */}
+      <div className={styles.subTabs}>
+        {activeTab === "today" ? (
+          <>
+            <button
+              className={`${styles.subTab} ${todayTab === "before" ? styles.subActive : ""}`}
+              onClick={() => goSub("before")}
+            >
+              이용 전
+            </button>
+            <button
+              className={`${styles.subTab} ${todayTab === "using" ? styles.subActive : ""}`}
+              onClick={() => goSub("using")}
+            >
+              이용 중
+            </button>
+            <button
+              className={`${styles.subTab} ${todayTab === "done" ? styles.subActive : ""}`}
+              onClick={() => goSub("done")}
+            >
+              이용 완료
+            </button>
+          </>
+        ) : null}
+      </div>
 
       <div className={styles.list}>
         {loading ? (
@@ -395,6 +473,7 @@ const OwnerReservationList = () => {
                   <span>{r.time}</span>
                 </div>
 
+                {/* 상태별 버튼 처리 */}
                 {activeTab === "request" && (
                   <div className={styles.btnWrap} onClick={(e) => e.stopPropagation()}>
                     <button
@@ -443,24 +522,49 @@ const OwnerReservationList = () => {
 
                 {activeTab === "today" && todayTab === "before" && (
                   <div className={styles.btnWrap} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      className={styles.rejectBtn}
-                      onClick={() => {
-                        setActionTarget(r.id);
-                        setShowModal(true);
-                      }}
-                    >
-                      취소하기
-                    </button>
-                    <button
-                      className={styles.blackBtn}
-                      onClick={() => {
-                        setActionTarget(r.id);
-                        setShowSeatedConfirm(true);
-                      }}
-                    >
-                      착석
-                    </button>
+                    {r.status === "request" ? (
+                      <>
+                        <button
+                          className={styles.rejectBtn}
+                          onClick={() => {
+                            setActionTarget(r.id);
+                            setShowModal(true);
+                          }}
+                        >
+                          거절
+                        </button>
+                        <button
+                          className={styles.approveBtn}
+                          onClick={() => {
+                            setActionTarget(r.id);
+                            setShowApproveConfirm(true);
+                          }}
+                        >
+                          승인
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          className={styles.rejectBtn}
+                          onClick={() => {
+                            setActionTarget(r.id);
+                            setShowModal(true);
+                          }}
+                        >
+                          취소하기
+                        </button>
+                        <button
+                          className={styles.blackBtn}
+                          onClick={() => {
+                            setActionTarget(r.id);
+                            setShowSeatedConfirm(true);
+                          }}
+                        >
+                          착석
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -481,6 +585,7 @@ const OwnerReservationList = () => {
         )}
       </div>
 
+      {/* 취소 사유 선택 모달 */}
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
@@ -533,7 +638,7 @@ const OwnerReservationList = () => {
                 onClick={async () => {
                   setShowConfirmModal(false);
                   setShowModal(false);
-                  await doCancel(); 
+                  await doCancel();
                 }}
                 className={styles.approveBtn}
               >
@@ -616,7 +721,7 @@ const OwnerReservationList = () => {
               <button
                 onClick={async () => {
                   setShowSeatedConfirm(false);
-                  await doSeated(); 
+                  await doSeated();
                 }}
                 className={styles.approveBtn}
               >

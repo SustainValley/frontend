@@ -18,6 +18,9 @@ const CalendarIcon = () => (
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 const TIME_STEP = 30;
+
+const PRICE_PER_PERSON_PER_HOUR = 1000;
+
 const timeSlots = Array.from({ length: (24 * 60) / TIME_STEP }, (_, i) => {
   const m = i * TIME_STEP;
   const hh = String(Math.floor(m / 60)).padStart(2, "0");
@@ -437,7 +440,6 @@ export default function Reserve() {
     return () => clearInterval(timer);
   }, [isUnregistered, todayRange]);
 
-  // ⭐️ “아래 표”도 미등록이면 요일 전부 미등록로 고정
   const weeklyForTable = useMemo(() => {
     if (isUnregistered) {
       return [
@@ -525,8 +527,8 @@ export default function Reserve() {
     const s = hhmmToMin(start);
     const e = hhmmToMin(end);
     const hours = Math.max(0, (e - s) / 60);
-    return Math.round(hours * 6000);
-  }, [start, end]);
+    return Math.round(hours * headcount * PRICE_PER_PERSON_PER_HOUR);
+  }, [start, end, headcount]);
 
   const selStartMin = hhmmToMin(start);
   const selEndMin = hhmmToMin(end);
@@ -715,9 +717,9 @@ export default function Reserve() {
 
       const data = await res.json();
       const rid =
-        data?.result?.reservationsId ??
-        data?.result?.reservationId ??
-        data?.reservationsId ??
+        data?.result?.reservationsId ||
+        data?.result?.reservationId ||
+        data?.reservationsId ||
         null;
 
       alert(
@@ -729,7 +731,7 @@ export default function Reserve() {
           `- 시간: ${start} ~ ${end}`,
           `- 인원: ${headcount}명`,
           `- 종류: ${type}`,
-          `- 금액: ${price.toLocaleString()}원 (예시)`,
+          `- 금액: ${price.toLocaleString()}원 (예상)`,
         ].join("\n")
       );
 
@@ -1132,6 +1134,7 @@ export default function Reserve() {
               <span className={styles.summaryK}>예약 금액</span>
               <span className={styles.summaryVStrong}>{price.toLocaleString()} 원</span>
             </div>
+            {/* 참고: 금액 계산 = 시간(소수 허용) × 인원 × 1,000원 */}
           </div>
 
           <form onSubmit={onSubmit} className={styles.ctaWrap}>

@@ -34,33 +34,63 @@ export default function KakaoCallback() {
           params: { code, state },
         });
 
-        const payload = res.data?.result ?? res.data;
-        const { accessToken, refreshToken, userId, type, cafeId } = payload || {};
+        const data = res?.data ?? {};
+        const payload = data?.result ?? data?.loginResponse ?? data;
+
+        const accessToken = payload?.accessToken;
+        const refreshToken = payload?.refreshToken;
+        const userId = payload?.userId ?? payload?.id ?? null;
+        const type = payload?.type ?? payload?.role ?? null;
+        const cafeId = payload?.cafeId ?? null;
+
+        const hasPhoneNumberRaw =
+          typeof data?.hasPhoneNumber === "boolean"
+            ? data.hasPhoneNumber
+            : payload?.hasPhoneNumber;
+        const hasPhoneNumber =
+          typeof hasPhoneNumberRaw === "boolean" ? hasPhoneNumberRaw : true;
 
         if (!accessToken || !refreshToken) {
           throw new Error("토큰이 응답에 없습니다.");
         }
 
-        localStorage.setItem("access_token", accessToken);
-        localStorage.setItem("refresh_token", refreshToken);
-        if (userId != null) localStorage.setItem("user_id", String(userId));
-        if (type) localStorage.setItem("type", type);
-        if (cafeId != null) localStorage.setItem("cafe_id", String(cafeId));
+        setTokens({
+          accessToken,
+          refreshToken,
+          userId,
+          type,
+          cafeId,
+          hasPhoneNumber,
+        });
 
-        setTokens({ accessToken, refreshToken, userId, type, cafeId });
+        if (hasPhoneNumber === false) {
+          localStorage.setItem("has_phone_number", "0");
+          localStorage.setItem("phone_enforce", "1"); 
+        } else {
+          localStorage.setItem("has_phone_number", "1");
+          localStorage.removeItem("phone_enforce");  
+        }
 
         await refreshNow();
 
         window.history.replaceState({}, document.title, url.pathname);
         sessionStorage.setItem(DONE_KEY, "1");
 
-        const dest = type === "COR" ? "/owner/home" : "/user/home";
-        navigate(dest, { replace: true });
+        const isOwner = type === "COR";
+        const home = isOwner ? "/owner/home" : "/user/home";
+        const needPhoneRoute = isOwner
+          ? "/auth/signup/owner/phone"
+          : "/signup/user/phone";
+
+        if (!hasPhoneNumber) {
+          navigate(`${needPhoneRoute}?next=${encodeURIComponent(home)}`, { replace: true });
+        } else {
+          navigate(home, { replace: true });
+        }
       } catch (err) {
         console.error("카카오 로그인 실패:", err?.response?.data || err);
 
-        if (sessionStorage.getItem(DONE_KEY) === "1") return; 
-
+        if (sessionStorage.getItem(DONE_KEY) === "1") return;
         sessionStorage.removeItem(LOCK_KEY);
 
         alert(

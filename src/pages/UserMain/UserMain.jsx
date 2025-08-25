@@ -9,6 +9,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import KakaoMap from '../../components/map/KakaoMap';
 import styles from './UserMain.module.css';
 import { useAuth } from '../../context/AuthContext';
+import { getUserId as getStoredUserId } from '../../lib/axios';
 
 import searchIcon from '../../assets/Search.svg';
 import filterIcon from '../../assets/filter.svg';
@@ -98,7 +99,7 @@ const IS_DEV = process.env.NODE_ENV === 'development';
 const API_HOST = IS_DEV ? 'http://3.27.150.124:8080' : '';
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-export default function MapExplore() {
+export default function UserMain() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
@@ -112,12 +113,10 @@ export default function MapExplore() {
   const mapRef = useRef(null);
   const [ch, setCh] = useState(800);
 
-
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const openMenu = () => { setMenuVisible(true); requestAnimationFrame(() => setIsMenuOpen(true)); };
   const closeMenu = () => { setIsMenuOpen(false); setTimeout(() => setMenuVisible(false), 250); };
-
 
   const [{ minutes: nowMin, dow: nowDow }, setNowInfo] = useState(nowInKST());
   useEffect(() => {
@@ -241,6 +240,7 @@ export default function MapExplore() {
     })();
   };
 
+  // ===== 예약 관련 상태 =====
   const [reservations, setReservations] = useState([]);
   const [activeReservation, setActiveReservation] = useState(null);
   const [loadingRsv, setLoadingRsv] = useState(false);
@@ -308,11 +308,25 @@ export default function MapExplore() {
     }
   };
 
-  const userId = location.state?.userId ?? 11;
+  // ✅ userId: 1) route state → 2) localStorage('user_id') → 3) null
+  const userId = useMemo(() => {
+    const fromState = location.state?.userId;
+    const fromStorage = getStoredUserId();
+    return fromState ?? (fromStorage || null);
+  }, [location.state]);
 
   useEffect(() => {
     let abort = false;
     const fetchReservations = async () => {
+      if (!userId) {
+        if (!abort) {
+          setReservations([]);
+          setLoadingRsv(false);
+          setErrorRsv('');
+        }
+        return;
+      }
+
       setLoadingRsv(true);
       setErrorRsv('');
       try {
@@ -340,7 +354,9 @@ export default function MapExplore() {
               durationText: durationFromTimes(row.startTime, row.endTime),
               phone: row.phoneNumber || '',
               name: row.nickname || '',
-              thumb: `https://picsum.photos/seed/rsv${row.reservationsId}/200/200`,
+              thumb: row.imageUrl
+                ? (row.imageUrl.startsWith('http') ? row.imageUrl : `${API_HOST}${row.imageUrl}`)
+                : null,
               startTime: fmtHHMM(row.startTime),
               endTime: fmtHHMM(row.endTime),
             };
@@ -516,8 +532,6 @@ export default function MapExplore() {
     return data;
   };
 
-  const [showDetail, setShowDetail] = useState(false); 
-
   const handleConfirmCancel = async () => {
     if (!activeReservation) return;
     try {
@@ -692,7 +706,6 @@ export default function MapExplore() {
             ) : (
               listForRender.map((cafe) => (
                 <div key={cafe.id} className={styles.cafeCard}>
-
                   <img
                     className={styles.thumb}
                     src={cafe.thumb || defaultCafeLogo}
@@ -794,7 +807,7 @@ export default function MapExplore() {
             <div className={styles.detailCafeCard}>
               <img
                 className={styles.thumb}
-                src={activeReservation.thumb}
+                src={activeReservation.thumb || defaultCafeLogo}
                 alt={activeReservation.cafe}
                 onError={handleImgErrorToLogo}
               />

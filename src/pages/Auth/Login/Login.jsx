@@ -21,8 +21,25 @@ const Login = () => {
 
   useEffect(() => {
     if (!isAuthenticated || !role) return;
-    if (role === "owner") navigate("/owner/home", { replace: true });
-    if (role === "user") navigate("/user/home", { replace: true });
+
+    const hasPhoneRaw = localStorage.getItem("has_phone_number"); 
+    const enforce = localStorage.getItem("phone_enforce") === "1";
+
+    if (role === "owner") {
+      navigate("/owner/home", { replace: true });
+      return;
+    }
+
+    if (role === "user") {
+
+      if (enforce && hasPhoneRaw === "0") {
+        navigate(`/signup/user/phone?next=${encodeURIComponent("/user/home")}`, {
+          replace: true,
+        });
+      } else {
+        navigate("/user/home", { replace: true });
+      }
+    }
   }, [isAuthenticated, role, navigate]);
 
   const onSubmit = async (e) => {
@@ -34,6 +51,11 @@ const Login = () => {
 
     try {
       await login(id, pw);
+
+      localStorage.removeItem("phone_enforce");      
+      localStorage.setItem("has_phone_number", "1"); 
+
+      navigate("/", { replace: true });
     } catch {
       setErr("아이디 또는 비밀번호가 일치하지 않습니다.");
     } finally {
