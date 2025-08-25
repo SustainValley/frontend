@@ -1,14 +1,13 @@
-// src/lib/axios.js
 import axios from "axios";
 
-const BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "/hackathon";
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || "/hackathon";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";
 const USER_ID_KEY = "user_id";
 const TYPE_KEY = "type";
 const CAFE_ID_KEY = "cafe_id";
+const HAS_PHONE_KEY = "has_phone_number";
 
 const getAccessToken = () => localStorage.getItem(ACCESS_KEY) || "";
 const setAccessToken = (t) =>
@@ -38,12 +37,28 @@ const setCafeId = (id) => {
   }
 };
 
-export const setTokens = ({ accessToken, refreshToken, userId, type, cafeId }) => {
+
+export const getHasPhoneNumber = () =>
+  localStorage.getItem(HAS_PHONE_KEY) === "1";
+const setHasPhoneNumber = (v) => {
+  if (v === undefined || v === null) return;
+  localStorage.setItem(HAS_PHONE_KEY, v ? "1" : "0");
+};
+
+export const setTokens = ({
+  accessToken,
+  refreshToken,
+  userId,
+  type,
+  cafeId,
+  hasPhoneNumber,
+}) => {
   if (accessToken) setAccessToken(accessToken);
   if (refreshToken) setRefreshToken(refreshToken);
   if (userId !== undefined) setUserId(userId);
   if (type) setType(type);
   if (cafeId !== undefined) setCafeId(cafeId);
+  if (hasPhoneNumber !== undefined) setHasPhoneNumber(hasPhoneNumber);
 };
 
 export const clearAuth = () => {
@@ -52,12 +67,12 @@ export const clearAuth = () => {
   localStorage.removeItem(USER_ID_KEY);
   localStorage.removeItem(TYPE_KEY);
   localStorage.removeItem(CAFE_ID_KEY);
+  localStorage.removeItem(HAS_PHONE_KEY);
 };
 
-// === Axios instances ===
 const instance = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 100000,
 });
 
 export const refreshClient = axios.create({
@@ -65,7 +80,6 @@ export const refreshClient = axios.create({
   timeout: 10000,
 });
 
-// === Refresh ===
 async function refreshAccessToken() {
   const rt = getRefreshToken();
   if (!rt) throw new Error("No refresh token available");
@@ -83,6 +97,7 @@ async function refreshAccessToken() {
   if (data?.refreshToken) setRefreshToken(data.refreshToken);
   if (data?.type) setType(data.type);
   if (data?.cafeId !== undefined) setCafeId(data.cafeId);
+  if (data?.hasPhoneNumber !== undefined) setHasPhoneNumber(data.hasPhoneNumber);
 
   return nextAccess;
 }
@@ -124,7 +139,6 @@ instance.interceptors.response.use(
     const original = config || {};
     const status = response.status;
 
-    // 401만 리프레시 시도 (이미 시도했다면 그대로 실패 반환)
     if (status !== 401 || original._retry) {
       throw error;
     }
@@ -148,8 +162,6 @@ instance.interceptors.response.use(
     } catch (e) {
       flushQueue(e, null);
       clearAuth();
-      // ❌ 하드 리다이렉트 금지
-      // ✅ SPA에 알림만 보냄 → 상위(App/Auth)에서 라우팅 처리
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("auth:unauthorized"));
       }

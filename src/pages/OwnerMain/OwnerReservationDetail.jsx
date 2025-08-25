@@ -1,14 +1,28 @@
+// src/pages/OwnerReservationDetail/OwnerReservationDetail.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import styles from "./OwnerReservationDetail.module.css";
 
 import backIcon from "../../assets/chevron.svg";
-import clockIcon from "../../assets/clock.svg"; 
+import clockIcon from "../../assets/clock.svg";
 import { useAuth } from "../../context/AuthContext";
 import instance from "../../lib/axios";
 
 const RESV = { PENDING: "PENDING", APPROVED: "APPROVED", REJECTED: "REJECTED" };
 const ATT  = { BEFORE_USE: "BEFORE_USE", IN_USE: "IN_USE", COMPLETED: "COMPLETED" };
+
+// 한국 전화번호 하이픈 포맷터 (010-1234-5678 등)
+function formatPhoneKR(raw) {
+  if (!raw) return "";
+  const d = String(raw).replace(/\D/g, "");
+  if (d.startsWith("02")) {
+    if (d.length === 9) return `${d.slice(0,2)}-${d.slice(2,5)}-${d.slice(5)}`;
+    if (d.length === 10) return `${d.slice(0,2)}-${d.slice(2,6)}-${d.slice(6)}`;
+  }
+  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+  if (d.length === 11) return `${d.slice(0,3)}-${d.slice(3,7)}-${d.slice(7)}`;
+  return raw; // 그 외는 원문 유지
+}
 
 function getTodayISODate(tzName = "Asia/Seoul") {
   const now = new Date();
@@ -33,14 +47,13 @@ function toHms(t) {
   return "";
 }
 
-const meetingTypeLabel = (code) => {
-  switch (code) {
-    case "STUDY": return "스터디";
-    case "PROJECT": return "프로젝트 회의";
-    case "INTERVIEW": return "인터뷰";
-    default: return code ?? "기타";
-  }
+const MEETING_TYPE_LABELS = {
+  STUDY: "스터디",
+  PROJECT: "프로젝트 회의",
+  INTERVIEW: "인터뷰",
+  NETWORKING: "네트워킹",
 };
+const meetingTypeLabel = (code) => MEETING_TYPE_LABELS[code] ?? (code ?? "기타");
 
 export default function OwnerReservationDetail() {
   const navigate = useNavigate();
@@ -76,7 +89,7 @@ export default function OwnerReservationDetail() {
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [actErr, setActErr] = useState("");
-  const [item, setItem] = useState(null); 
+  const [item, setItem] = useState(null);
 
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -125,22 +138,26 @@ export default function OwnerReservationDetail() {
         return;
       }
 
+      // 🔁 백엔드 응답 매핑: nickname / phoneNumber 사용
+      const userName = found.nickname ?? found.userName ?? "고객";
+      const phone = formatPhoneKR(found.phoneNumber ?? found.phone ?? "");
+
       const date = typeof found.date === "string" ? found.date : getTodayISODate();
       const st = toHms(found.startTime);
       const et = toHms(found.endTime);
 
       setItem({
         id: Number(found.reservationsId),
-        userName: found.userName ?? "고객",
-        phone: "", 
+        userName,
+        phone,
         people: found.peopleCount,
         meetingType: meetingTypeLabel(found.meetingType),
         date,
         start: st ? `${date}T${st}` : undefined,
         end: et ? `${date}T${et}` : undefined,
-        timeText: st && et ? `${st.slice(0, 5)}-${et.slice(0, 5)}` : "",
-        reservationStatus: found.reservationStatus,  
-        attendanceStatus: found.attendanceStatus,    
+        timeText: st && et ? `${st.slice(0, 5)}-${et.slice(0, 5)}${et < st ? " (+1일)" : ""}` : "",
+        reservationStatus: found.reservationStatus,
+        attendanceStatus: found.attendanceStatus,
       });
     } catch (e) {
       console.error(e);
@@ -156,10 +173,14 @@ export default function OwnerReservationDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetId]);
 
+  // 자정 넘김 보정 포함 진행률/잔여시간 계산
   const getProgressAndRemain = (r, nowMs) => {
     if (!r?.start || !r?.end) return { remain: 0, percent: 0 };
-    const start = Date.parse(r.start);
-    const end = Date.parse(r.end);
+    let start = Date.parse(r.start);
+    let end = Date.parse(r.end);
+    // 종료가 시작보다 이르면(+1일)
+    if (end <= start) end += 24 * 60 * 60 * 1000;
+
     const now = typeof nowMs === "number" ? nowMs : Date.now();
     const total = Math.max(1, end - start);
     const used = Math.min(Math.max(0, now - start), total);
@@ -171,12 +192,12 @@ export default function OwnerReservationDetail() {
 
   const mode = useMemo(() => {
     if (!item) return "none";
-    if (item.attendanceStatus === ATT.IN_USE) return "inuse";       
-    if (item.attendanceStatus === ATT.COMPLETED) return "completed"; 
-    if (item.reservationStatus === RESV.PENDING) return "request"; 
+    if (item.attendanceStatus === ATT.IN_USE) return "inuse";
+    if (item.attendanceStatus === ATT.COMPLETED) return "completed";
+    if (item.reservationStatus === RESV.PENDING) return "request";
     if (item.reservationStatus === RESV.APPROVED) {
       const isToday = item.date === getTodayISODate();
-      return isToday ? "today" : "confirmed"; 
+      return isToday ? "today" : "confirmed";
     }
     return "none";
   }, [item]);
@@ -186,7 +207,7 @@ export default function OwnerReservationDetail() {
     try {
       await instance.patch(
         `/api/reservation/owner/update`,
-        { reservationsId: id, reservationStatus: status }, 
+        { reservationsId: id, reservationStatus: status },
         { headers: { "Content-Type": "application/json" } }
       );
       await fetchReservation();
@@ -202,7 +223,7 @@ export default function OwnerReservationDetail() {
     setActErr("");
     try {
       await instance.patch(`/api/reservation/owner/today/${id}`, null, {
-        params: { attendance }, 
+        params: { attendance },
         headers: { "Content-Type": "application/json" },
       });
       await fetchReservation();
@@ -413,7 +434,7 @@ export default function OwnerReservationDetail() {
                 onClick={async () => {
                   setShowConfirmModal(false);
                   setShowModal(false);
-                  await doReject(); 
+                  await doReject();
                 }}
                 className={styles.approveBtn}
               >네</button>
