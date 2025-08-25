@@ -113,8 +113,8 @@ const OwnerReservationList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState("today"); // "request" | "confirmed" | "today"
-  const [todayTab, setTodayTab] = useState("using");   // "before" | "using" | "done"
+  const [activeTab, setActiveTab] = useState("today");
+  const [todayTab, setTodayTab] = useState("using");
 
   // ----- 모달/액션 상태 -----
   const [showModal, setShowModal] = useState(false);
@@ -128,8 +128,8 @@ const OwnerReservationList = () => {
   const [showSeatedConfirm, setShowSeatedConfirm] = useState(false);
   const [showSeatedDone, setShowSeatedDone] = useState(false);
 
-  const [actionTarget, setActionTarget] = useState(null);
-  const [actionType, setActionType] = useState(null); // 'reject' | 'cancel' | null
+  const [actionTarget, setActionTarget] = useState(null); // reservationsId
+  const [actionType, setActionType] = useState(null);     // 'reject' | 'cancel' | null
 
   // ----- 데이터/오류 -----
   const [reservations, setReservations] = useState([]);
@@ -145,7 +145,7 @@ const OwnerReservationList = () => {
     return () => clearInterval(id);
   }, [activeTab, todayTab]);
 
-  const getUserId = () => {
+  const getOwnerId = () => {
     if (user?.id) return user.id;
     const ls = localStorage.getItem("userId") ?? localStorage.getItem("user_id");
     if (ls && !Number.isNaN(Number(ls))) return Number(ls);
@@ -156,9 +156,7 @@ const OwnerReservationList = () => {
     const date = normalizeYMD(it.date);
     const st = toHms(it.startTime);
     const et = toHms(it.endTime);
-
     const timeText = st && et ? `${st.slice(0, 5)}-${et.slice(0, 5)}` : "";
-
     const status =
       it.reservationStatus === RESV.PENDING
         ? "request"
@@ -167,29 +165,18 @@ const OwnerReservationList = () => {
         : "other";
 
     const ATT_MAP = {
-      BEFORE_USE: ATT.BEFORE_USE,
-      "BEFORE-USE": ATT.BEFORE_USE,
-      PRE_USE: ATT.BEFORE_USE,
-      IN_USE: ATT.IN_USE,
-      "IN-USE": ATT.IN_USE,
-      USING: ATT.IN_USE,
-      COMPLETED: ATT.COMPLETED,
-      COMPLETE: ATT.COMPLETED,
-      AFTER_USE: ATT.COMPLETED,
-      DONE: ATT.COMPLETED,
+      BEFORE_USE: ATT.BEFORE_USE, "BEFORE-USE": ATT.BEFORE_USE, PRE_USE: ATT.BEFORE_USE,
+      IN_USE: ATT.IN_USE, "IN-USE": ATT.IN_USE, USING: ATT.IN_USE,
+      COMPLETED: ATT.COMPLETED, COMPLETE: ATT.COMPLETED, AFTER_USE: ATT.COMPLETED, DONE: ATT.COMPLETED,
     };
     const rawAtt = String(it.attendanceStatus ?? "").toUpperCase();
     const attendance = ATT_MAP[rawAtt] ?? undefined;
 
-    const todayStatus = deriveTodayStatus({
-      date,
-      startHms: st,
-      endHms: et,
-      attendance,
-    });
+    const todayStatus = deriveTodayStatus({ date, startHms: st, endHms: et, attendance });
 
     return {
       id: it.reservationsId,
+      userId: it.userId ?? null, // ✅ 고객 userId 보관
       name: it.nickname ?? it.userName ?? "고객",
       phone: it.phoneNumber ?? "",
       people: it.peopleCount,
@@ -209,9 +196,9 @@ const OwnerReservationList = () => {
     setLoading(true);
     setLoadErr("");
     try {
-      const uid = getUserId();
-      if (!uid) throw new Error("userId를 찾을 수 없어요.");
-      const res = await instance.get(`/api/reservation/owner`, { params: { userId: uid } });
+      const ownerId = getOwnerId();
+      if (!ownerId) throw new Error("userId를 찾을 수 없어요.");
+      const res = await instance.get(`/api/reservation/owner`, { params: { userId: ownerId } });
       const arr = Array.isArray(res.data?.result) ? res.data.result : [];
       const mapped = arr.map(mapApiItem);
       setReservations(mapped);
@@ -233,7 +220,6 @@ const OwnerReservationList = () => {
   useEffect(() => {
     const tab = searchParams.get("tab");
     const sub = searchParams.get("sub");
-
     if (tab === "request" || tab === "confirmed" || tab === "today") {
       setActiveTab(tab);
     }
@@ -267,14 +253,11 @@ const OwnerReservationList = () => {
     if (activeTab === "confirmed") {
       return reservations.filter((r) => r.status === "confirmed");
     }
-
     // 오늘 예약
     return reservations.filter((r) => {
       if (r.date !== todayISO) return false;
       const ts = r.todayStatus ?? "before";
-      if (todayTab === "done") {
-        return ts === "done" || r.att === ATT.COMPLETED;
-      }
+      if (todayTab === "done") return ts === "done" || r.att === ATT.COMPLETED;
       return ts === todayTab;
     });
   }, [reservations, activeTab, todayTab, todayISO]);
@@ -284,12 +267,10 @@ const OwnerReservationList = () => {
     const start = Date.parse(r.start);
     const end = Date.parse(r.end);
     if (Number.isNaN(start) || Number.isNaN(end)) return { remain: 0, percent: 0 };
-
     const now = typeof nowMs === "number" ? nowMs : Date.now();
     const total = Math.max(1, end - start);
     const used = Math.min(Math.max(0, now - start), total);
     const remainMs = Math.max(0, end - now);
-
     const remain = Math.round(remainMs / 60000);
     const percent = Math.min(100, Math.max(0, Math.round((used / total) * 100)));
     return { remain, percent };
@@ -327,17 +308,20 @@ const OwnerReservationList = () => {
     }
   };
 
-  /** ✔ 거절/취소: 삭제 엔드포인트 호출 + 사유 코드 전송 */
+  /** ✅ 거절/취소: 고객 userId로 삭제 엔드포인트 호출 */
   const deleteReservationWithReason = async ({ id, reasonCode }) => {
     setActErr("");
     try {
-      const uid = getUserId();
-      if (!uid) throw new Error("userId를 찾을 수 없어요.");
+      // 해당 예약의 고객 userId 찾아서 사용
+      const target = reservations.find((x) => String(x.id) === String(id));
+      const customerId = target?.raw?.userId ?? target?.userId ?? null;
+      if (!customerId) throw new Error("예약 고객 userId를 찾을 수 없어요.");
+
       await instance.patch(
         `/api/reservation/delete/${id}`,
         { cancelReason: reasonCode },
         {
-          params: { userId: uid },
+          params: { userId: customerId }, // ✅ 고객 userId 전송
           headers: { "Content-Type": "application/json" },
         }
       );
@@ -415,7 +399,7 @@ const OwnerReservationList = () => {
         </div>
       </div>
 
-      {/* 서브탭: 오늘일 때만 내용 표시(컨테이너는 유지해도 OK) */}
+      {/* 서브탭 */}
       <div className={styles.subTabs}>
         {activeTab === "today" ? (
           <>
@@ -644,9 +628,7 @@ const OwnerReservationList = () => {
             {selectedReason && (
               <button
                 className={styles.cancelBtn}
-                onClick={() => {
-                  setShowConfirmModal(true);
-                }}
+                onClick={() => setShowConfirmModal(true)}
               >
                 {actionType === "reject" ? "예약 거절하기" : "예약 취소하기"}
               </button>

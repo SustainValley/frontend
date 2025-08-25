@@ -88,7 +88,7 @@ export default function OwnerReservationDetail() {
   }, [params, location.search, location.state]);
 
   const [showModal, setShowModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState(null); // 코드값을 저장
+  const [selectedReason, setSelectedReason] = useState(null); // 코드값
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
 
@@ -100,7 +100,7 @@ export default function OwnerReservationDetail() {
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState("");
   const [actErr, setActErr] = useState("");
-  const [item, setItem] = useState(null);
+  const [item, setItem] = useState(null); // <- 고객 userId 포함
 
   const [nowTs, setNowTs] = useState(Date.now());
   useEffect(() => {
@@ -109,13 +109,6 @@ export default function OwnerReservationDetail() {
     const id = setInterval(() => setNowTs(Date.now()), 10_000);
     return () => clearInterval(id);
   }, [item?.attendanceStatus]);
-
-  const getUserId = () => {
-    if (user?.id) return user.id;
-    const ls = localStorage.getItem("userId") ?? localStorage.getItem("user_id");
-    if (ls && !Number.isNaN(Number(ls))) return Number(ls);
-    return null;
-  };
 
   const fetchReservation = async () => {
     setLoading(true);
@@ -126,10 +119,10 @@ export default function OwnerReservationDetail() {
         setItem(null);
         return;
       }
-      const uid = getUserId();
-      if (!uid) throw new Error("userId를 찾을 수 없어요.");
+      const ownerId = (user?.id) || Number(localStorage.getItem("userId") ?? localStorage.getItem("user_id"));
+      if (!ownerId) throw new Error("userId를 찾을 수 없어요.");
 
-      const res = await instance.get(`/api/reservation/owner`, { params: { userId: uid } });
+      const res = await instance.get(`/api/reservation/owner`, { params: { userId: ownerId } });
       const arr = Array.isArray(res.data?.result) ? res.data.result : [];
       const found = arr.find((r) => String(r.reservationsId) === String(targetId));
 
@@ -148,6 +141,7 @@ export default function OwnerReservationDetail() {
 
       setItem({
         id: Number(found.reservationsId),
+        customerUserId: Number(found.userId) || null, // ✅ 고객 userId 보관
         userName,
         phone,
         people: found.peopleCount,
@@ -234,17 +228,17 @@ export default function OwnerReservationDetail() {
     }
   };
 
-  /** ✔ 거절/취소: 삭제 엔드포인트 호출 + 사유 코드 전송 */
+  /** ✔ 거절/취소: 고객 userId로 삭제 엔드포인트 호출 */
   const deleteReservationWithReason = async ({ id, reasonCode }) => {
     setActErr("");
     try {
-      const uid = getUserId();
-      if (!uid) throw new Error("userId를 찾을 수 없어요.");
+      const customerId = item?.customerUserId;
+      if (!customerId) throw new Error("예약 고객 userId를 찾을 수 없어요.");
       await instance.patch(
         `/api/reservation/delete/${id}`,
         { cancelReason: reasonCode },
         {
-          params: { userId: uid },
+          params: { userId: customerId }, // ✅ 고객 userId 전송
           headers: { "Content-Type": "application/json" },
         }
       );
