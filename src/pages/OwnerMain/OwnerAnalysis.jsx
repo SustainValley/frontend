@@ -1,4 +1,4 @@
-// OwnerAnalysis.jsx (전체 교체본)
+// OwnerAnalysis.jsx (서버 전달 순서 유지 버전)
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OwnerAnalysis.module.css";
@@ -64,15 +64,17 @@ const OwnerAnalysis = () => {
         const focused = Array.isArray(data?.focused_cancel_reason)
           ? data.focused_cancel_reason
           : [];
+
+        // 🔧 서버가 준 배열의 '그대로 순서'를 유지 (정렬 제거)
         const parsed = focused.map((obj) => {
           const key = Object.keys(obj)[0];
           const count = obj[key] ?? 0;
           return { key, count, label: cancelReasonMap[key] ?? key };
         });
-        parsed.sort(
-          (a, b) => b.count - a.count || a.label.localeCompare(b.label)
-        );
+
+        // 들어온 순서대로 rank 부여
         const ranked = parsed.map((r, i) => ({ ...r, rank: i + 1 }));
+
         setReasons(ranked);
         setRootCause(data?.root_cause ?? "");
         setAdvice(data?.rec_advice ?? "");
