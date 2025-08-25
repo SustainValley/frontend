@@ -1,6 +1,8 @@
+// OwnerAnalysis.jsx (전체 교체본)
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OwnerAnalysis.module.css";
+import { useAuth } from "../../context/AuthContext";
 
 import backIcon from "../../assets/chevron-right.svg";
 import warningIcon from "../../assets/exclamation-circle.svg";
@@ -25,21 +27,35 @@ const cancelReasonMap = {
 
 const OwnerAnalysis = () => {
   const navigate = useNavigate();
-  const cafeId = 7;
+  const { user } = useAuth();
+
+  // 1) cafeId 동적 결정 (user → localStorage → null)
+  const cafeId = useMemo(() => {
+    if (user?.cafeId) return Number(user.cafeId);
+    const ls =
+      localStorage.getItem("cafeId") ?? localStorage.getItem("cafe_id");
+    return ls && !Number.isNaN(Number(ls)) ? Number(ls) : null;
+  }, [user]);
+
   const [promotion, setPromotion] = useState(null);
   const [reasons, setReasons] = useState([]);
   const [rootCause, setRootCause] = useState("");
   const [advice, setAdvice] = useState("");
   const [loadingReasons, setLoadingReasons] = useState(true);
 
+  // cafeId가 확정되었을 때만 호출
   useEffect(() => {
-    fetch(`https://port-0-analysis-api-mar0zdvm42447885.sel4.cloudtype.app/promotion/${cafeId}`)
+    if (!cafeId) return;
+    fetch(
+      `https://port-0-analysis-api-mar0zdvm42447885.sel4.cloudtype.app/promotion/${cafeId}`
+    )
       .then((res) => res.json())
       .then((data) => setPromotion(data))
       .catch((err) => console.error("프로모션 데이터 불러오기 실패:", err));
   }, [cafeId]);
 
   useEffect(() => {
+    if (!cafeId) return;
     const url = `https://port-0-analysis-api-mar0zdvm42447885.sel4.cloudtype.app/cafe/${cafeId}/cancel-reason`;
     setLoadingReasons(true);
     fetch(url, { headers: { accept: "application/json" } })
@@ -53,7 +69,9 @@ const OwnerAnalysis = () => {
           const count = obj[key] ?? 0;
           return { key, count, label: cancelReasonMap[key] ?? key };
         });
-        parsed.sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+        parsed.sort(
+          (a, b) => b.count - a.count || a.label.localeCompare(b.label)
+        );
         const ranked = parsed.map((r, i) => ({ ...r, rank: i + 1 }));
         setReasons(ranked);
         setRootCause(data?.root_cause ?? "");
@@ -67,6 +85,30 @@ const OwnerAnalysis = () => {
   }, [cafeId]);
 
   const visibleReasons = useMemo(() => reasons.slice(0, 6), [reasons]);
+
+  // cafeId 미확정 시 가드 UI
+  if (!cafeId) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.header}>
+          <img
+            src={backIcon}
+            alt="뒤로가기"
+            className={styles.backBtn}
+            onClick={() => navigate(-1)}
+          />
+          <span className={styles.title}>더 효율적으로 MOCA 사용하기</span>
+        </div>
+        <div className={styles.scrollArea}>
+          <div className={styles.section}>
+            <p className={styles.subtitle}>
+              카페 정보를 찾을 수 없어요. (로그인/카페 연결 확인)
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -91,27 +133,28 @@ const OwnerAnalysis = () => {
               <br /> 고객 유치에 힘써보세요!
             </p>
             {promotion && (
-              <p className={styles.time}>
-                {promotion.dayOfWeek} {promotion.timeSlot}
-              </p>
-            )}
-            {promotion && (
-              <div className={styles.promoCard}>
-                <div className={styles.promoHeader}>프로모션 추천</div>
-                <p className={styles.promoText}>
-                  예약 목적 중{" "}
-                  {meetingTypeMap[promotion.main_purpose] ?? promotion.main_purpose}{" "}
-                  비중이 {promotion.percent} 이상이에요!
-                  <br />
-                  {promotion.rec_promotion}
+              <>
+                <p className={styles.time}>
+                  {promotion.dayOfWeek} {promotion.timeSlot}
                 </p>
-              </div>
+                <div className={styles.promoCard}>
+                  <div className={styles.promoHeader}>프로모션 추천</div>
+                  <p className={styles.promoText}>
+                    예약 목적 중{" "}
+                    {meetingTypeMap[promotion.main_purpose] ??
+                      promotion.main_purpose}{" "}
+                    비중이 {promotion.percent} 이상이에요!
+                    <br />
+                    {promotion.rec_promotion}
+                  </p>
+                </div>
+              </>
             )}
             <button
               className={styles.promoBtn}
               onClick={() =>
                 navigate("/owner/promotion", {
-                  state: { promotion, cafeId: 7 },
+                  state: { promotion, cafeId },
                 })
               }
             >
@@ -125,7 +168,10 @@ const OwnerAnalysis = () => {
           {loadingReasons ? (
             <ol className={styles.reasonList}>
               {Array.from({ length: 6 }).map((_, i) => (
-                <li key={i} className={`${styles.reasonItem} ${styles.skeleton}`}>
+                <li
+                  key={i}
+                  className={`${styles.reasonItem} ${styles.skeleton}`}
+                >
                   <span className={styles.rankBadge}>{i + 1}</span>
                   <span className={styles.reasonText}>로딩중…</span>
                   <span className={styles.countPill}>-</span>
