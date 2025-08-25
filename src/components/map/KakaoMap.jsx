@@ -9,6 +9,9 @@ import React, {
 import useKakaoLoader from '../../hooks/useKakaoLoader';
 import pin from '../../assets/map-pin.svg';
 
+/** 공릉역 좌표 (대략) */
+const GONGNEUNG_STATION = { lat: 37.62385, lng: 127.07260 };
+
 /* 주소→좌표 지오코딩(세션 캐시) */
 const geocodeAddress = (() => {
   const key = (addr) => `geo:${addr}`;
@@ -35,13 +38,15 @@ const geocodeAddress = (() => {
 /**
  * props:
  *  - cafes: [{ cafeId, name, address, operatingHours, imageUrl, maxSeats, spaceType }]
- *  - initialLevel?, initialCenter?
+ *  - initialLevel? (기본 4)
+ *  - initialCenter? (기본 공릉역)
  *  - onPlaceClick?: (cafeWithCoords) => void
  *
- * ref: kakao.maps.Map 반환 (부모에서 panTo 안 씀)
+ * ref:
+ *  - { map, centerToGongneung: () => void }
  */
 const KakaoMap = forwardRef(function KakaoMap(
-  { cafes = [], initialLevel = 4, initialCenter, onPlaceClick },
+  { cafes = [], initialLevel = 4, initialCenter = GONGNEUNG_STATION, onPlaceClick },
   ref
 ) {
   const ready = useKakaoLoader();
@@ -50,8 +55,27 @@ const KakaoMap = forwardRef(function KakaoMap(
 
   const cafeMarkersRef = useRef([]); // [{ cafe, marker, pos }]
   const userMarkerRef = useRef(null);
+  const gongneungMarkerRef = useRef(null);
 
-  useImperativeHandle(ref, () => map, [map]);
+  /** 공릉역으로 센터 이동 + (선택) 마커 표시 */
+  const centerToGongneung = (opts = { level: null, showMarker: false }) => {
+    if (!map) return;
+    const { level, showMarker } = opts || {};
+    const pos = new kakao.maps.LatLng(GONGNEUNG_STATION.lat, GONGNEUNG_STATION.lng);
+    map.setCenter(pos);
+    if (typeof level === 'number') map.setLevel(level);
+    if (showMarker) {
+      if (!gongneungMarkerRef.current) {
+        gongneungMarkerRef.current = new kakao.maps.Marker({ position: pos, zIndex: 4 });
+      } else {
+        gongneungMarkerRef.current.setPosition(pos);
+      }
+      gongneungMarkerRef.current.setMap(map);
+    }
+  };
+
+  // 부모에서 사용할 액션 노출
+  useImperativeHandle(ref, () => ({ map, centerToGongneung }), [map]);
 
   /* 맵 초기화 (지도는 사용자 의도 유지: 자동 이동 X) */
   useEffect(() => {
@@ -60,7 +84,7 @@ const KakaoMap = forwardRef(function KakaoMap(
     const center =
       initialCenter?.lat && initialCenter?.lng
         ? new kakao.maps.LatLng(initialCenter.lat, initialCenter.lng)
-        : new kakao.maps.LatLng(37.5665, 126.9780); // 초기만 서울 시청
+        : new kakao.maps.LatLng(GONGNEUNG_STATION.lat, GONGNEUNG_STATION.lng);
 
     const m = new kakao.maps.Map(mapContainerRef.current, {
       center,
@@ -75,13 +99,14 @@ const KakaoMap = forwardRef(function KakaoMap(
           const { latitude, longitude } = pos.coords;
           const loc = new kakao.maps.LatLng(latitude, longitude);
           userMarkerRef.current = new kakao.maps.Marker({ map: m, position: loc, zIndex: 3 });
+          // 주의: 여기서 map.setCenter 같은 자동 이동은 하지 않음
         },
         () => {},
         { enableHighAccuracy: true, timeout: 4000 }
       );
     }
 
-    // relayout 안전 처리
+    // 초기 렌더 후 안전 relayout
     setTimeout(() => { try { m.relayout?.(); } catch {} }, 0);
     const onResize = () => { try { m.relayout?.(); } catch {} };
     window.addEventListener('resize', onResize);

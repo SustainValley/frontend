@@ -27,6 +27,9 @@ import defaultCafeLogo from '../../assets/Logo-gray.svg';
 const KST = 'Asia/Seoul';
 const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
+/** ✅ 공릉역 좌표(고정) */
+const GONGNEUNG = { lat: 37.62556, lng: 127.07306 };
+
 function nowInKST() {
   const d = new Date();
   const h = Number(
@@ -156,31 +159,21 @@ const durationFromTimes = (start = '', end = '') => {
 // meetingType, 상태 라벨
 const meetingTypeKo = (t) => {
   switch (t) {
-    case 'STUDY':
-      return '스터디';
-    case 'MEETING':
-      return '회의';
-    case 'INTERVIEW':
-      return '인터뷰';
-    case 'PROJECT':
-      return '프로젝트';
-    case 'NETWORKING':
-      return '네트워킹';
-    default:
-      return '기타';
+    case 'STUDY': return '스터디';
+    case 'MEETING': return '회의';
+    case 'INTERVIEW': return '인터뷰';
+    case 'PROJECT': return '프로젝트';
+    case 'NETWORKING': return '네트워킹';
+    default: return '기타';
   }
 };
 
 const statusLabelKo = (status) => {
   switch (status) {
-    case 'inuse':
-      return '회의실 이용 중이에요!';
-    case 'pending':
-      return '회의실 이용 요청 중이에요!';
-    case 'scheduled':
-      return '회의실 이용 예정이에요!';
-    default:
-      return '';
+    case 'inuse': return '회의실 이용 중이에요!';
+    case 'pending': return '회의실 이용 요청 중이에요!';
+    case 'scheduled': return '회의실 이용 예정이에요!';
+    default: return '';
   }
 };
 
@@ -250,9 +243,7 @@ export default function UserMain() {
         if (!abort) setCafes([]);
       }
     })();
-    return () => {
-      abort = true;
-    };
+    return () => { abort = true; };
   }, []);
 
   // 화면 높이 추적
@@ -303,69 +294,28 @@ export default function UserMain() {
     setSheetTop(sheetTop <= mid1 ? SNAP.FULL_TOP : sheetTop <= mid2 ? SNAP.MID_TOP : SNAP.PEEK_TOP);
   };
 
-  /* ====== 내 위치 이동 ====== */
+  /* ====== 내 위치 이동(항상 공릉역으로) ====== */
   const moveToMyLocation = () => {
-    if (!('geolocation' in navigator)) {
-      alert('이 브라우저는 위치 정보를 지원하지 않아요.');
+    const api = mapRef.current;
+    const kakao = window?.kakao;
+
+    // 1) 새 KakaoMap(v2) API가 노출된 경우
+    if (api?.centerToGongneung) {
+      api.centerToGongneung({ level: 4, showMarker: true });
       return;
     }
-    const explain = (err) => {
-      const code = err?.code;
-      if (code === 1) return '위치 권한이 거부되었어요. 브라우저 설정에서 위치 권한을 허용해 주세요.';
-      if (code === 2) return '현재 위치를 확인할 수 없어요. 실내/네트워크 상태를 확인 후 다시 시도해 주세요.';
-      if (code === 3) return '위치 확인 시간이 초과되었어요. 잠시 후 다시 시도해 주세요.';
-      return '위치 정보를 가져올 수 없어요.';
-    };
-    const tryOnce = (opts) =>
-      new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject({ code: 3 }), (opts?.timeout ?? 0) + 50);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            clearTimeout(timer);
-            resolve(pos);
-          },
-          (err) => {
-            clearTimeout(timer);
-            reject(err);
-          },
-          opts
-        );
-      });
+    if (api?.panToGongneung) {
+      api.panToGongneung();
+      return;
+    }
 
-    (async () => {
-      try {
-        const posHigh =
-          (await tryOnce({ enableHighAccuracy: true, timeout: 3500, maximumAge: 0 }).catch(
-            () => null
-          )) ||
-          (await tryOnce({ enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }).catch(
-            () => null
-          ));
-        if (!posHigh) throw new Error('POSITION_FAIL');
-
-        const { latitude, longitude } = posHigh.coords;
-        if (mapRef.current && window.kakao?.maps) {
-          const loc = new window.kakao.maps.LatLng(latitude, longitude);
-          mapRef.current.panTo(loc);
-          if (mapRef.current.getLevel() > 4) mapRef.current.setLevel(4);
-        }
-      } catch (e) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const { latitude, longitude } = pos.coords;
-            if (mapRef.current && window.kakao?.maps) {
-              const loc = new window.kakao.maps.LatLng(latitude, longitude);
-              mapRef.current.panTo(loc);
-              if (mapRef.current.getLevel() > 4) mapRef.current.setLevel(4);
-            }
-          },
-          (err) => {
-            alert(explain(err));
-          },
-          { enableHighAccuracy: false, timeout: 2000, maximumAge: 120000 }
-        );
-      }
-    })();
+    // 2) 구버전: ref가 kakao.maps.Map 인스턴스인 경우
+    if (api && kakao?.maps) {
+      const map = api.getMap ? api.getMap() : api;
+      const pos = new kakao.maps.LatLng(GONGNEUNG.lat, GONGNEUNG.lng);
+      map.panTo(pos);
+      if (map.getLevel && map.getLevel() > 4) map.setLevel(4);
+    }
   };
 
   // ===== 예약 관련 상태 =====
@@ -390,9 +340,7 @@ export default function UserMain() {
     let abort = false;
     const fetchReservations = async () => {
       if (!userId) {
-        if (!abort) {
-          setReservations([]);
-        }
+        if (!abort) { setReservations([]); }
         return;
       }
       try {
@@ -443,10 +391,7 @@ export default function UserMain() {
       }
     };
     fetchReservations();
-    return () => {
-      abort = true;
-    };
-    // dateWithWeekday 등은 모듈 최상단으로 이동했으므로 deps 경고 없음
+    return () => { abort = true; };
   }, [userId]);
 
   const visibleReservations = useMemo(
@@ -644,7 +589,14 @@ export default function UserMain() {
         </button>
       </div>
 
-      <KakaoMap ref={mapRef} cafes={cafesForMap} onPlaceClick={handlePlaceClick} />
+      {/* ✅ 초기 중심=공릉역, 확대=4 */}
+      <KakaoMap
+        ref={mapRef}
+        cafes={cafesForMap}
+        onPlaceClick={handlePlaceClick}
+        initialCenter={GONGNEUNG}
+        initialLevel={4}
+      />
 
       {menuVisible && (
         <>
@@ -657,9 +609,9 @@ export default function UserMain() {
                   closeMenu();
                   navigate('/user/reservations');
                 }}  
-                >
-                  나의 예약
-                </button>
+              >
+                나의 예약
+              </button>
               <button
                 className={`${styles.menuItem} ${styles.menuItemDanger}`}
                 onClick={() => {
@@ -888,23 +840,15 @@ export default function UserMain() {
 
           <div className={styles.detailContent}>
             <h4>예약자 정보</h4>
-            <p>
-              <b>이름</b> {activeReservation.name || '—'}
-            </p>
-            <p>
-              <b>전화번호</b> {activeReservation.phone || '—'}
-            </p>
-            <p>
-              <b>회의 인원</b> {activeReservation.people}명
-            </p>
+            <p><b>이름</b> {activeReservation.name || '—'}</p>
+            <p><b>전화번호</b> {activeReservation.phone || '—'}</p>
+            <p><b>회의 인원</b> {activeReservation.people}명</p>
 
             <h4>회의 종류</h4>
             <p>{meetingTypeKo(activeReservation.meetingType)}</p>
 
             <h4>예약 일정</h4>
-            <p>
-              <b>날짜</b> {activeReservation.dateText}
-            </p>
+            <p><b>날짜</b> {activeReservation.dateText}</p>
             <p>
               <b>시간</b> {activeReservation.time}
               {activeReservation.durationText ? ` (${activeReservation.durationText})` : ''}
@@ -990,9 +934,7 @@ export default function UserMain() {
               </button>
             </div>
             <div className={styles.completeBody}>
-              <p>
-                <strong>{selectedReason || '사유 선택 안됨'}</strong>
-              </p>
+              <p><strong>{selectedReason || '사유 선택 안됨'}</strong></p>
               <p>사유로 예약이 취소되었습니다.</p>
             </div>
             <button
