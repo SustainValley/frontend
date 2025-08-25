@@ -23,6 +23,7 @@ import KakaoCallback from './pages/Auth/Login/KakaoCallback';
 import FilterPage from './pages/UserMain/FilterPage';
 
 const Reserve       = React.lazy(() => import('./pages/UserMain/Reserve'));
+const MyReservations = React.lazy(() => import('./pages/UserMain/MyReservations'));
 const UserMain      = React.lazy(() => import('./pages/UserMain/UserMain'));
 const OwnerMain     = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
 const OwnerAnalysis = React.lazy(() => import('./pages/OwnerMain/OwnerAnalysis'));
@@ -157,6 +158,14 @@ function App() {
                     element={
                       <RequirePhone>
                         <Reserve />
+                      </RequirePhone>
+                    }
+                  />
+                  <Route
+                    path="/user/reservations"
+                    element={
+                      <RequirePhone>
+                        <MyReservations />
                       </RequirePhone>
                     }
                   />

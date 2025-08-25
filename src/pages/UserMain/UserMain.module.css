@@ -586,3 +586,28 @@
   line-height: 24px;
   margin-left: 4px;
 }
+/* --- 사이드 메뉴 버튼 변형 스타일 --- */
+.menuItemPrimary {
+  background: var(--Sub-Sub-1, #A4CC08);
+  color: var(--gray-90, #232526);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.menuItemPrimary:hover { filter: brightness(0.97); }
+
+.menuItemDanger {
+  background: #fff;
+  color: #E53935;
+  border: 1px solid rgba(229,57,53,0.18);
+}
+
+.menuItemActive {
+  outline: 2px solid rgba(164,204,8,0.50);
+  box-shadow: 0 0 0 3px rgba(164,204,8,0.12);
+  /* 활성 상태 강조 (선택 사항) */
+}
+
+/* 접근성: 키보드 포커스 */
+.menuItem:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}

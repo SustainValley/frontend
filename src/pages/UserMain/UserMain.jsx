@@ -22,31 +22,59 @@ import chatIcon2 from '../../assets/chat.svg';
 
 import defaultCafeLogo from '../../assets/Logo-gray.svg';
 
+/* ===================== 상수 & 유틸 (컴포넌트 밖으로 분리) ===================== */
+
 const KST = 'Asia/Seoul';
-const dayMap = { Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
 function nowInKST() {
   const d = new Date();
-  const h = Number(new Intl.DateTimeFormat('en-GB',{ timeZone:KST, hour:'2-digit', hour12:false }).format(d));
-  const m = Number(new Intl.DateTimeFormat('en-GB',{ timeZone:KST, minute:'2-digit' }).format(d));
-  const w = new Intl.DateTimeFormat('en-US',{ timeZone:KST, weekday:'short' }).format(d);
+  const h = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: KST,
+      hour: '2-digit',
+      hour12: false,
+    }).format(d)
+  );
+  const m = Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: KST, minute: '2-digit' }).format(d)
+  );
+  const w = new Intl.DateTimeFormat('en-US', { timeZone: KST, weekday: 'short' }).format(d);
   return { minutes: h * 60 + m, dow: dayMap[w] ?? d.getDay() };
 }
 
 function daysFromTextKo(t) {
-  const days = new Set(); let hit = false;
-  if (/매일|연중무휴/.test(t)) { [0,1,2,3,4,5,6].forEach(d => days.add(d)); hit = true; }
-  if (/평일/.test(t)) { [1,2,3,4,5].forEach(d => days.add(d)); hit = true; }
-  if (/주말/.test(t)) { [0,6].forEach(d => days.add(d)); hit = true; }
-  const ko = { '일':0,'월':1,'화':2,'수':3,'목':4,'금':5,'토':6 };
+  const days = new Set();
+  let hit = false;
+  if (/매일|연중무휴/.test(t)) {
+    [0, 1, 2, 3, 4, 5, 6].forEach((d) => days.add(d));
+    hit = true;
+  }
+  if (/평일/.test(t)) {
+    [1, 2, 3, 4, 5].forEach((d) => days.add(d));
+    hit = true;
+  }
+  if (/주말/.test(t)) {
+    [0, 6].forEach((d) => days.add(d));
+    hit = true;
+  }
+  const ko = { 일: 0, 월: 1, 화: 2, 수: 3, 목: 4, 금: 5, 토: 6 };
   const range = t.match(/([일월화수목금토])\s*[~\-–—]\s*([일월화수목금토])/);
   if (range) {
-    const a = ko[range[1]], b = ko[range[2]]; hit = true;
-    if (a <= b) for (let i=a; i<=b; i++) days.add(i);
-    else { for (let i=a; i<=6; i++) days.add(i); for (let i=0; i<=b; i++) days.add(i); }
+    const a = ko[range[1]],
+      b = ko[range[2]];
+    hit = true;
+    if (a <= b) for (let i = a; i <= b; i++) days.add(i);
+    else {
+      for (let i = a; i <= 6; i++) days.add(i);
+      for (let i = 0; i <= b; i++) days.add(i);
+    }
   }
   Object.entries(ko).forEach(([k, v]) => {
-    if (t.includes(k+'요일') || t.includes(k)) { days.add(v); hit = true; }
+    if (t.includes(k + '요일') || t.includes(k)) {
+      days.add(v);
+      hit = true;
+    }
   });
   return hit ? days : null;
 }
@@ -56,7 +84,8 @@ function isOpenNowByText(rawText, nowMin, nowDow) {
   if (!s) return false;
   if (/상시|24\s*시간|24h/i.test(s)) return true;
 
-  const segs = s.split(/[\/\|,\n]/).map(x => x.trim()).filter(Boolean);
+  // 불필요 이스케이프 경고 제거: /[/|,\n]/ 로 수정
+  const segs = s.split(/[/|,\n]/).map((x) => x.trim()).filter(Boolean);
   let openRanges = [];
 
   for (const seg0 of segs.length ? segs : [s]) {
@@ -71,11 +100,13 @@ function isOpenNowByText(rawText, nowMin, nowDow) {
 
     const regex = /(\d{1,2})(?::?(\d{2}))?\s*[~\-–—]\s*(\d{1,2})(?::?(\d{2}))?/g;
     for (const m of seg.matchAll(regex)) {
-      const sh = Number(m[1]); const sm = Number(m[2] || '0');
-      const eh = Number(m[3]); const em = Number(m[4] || '0');
+      const sh = Number(m[1]);
+      const sm = Number(m[2] || '0');
+      const eh = Number(m[3]);
+      const em = Number(m[4] || '0');
       if (Number.isNaN(sh) || Number.isNaN(eh)) continue;
-      let start = sh * 60 + sm;
-      let end   = eh * 60 + em;
+      const start = sh * 60 + sm;
+      const end = eh * 60 + em;
       openRanges.push({ start, end });
     }
   }
@@ -89,15 +120,87 @@ function isOpenNowByText(rawText, nowMin, nowDow) {
     if (start <= end) {
       if (nowMin >= start && nowMin < end) return true;
     } else {
-      if (nowMin >= start || nowMin < end) return true; 
+      if (nowMin >= start || nowMin < end) return true;
     }
   }
   return false;
 }
 
+// 시간/날짜 포맷 유틸
+const fmtHHMM = (t = '') => {
+  if (!t) return '';
+  const [hh = '', mm = ''] = t.split(':');
+  return `${hh}:${mm}`;
+};
+const fmtDateDot = (d = '') => (d ? d.replaceAll('-', '.') : '');
+const weekdayKo = ['일', '월', '화', '수', '목', '금', '토'];
+const dateWithWeekday = (isoDate) => {
+  if (!isoDate) return '';
+  const dt = new Date(`${isoDate}T00:00:00`);
+  const w = weekdayKo[dt.getDay()];
+  return `${fmtDateDot(isoDate)} (${w})`;
+};
+const durationFromTimes = (start = '', end = '') => {
+  if (!start || !end) return '';
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = eh * 60 + em - (sh * 60 + sm);
+  if (mins < 0) mins += 24 * 60;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+};
+
+// meetingType, 상태 라벨
+const meetingTypeKo = (t) => {
+  switch (t) {
+    case 'STUDY':
+      return '스터디';
+    case 'MEETING':
+      return '회의';
+    case 'INTERVIEW':
+      return '인터뷰';
+    case 'PROJECT':
+      return '프로젝트';
+    case 'NETWORKING':
+      return '네트워킹';
+    default:
+      return '기타';
+  }
+};
+
+const statusLabelKo = (status) => {
+  switch (status) {
+    case 'inuse':
+      return '회의실 이용 중이에요!';
+    case 'pending':
+      return '회의실 이용 요청 중이에요!';
+    case 'scheduled':
+      return '회의실 이용 예정이에요!';
+    default:
+      return '';
+  }
+};
+
+const toFrontStatus = (reservationStatus, attendanceStatus) => {
+  const REJECTEDS = ['REJECTED', 'CANCELLED', 'CANCELED', 'DENIED'];
+  const APPROVED = 'APPROVED';
+  if (REJECTEDS.includes(reservationStatus)) return null;
+  if (attendanceStatus === 'COMPLETED') return null;
+  if (reservationStatus === APPROVED) {
+    if (attendanceStatus === 'IN_USE') return 'inuse';
+    return 'scheduled';
+  }
+  return 'pending';
+};
+
 const IS_DEV = process.env.NODE_ENV === 'development';
 const API_HOST = IS_DEV ? 'http://3.27.150.124:8080' : '';
 const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+/* ===================== 컴포넌트 ===================== */
 
 export default function UserMain() {
   const navigate = useNavigate();
@@ -115,8 +218,14 @@ export default function UserMain() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
-  const openMenu = () => { setMenuVisible(true); requestAnimationFrame(() => setIsMenuOpen(true)); };
-  const closeMenu = () => { setIsMenuOpen(false); setTimeout(() => setMenuVisible(false), 250); };
+  const openMenu = () => {
+    setMenuVisible(true);
+    requestAnimationFrame(() => setIsMenuOpen(true));
+  };
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    setTimeout(() => setMenuVisible(false), 250);
+  };
 
   const [{ minutes: nowMin, dow: nowDow }, setNowInfo] = useState(nowInKST());
   useEffect(() => {
@@ -124,6 +233,7 @@ export default function UserMain() {
     return () => clearInterval(t);
   }, []);
 
+  // 카페 리스트
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -140,9 +250,12 @@ export default function UserMain() {
         if (!abort) setCafes([]);
       }
     })();
-    return () => { abort = true; };
+    return () => {
+      abort = true;
+    };
   }, []);
 
+  // 화면 높이 추적
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -153,6 +266,7 @@ export default function UserMain() {
     return () => ro.disconnect();
   }, []);
 
+  // 바텀시트 스냅 포인트
   const SNAP = useMemo(() => {
     const HEADER = 300;
     const BUTTON_MARGIN = 120;
@@ -164,7 +278,9 @@ export default function UserMain() {
   }, [ch]);
 
   const [sheetTop, setSheetTop] = useState(0);
-  useLayoutEffect(() => { setSheetTop(SNAP.PEEK_TOP); }, [SNAP.PEEK_TOP]);
+  useLayoutEffect(() => {
+    setSheetTop(SNAP.PEEK_TOP);
+  }, [SNAP.PEEK_TOP]);
 
   const drag = useRef({ active: false, startY: 0, startTop: SNAP.PEEK_TOP });
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
@@ -204,8 +320,14 @@ export default function UserMain() {
       new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject({ code: 3 }), (opts?.timeout ?? 0) + 50);
         navigator.geolocation.getCurrentPosition(
-          (pos) => { clearTimeout(timer); resolve(pos); },
-          (err) => { clearTimeout(timer); reject(err); },
+          (pos) => {
+            clearTimeout(timer);
+            resolve(pos);
+          },
+          (err) => {
+            clearTimeout(timer);
+            reject(err);
+          },
           opts
         );
       });
@@ -213,8 +335,12 @@ export default function UserMain() {
     (async () => {
       try {
         const posHigh =
-          (await tryOnce({ enableHighAccuracy: true, timeout: 3500, maximumAge: 0 }).catch(() => null)) ||
-          (await tryOnce({ enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }).catch(() => null));
+          (await tryOnce({ enableHighAccuracy: true, timeout: 3500, maximumAge: 0 }).catch(
+            () => null
+          )) ||
+          (await tryOnce({ enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }).catch(
+            () => null
+          ));
         if (!posHigh) throw new Error('POSITION_FAIL');
 
         const { latitude, longitude } = posHigh.coords;
@@ -233,7 +359,9 @@ export default function UserMain() {
               if (mapRef.current.getLevel() > 4) mapRef.current.setLevel(4);
             }
           },
-          (err) => { alert(explain(err)); },
+          (err) => {
+            alert(explain(err));
+          },
           { enableHighAccuracy: false, timeout: 2000, maximumAge: 120000 }
         );
       }
@@ -243,8 +371,6 @@ export default function UserMain() {
   // ===== 예약 관련 상태 =====
   const [reservations, setReservations] = useState([]);
   const [activeReservation, setActiveReservation] = useState(null);
-  const [loadingRsv, setLoadingRsv] = useState(false);
-  const [errorRsv, setErrorRsv] = useState('');
 
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -252,83 +378,23 @@ export default function UserMain() {
   const [showResultModal, setShowResultModal] = useState(false);
   const [cancelInFlight, setCancelInFlight] = useState(false);
 
-  const fmtHHMM = (t = '') => {
-    if (!t) return '';
-    const [hh = '', mm = ''] = t.split(':');
-    return `${hh}:${mm}`;
-  };
-  const fmtDateDot = (d = '') => (d ? d.replaceAll('-', '.') : '');
-  const weekdayKo = ['일', '월', '화', '수', '목', '금', '토'];
-  const dateWithWeekday = (isoDate) => {
-    if (!isoDate) return '';
-    const dt = new Date(`${isoDate}T00:00:00`);
-    const w = weekdayKo[dt.getDay()];
-    return `${fmtDateDot(isoDate)} (${w})`;
-  };
-  const durationFromTimes = (start = '', end = '') => {
-    if (!start || !end) return '';
-    const [sh, sm] = start.split(':').map(Number);
-    const [eh, em] = end.split(':').map(Number);
-    let mins = eh * 60 + em - (sh * 60 + sm);
-    if (mins < 0) mins += 24 * 60;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h && m) return `${h}시간 ${m}분`;
-    if (h) return `${h}시간`;
-    return `${m}분`;
-  };
-
-  const meetingTypeKo = (t) => {
-    switch (t) {
-      case 'STUDY': return '스터디';
-      case 'MEETING': return '회의';
-      case 'INTERVIEW': return '인터뷰';
-      default: return '기타';
-    }
-  };
-
-  const toFrontStatus = (reservationStatus, attendanceStatus) => {
-    const REJECTEDS = ['REJECTED', 'CANCELLED', 'CANCELED', 'DENIED'];
-    const APPROVED = 'APPROVED';
-    if (REJECTEDS.includes(reservationStatus)) return null;
-    if (attendanceStatus === 'COMPLETED') return null;
-    if (reservationStatus === APPROVED) {
-      if (attendanceStatus === 'IN_USE') return 'inuse';
-      return 'scheduled';
-    }
-    return 'pending';
-  };
-
-  const statusLabelKo = (status) => {
-    switch (status) {
-      case 'inuse': return '회의실 이용 중이에요!';
-      case 'pending': return '회의실 이용 요청 중이에요!';
-      case 'scheduled': return '회의실 이용 예정이에요!';
-      default: return '';
-    }
-  };
-
-  // ✅ userId: 1) route state → 2) localStorage('user_id') → 3) null
+  // userId: 1) route state → 2) localStorage('user_id') → 3) null
   const userId = useMemo(() => {
     const fromState = location.state?.userId;
     const fromStorage = getStoredUserId();
     return fromState ?? (fromStorage || null);
   }, [location.state]);
 
+  // 예약 조회
   useEffect(() => {
     let abort = false;
     const fetchReservations = async () => {
       if (!userId) {
         if (!abort) {
           setReservations([]);
-          setLoadingRsv(false);
-          setErrorRsv('');
         }
         return;
       }
-
-      setLoadingRsv(true);
-      setErrorRsv('');
       try {
         const res = await fetch(
           `${API_PREFIX}/reservation?userId=${encodeURIComponent(userId)}`,
@@ -343,6 +409,15 @@ export default function UserMain() {
             const status = toFrontStatus(row.reservationStatus, row.attendanceStatus);
             if (!status) return null;
             const time = `${fmtHHMM(row.startTime)} - ${fmtHHMM(row.endTime)}`;
+
+            // 이미지 URL 우선순위: cafeImageUrl → imageUrl
+            const rawImg = row.cafeImageUrl ?? row.imageUrl ?? null;
+            const thumb = rawImg
+              ? /^https?:\/\//i.test(rawImg)
+                ? rawImg
+                : `${API_HOST}${rawImg}`
+              : null;
+
             return {
               id: String(row.reservationsId ?? idx),
               cafe: row.cafeName || `카페 #${row.cafeId ?? '-'}`,
@@ -354,9 +429,7 @@ export default function UserMain() {
               durationText: durationFromTimes(row.startTime, row.endTime),
               phone: row.phoneNumber || '',
               name: row.nickname || '',
-              thumb: row.imageUrl
-                ? (row.imageUrl.startsWith('http') ? row.imageUrl : `${API_HOST}${row.imageUrl}`)
-                : null,
+              thumb,
               startTime: fmtHHMM(row.startTime),
               endTime: fmtHHMM(row.endTime),
             };
@@ -365,14 +438,15 @@ export default function UserMain() {
 
         if (!abort) setReservations(mapped);
       } catch (err) {
-        if (!abort) setErrorRsv('');
         console.error(err);
-      } finally {
-        if (!abort) setLoadingRsv(false);
+        if (!abort) setReservations([]);
       }
     };
     fetchReservations();
-    return () => { abort = true; };
+    return () => {
+      abort = true;
+    };
+    // dateWithWeekday 등은 모듈 최상단으로 이동했으므로 deps 경고 없음
   }, [userId]);
 
   const visibleReservations = useMemo(
@@ -385,6 +459,7 @@ export default function UserMain() {
     if (['scheduled', 'inuse', 'pending'].includes(r.status)) setShowDetailSheet(true);
   };
 
+  // 카페 카드 가공
   const decorateCafe = (c, i) => {
     const raw = c.operatingHours ?? '';
     const str = String(raw || '').trim();
@@ -399,20 +474,18 @@ export default function UserMain() {
       hoursHint = '휴무일';
     }
 
-    return ({
+    return {
       id: String(c.cafeId ?? i),
       cafeId: c.cafeId,
       name: c.name || '이름없는 카페',
       addr: c.address || '주소 준비중',
-      thumb: c.imageUrl
-        ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`)
-        : null,
+      thumb: c.imageUrl ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`) : null,
       hours: hoursHint,
-      hoursRaw: raw, 
+      hoursRaw: raw,
       hoursKind,
       spaceType: c.spaceType || '',
       ppl: Number.isFinite(c.maxSeats) ? c.maxSeats : 0,
-    });
+    };
   };
 
   const shortSpace = (s = '') => s.split('(')[0].trim();
@@ -422,9 +495,7 @@ export default function UserMain() {
   const norm = (s = '') => s.toLowerCase().trim();
   const q = norm(input);
   const bySearch = q
-    ? rawList.filter((c) =>
-        norm(c.name).includes(q) || norm(c.addr).includes(q)
-      )
+    ? rawList.filter((c) => norm(c.name).includes(q) || norm(c.addr).includes(q))
     : rawList;
 
   const spaceKeyFromCafe = (cafe) => {
@@ -440,9 +511,7 @@ export default function UserMain() {
     return matchSpace && matchPeople;
   });
 
-  const listForRender = selectedCafeId
-    ? byFilters.filter((c) => String(c.cafeId) === String(selectedCafeId))
-    : byFilters;
+  const listForRender = selectedCafeId ? byFilters.filter((c) => String(c.cafeId) === String(selectedCafeId)) : byFilters;
 
   const cafesForMap = listForRender.map((c) => ({
     cafeId: c.cafeId,
@@ -454,12 +523,11 @@ export default function UserMain() {
     spaceType: c.spaceType,
   }));
 
-  const sheetHeight = Math.max(0, ch - sheetTop);
-
   const handlePlaceClick = (cafe) => {
     setSelectedCafeId(cafe.cafeId ?? null);
   };
 
+  // 가로 드래그 스트립
   const stripRef = useRef(null);
   const dragState = useRef({ isDown: false, startX: 0, scrollLeft: 0 });
   const dragMovedRef = useRef(false);
@@ -487,6 +555,7 @@ export default function UserMain() {
     el?.classList.remove(styles.dragging);
   };
 
+  // 취소 사유 코드 매핑
   const reasonToCode = (text = '') => {
     const t = String(text).trim();
     const pairs = [
@@ -505,12 +574,13 @@ export default function UserMain() {
     const hit = pairs.find(([key]) => t.includes(key));
     return hit ? hit[1] : 'PERSONAL_REASON';
   };
+  const isReservations = location.pathname.startsWith('/user/reservations');
 
   const cancelReservation = async ({ reservationId, userId, reasonText }) => {
     const reasonCode = reasonToCode(reasonText);
-    const url = `${API_PREFIX}/reservation/delete/${encodeURIComponent(
-      reservationId
-    )}?userId=${encodeURIComponent(userId)}`;
+    const url = `${API_PREFIX}/reservation/delete/${encodeURIComponent(reservationId)}?userId=${encodeURIComponent(
+      userId
+    )}`;
 
     const res = await fetch(url, {
       method: 'PATCH',
@@ -582,7 +652,16 @@ export default function UserMain() {
           <div className={`${styles.sideMenu} ${isMenuOpen ? styles.open : styles.close}`}>
             <div className={styles.sideMenuInner}>
               <button
-                className={styles.menuItem}
+                className={`${styles.menuItem} ${styles.menuItemPrimary} ${isReservations ? styles.menuItemActive : ''}`}
+                onClick={() => {
+                  closeMenu();
+                  navigate('/user/reservations');
+                }}  
+                >
+                  나의 예약
+                </button>
+              <button
+                className={`${styles.menuItem} ${styles.menuItemDanger}`}
                 onClick={() => {
                   closeMenu();
                   logout();
@@ -623,13 +702,11 @@ export default function UserMain() {
         </button>
       </div>
 
+      {/* backdrop 높이는 즉시 계산값 사용 */}
       <div className={styles.backdrop} style={{ height: `${Math.max(0, ch - sheetTop)}px` }} aria-hidden />
 
       <div className={styles.bottomSheet}>
-        <div
-          className={styles.sheetPanel}
-          style={{ top: `${sheetTop}px`, height: `calc(100% - ${sheetTop}px)` }}
-        >
+        <div className={styles.sheetPanel} style={{ top: `${sheetTop}px`, height: `calc(100% - ${sheetTop}px)` }}>
           <div
             className={styles.handle}
             onPointerDown={onPointerDown}
@@ -639,9 +716,7 @@ export default function UserMain() {
           />
 
           <button
-            className={`${styles.myLocationBtn} ${
-              visibleReservations.length ? styles.withReserve : styles.noReserve
-            }`}
+            className={`${styles.myLocationBtn} ${visibleReservations.length ? styles.withReserve : styles.noReserve}`}
             onClick={moveToMyLocation}
           >
             <img src={locationIcon} alt="내 위치" />
@@ -662,11 +737,7 @@ export default function UserMain() {
                 <button
                   key={r.id}
                   className={`${styles.reserveChip} ${
-                    r.status === 'scheduled'
-                      ? styles.scheduled
-                      : r.status === 'inuse'
-                      ? styles.inuse
-                      : styles.pending
+                    r.status === 'scheduled' ? styles.scheduled : r.status === 'inuse' ? styles.inuse : styles.pending
                   }`}
                   onClick={() => {
                     if (dragMovedRef.current) return;
@@ -675,8 +746,7 @@ export default function UserMain() {
                 >
                   <div className={styles.reserveCafe}>{r.cafe}</div>
                   <div className={styles.reserveInfo}>
-                    <span className={styles.timeStrong}>{r.time}</span>{' '}
-                    {statusLabelKo(r.status)}
+                    <span className={styles.timeStrong}>{r.time}</span> {statusLabelKo(r.status)}
                   </div>
                 </button>
               ))}
@@ -687,11 +757,7 @@ export default function UserMain() {
             <div className={styles.sheetTitle}>
               회의 가능한 카페를 둘러보세요!
               {selectedCafeId && (
-                <button
-                  className={styles.smallClearBtn}
-                  onClick={() => setSelectedCafeId(null)}
-                  style={{ marginLeft: 8 }}
-                >
+                <button className={styles.smallClearBtn} onClick={() => setSelectedCafeId(null)} style={{ marginLeft: 8 }}>
                   전체 보기
                 </button>
               )}
@@ -699,9 +765,7 @@ export default function UserMain() {
 
             {listForRender.length === 0 ? (
               <div className={styles.cardGhost}>
-                {q
-                  ? '검색 결과가 없어요. 검색어나 필터를 바꿔보세요.'
-                  : '지도의 핀을 선택하거나 검색어를 입력해보세요.'}
+                {q ? '검색 결과가 없어요. 검색어나 필터를 바꿔보세요.' : '지도의 핀을 선택하거나 검색어를 입력해보세요.'}
               </div>
             ) : (
               listForRender.map((cafe) => (
@@ -738,7 +802,9 @@ export default function UserMain() {
                       disabled={cafe.hoursKind === 'UNREGISTERED'}
                       onClick={() => {
                         if (cafe.hoursKind === 'UNREGISTERED') return;
-                        try { localStorage.setItem('cafe_id', String(cafe.cafeId)); } catch {}
+                        try {
+                          localStorage.setItem('cafe_id', String(cafe.cafeId));
+                        } catch {}
                         navigate('/user/reserve', {
                           state: {
                             cafeId: cafe.cafeId,
@@ -757,7 +823,9 @@ export default function UserMain() {
                       disabled={!isOpenNowByText(cafe.hoursRaw ?? cafe.hours, nowMin, nowDow)}
                       onClick={() => {
                         if (!isOpenNowByText(cafe.hoursRaw ?? cafe.hours, nowMin, nowDow)) return;
-                        try { localStorage.setItem('cafe_id', String(cafe.cafeId)); } catch {}
+                        try {
+                          localStorage.setItem('cafe_id', String(cafe.cafeId));
+                        } catch {}
                         navigate('/user/reserve', {
                           state: {
                             cafeId: cafe.cafeId,
@@ -781,18 +849,11 @@ export default function UserMain() {
 
       {showDetailSheet && activeReservation && (
         <div className={styles.detailSheet}>
-          <div
-            className={styles.handle}
-            onClick={() => setShowDetailSheet(false)}
-            role="button"
-            tabIndex={0}
-          />
+          <div className={styles.handle} onClick={() => setShowDetailSheet(false)} role="button" tabIndex={0} />
 
           <div className={styles.detailHeader}>
             {activeReservation.status === 'pending' && (
-              <p style={{ fontWeight: 600, marginBottom: 8 }}>
-                ‘{activeReservation.cafe}’에
-              </p>
+              <p style={{ fontWeight: 600, marginBottom: 8 }}>‘{activeReservation.cafe}’에</p>
             )}
             <p style={{ marginBottom: 8 }}>
               <span className={styles.today}>오늘</span>{' '}
@@ -905,11 +966,7 @@ export default function UserMain() {
               ))}
             </ul>
 
-            <button
-              className={styles.cancelBtn}
-              disabled={!selectedReason || cancelInFlight}
-              onClick={handleConfirmCancel}
-            >
+            <button className={styles.cancelBtn} disabled={!selectedReason || cancelInFlight} onClick={handleConfirmCancel}>
               {cancelInFlight ? '처리 중…' : '확인'}
             </button>
           </div>
