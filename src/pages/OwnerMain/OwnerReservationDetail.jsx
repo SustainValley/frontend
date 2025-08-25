@@ -55,6 +55,17 @@ const MEETING_TYPE_LABELS = {
 };
 const meetingTypeLabel = (code) => MEETING_TYPE_LABELS[code] ?? (code ?? "기타");
 
+/** 취소/거절 사유 코드 -> 라벨 매핑 (실제 전송은 코드 사용) */
+const CANCEL_REASON = {
+  CLOSED_TIME: "해당 시간대 예약 마감",
+  OUT_OF_BUSINESS: "영업시간 외 예약요청",
+  CROWDED: "매장 혼잡",
+  EQUIPMENT_UNAVAILABLE: "요청 장비 사용 불가",
+  MAINTENANCE: "시설 점검",
+  PEAK_LIMIT: "피크타임 인원 제한",
+};
+const REASON_OPTIONS = Object.entries(CANCEL_REASON); // [code, label][]
+
 export default function OwnerReservationDetail() {
   const navigate = useNavigate();
   const params = useParams();
@@ -77,7 +88,7 @@ export default function OwnerReservationDetail() {
   }, [params, location.search, location.state]);
 
   const [showModal, setShowModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState(null);
+  const [selectedReason, setSelectedReason] = useState(null); // 코드값을 저장
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
 
@@ -98,16 +109,6 @@ export default function OwnerReservationDetail() {
     const id = setInterval(() => setNowTs(Date.now()), 10_000);
     return () => clearInterval(id);
   }, [item?.attendanceStatus]);
-
-  const cancelReasons = [
-    "해당 시간대 예약 마감",
-    "영업시간 외 예약요청",
-    "매장 혼잡",
-    "요청 장비 사용 불가",
-    "시설 점검",
-    "피크타임 인원제한",
-    "고객 노쇼",
-  ];
 
   const getUserId = () => {
     if (user?.id) return user.id;
@@ -138,7 +139,6 @@ export default function OwnerReservationDetail() {
         return;
       }
 
-      // 🔁 백엔드 응답 매핑: nickname / phoneNumber 사용
       const userName = found.nickname ?? found.userName ?? "고객";
       const phone = formatPhoneKR(found.phoneNumber ?? found.phone ?? "");
 
@@ -178,7 +178,6 @@ export default function OwnerReservationDetail() {
     if (!r?.start || !r?.end) return { remain: 0, percent: 0 };
     let start = Date.parse(r.start);
     let end = Date.parse(r.end);
-    // 종료가 시작보다 이르면(+1일)
     if (end <= start) end += 24 * 60 * 60 * 1000;
 
     const now = typeof nowMs === "number" ? nowMs : Date.now();
@@ -235,9 +234,35 @@ export default function OwnerReservationDetail() {
     }
   };
 
+  /** ✔ 거절/취소: 삭제 엔드포인트 호출 + 사유 코드 전송 */
+  const deleteReservationWithReason = async ({ id, reasonCode }) => {
+    setActErr("");
+    try {
+      const uid = getUserId();
+      if (!uid) throw new Error("userId를 찾을 수 없어요.");
+      await instance.patch(
+        `/api/reservation/delete/${id}`,
+        { cancelReason: reasonCode },
+        {
+          params: { userId: uid },
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      return true;
+    } catch (e) {
+      console.error(e);
+      setActErr("처리 중 오류가 발생했어요.");
+      return false;
+    }
+  };
+
   const doReject = async () => {
     if (!item) return;
-    const ok = await updateReservationStatus({ id: item.id, status: RESV.REJECTED });
+    if (!selectedReason) {
+      setActErr("취소(거절) 사유를 선택해주세요.");
+      return;
+    }
+    const ok = await deleteReservationWithReason({ id: item.id, reasonCode: selectedReason });
     if (ok) setShowDoneModal(true);
   };
 
@@ -396,6 +421,7 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
+      {/* ---- 취소/거절 사유 선택 모달 (코드 선택, 라벨 표시) ---- */}
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
@@ -407,11 +433,13 @@ export default function OwnerReservationDetail() {
               >✕</button>
             </div>
             <ul className={styles.reasonList}>
-              {cancelReasons.map((reason, idx) => (
-                <li key={idx}
-                    className={selectedReason === reason ? styles.selectedReason : ""}
-                    onClick={() => setSelectedReason(reason)}>
-                  {reason}
+              {REASON_OPTIONS.map(([code, label]) => (
+                <li
+                  key={code}
+                  className={selectedReason === code ? styles.selectedReason : ""}
+                  onClick={() => setSelectedReason(code)}
+                >
+                  {label}
                 </li>
               ))}
             </ul>
@@ -424,6 +452,7 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
+      {/* ---- 최종 확인 모달 ---- */}
       {showConfirmModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -443,6 +472,7 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
+      {/* ---- 처리 완료 모달 ---- */}
       {showDoneModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -451,7 +481,7 @@ export default function OwnerReservationDetail() {
               <button
                 onClick={() => {
                   setShowDoneModal(false);
-                  navigate("/owner/reservations?tab=request");
+                  navigate(`/owner/reservations?tab=${mode === "request" ? "request" : "confirmed"}`);
                 }}
                 className={styles.approveBtn}
               >확인</button>
@@ -460,6 +490,7 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
+      {/* ---- 승인 확인/완료 모달 ---- */}
       {showApproveConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -475,6 +506,24 @@ export default function OwnerReservationDetail() {
         </div>
       )}
 
+      {showApproveDone && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.confirmModal}>
+            <p className={styles.doneText}>예약이 승인되었습니다.</p>
+            <div className={styles.confirmBtns}>
+              <button
+                onClick={() => {
+                  setShowApproveDone(false);
+                  fetchReservation();
+                }}
+                className={styles.approveBtn}
+              >확인</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- 착석 확인 모달 ---- */}
       {showSeatedConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>

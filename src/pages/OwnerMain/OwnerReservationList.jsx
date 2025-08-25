@@ -1,3 +1,4 @@
+// src/pages/OwnerReservationList/OwnerReservationList.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./OwnerReservationList.module.css";
@@ -54,9 +55,9 @@ function normalizeYMD(input) {
 const toHms = (t) => {
   if (!t) return "";
   if (typeof t === "string") {
-    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;     
-    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;   
-    return t.slice(0, 8);                            
+    if (/^\d{2}:\d{2}:\d{2}$/.test(t)) return t;
+    if (/^\d{2}:\d{2}$/.test(t)) return `${t}:00`;
+    return t.slice(0, 8);
   }
   if (typeof t === "object" && t !== null) {
     const hh = String(t.hour ?? 0).padStart(2, "0");
@@ -70,13 +71,23 @@ const toHms = (t) => {
 const RESV = { PENDING: "PENDING", APPROVED: "APPROVED", REJECTED: "REJECTED" };
 const ATT  = { BEFORE_USE: "BEFORE_USE", IN_USE: "IN_USE", COMPLETED: "COMPLETED" };
 
+/** 취소/거절 사유 코드 -> 라벨 (전송은 코드 사용) */
+const CANCEL_REASON = {
+  CLOSED_TIME: "해당 시간대 예약 마감",
+  OUT_OF_BUSINESS: "영업시간 외 예약요청",
+  CROWDED: "매장 혼잡",
+  EQUIPMENT_UNAVAILABLE: "요청 장비 사용 불가",
+  MAINTENANCE: "시설 점검",
+  PEAK_LIMIT: "피크타임 인원제한",
+};
+const REASON_OPTIONS = Object.entries(CANCEL_REASON); // [code, label][]
+
 /** 오늘 탭 표시 상태 계산: 시간 기준 + attendance 보정(되돌림 없음) */
 function deriveTodayStatus({ date, startHms, endHms, attendance }) {
   if (!date) return undefined;
   const today = getTodayISODate(tz);
   if (date !== today) return undefined;
 
-  // 시간 기준 기본 상태
   const start = startHms ? Date.parse(`${date}T${startHms}`) : NaN;
   const end   = endHms   ? Date.parse(`${date}T${endHms}`)   : NaN;
 
@@ -90,7 +101,6 @@ function deriveTodayStatus({ date, startHms, endHms, attendance }) {
     else base = "done";
   }
 
-  // attendance 우선 보정(진행 되돌리지 않음)
   if (attendance === ATT.COMPLETED) return "done";
   if (attendance === ATT.IN_USE) return base === "done" ? "done" : "using";
   if (attendance === ATT.BEFORE_USE) return base;
@@ -106,8 +116,9 @@ const OwnerReservationList = () => {
   const [activeTab, setActiveTab] = useState("today"); // "request" | "confirmed" | "today"
   const [todayTab, setTodayTab] = useState("using");   // "before" | "using" | "done"
 
+  // ----- 모달/액션 상태 -----
   const [showModal, setShowModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState(null);
+  const [selectedReason, setSelectedReason] = useState(null); // 코드
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
 
@@ -118,7 +129,9 @@ const OwnerReservationList = () => {
   const [showSeatedDone, setShowSeatedDone] = useState(false);
 
   const [actionTarget, setActionTarget] = useState(null);
+  const [actionType, setActionType] = useState(null); // 'reject' | 'cancel' | null
 
+  // ----- 데이터/오류 -----
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState("");
@@ -131,16 +144,6 @@ const OwnerReservationList = () => {
     const id = setInterval(() => setNowTs(Date.now()), 10_000);
     return () => clearInterval(id);
   }, [activeTab, todayTab]);
-
-  const cancelReasons = [
-    "해당 시간대 예약 마감",
-    "영업시간 외 예약요청",
-    "매장 혼잡",
-    "요청 장비 사용 불가",
-    "시설 점검",
-    "피크타임 인원제한",
-    "고객 노쇼",
-  ];
 
   const getUserId = () => {
     if (user?.id) return user.id;
@@ -163,16 +166,13 @@ const OwnerReservationList = () => {
         ? "confirmed"
         : "other";
 
-    // attendance 정규화
     const ATT_MAP = {
       BEFORE_USE: ATT.BEFORE_USE,
       "BEFORE-USE": ATT.BEFORE_USE,
       PRE_USE: ATT.BEFORE_USE,
-
       IN_USE: ATT.IN_USE,
       "IN-USE": ATT.IN_USE,
       USING: ATT.IN_USE,
-
       COMPLETED: ATT.COMPLETED,
       COMPLETE: ATT.COMPLETED,
       AFTER_USE: ATT.COMPLETED,
@@ -199,7 +199,7 @@ const OwnerReservationList = () => {
       todayStatus,
       start: st ? `${date}T${st}` : undefined,
       end: et ? `${date}T${et}` : undefined,
-      att: attendance, // ✅ 보관
+      att: attendance,
       immediate: it.immediate === true || it.immediate === "true" || it.immediate === 1,
       raw: it,
     };
@@ -270,13 +270,9 @@ const OwnerReservationList = () => {
 
     // 오늘 예약
     return reservations.filter((r) => {
-      // 오늘 날짜만
       if (r.date !== todayISO) return false;
-
       const ts = r.todayStatus ?? "before";
-
       if (todayTab === "done") {
-        // 시간계산으로 done이거나, attendance가 COMPLETED면 표시
         return ts === "done" || r.att === ATT.COMPLETED;
       }
       return ts === todayTab;
@@ -302,10 +298,7 @@ const OwnerReservationList = () => {
   const updateReservationStatus = async ({ id, status }) => {
     setActErr("");
     try {
-      const payload = {
-        reservationsId: id,
-        reservationStatus: status, 
-      };
+      const payload = { reservationsId: id, reservationStatus: status };
       await instance.patch(`/api/reservation/owner/update`, payload, {
         headers: { "Content-Type": "application/json" },
       });
@@ -334,11 +327,39 @@ const OwnerReservationList = () => {
     }
   };
 
-  const doCancel = async () => {
+  /** ✔ 거절/취소: 삭제 엔드포인트 호출 + 사유 코드 전송 */
+  const deleteReservationWithReason = async ({ id, reasonCode }) => {
+    setActErr("");
+    try {
+      const uid = getUserId();
+      if (!uid) throw new Error("userId를 찾을 수 없어요.");
+      await instance.patch(
+        `/api/reservation/delete/${id}`,
+        { cancelReason: reasonCode },
+        {
+          params: { userId: uid },
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      await fetchReservations();
+      return true;
+    } catch (e) {
+      console.error(e);
+      setActErr("처리 중 오류가 발생했어요.");
+      return false;
+    }
+  };
+
+  // ----- 액션 핸들러 -----
+  const doDelete = async () => {
     if (!actionTarget) return;
-    const ok = await updateReservationStatus({
+    if (!selectedReason) {
+      setActErr("취소(거절) 사유를 선택해주세요.");
+      return;
+    }
+    const ok = await deleteReservationWithReason({
       id: actionTarget,
-      status: RESV.REJECTED,
+      reasonCode: selectedReason,
     });
     if (ok) setShowDoneModal(true);
   };
@@ -480,6 +501,8 @@ const OwnerReservationList = () => {
                       className={styles.rejectBtn}
                       onClick={() => {
                         setActionTarget(r.id);
+                        setActionType("reject");
+                        setSelectedReason(null);
                         setShowModal(true);
                       }}
                     >
@@ -503,6 +526,8 @@ const OwnerReservationList = () => {
                       className={styles.rejectBtn}
                       onClick={() => {
                         setActionTarget(r.id);
+                        setActionType("cancel");
+                        setSelectedReason(null);
                         setShowModal(true);
                       }}
                     >
@@ -528,6 +553,8 @@ const OwnerReservationList = () => {
                           className={styles.rejectBtn}
                           onClick={() => {
                             setActionTarget(r.id);
+                            setActionType("reject");
+                            setSelectedReason(null);
                             setShowModal(true);
                           }}
                         >
@@ -549,6 +576,8 @@ const OwnerReservationList = () => {
                           className={styles.rejectBtn}
                           onClick={() => {
                             setActionTarget(r.id);
+                            setActionType("cancel");
+                            setSelectedReason(null);
                             setShowModal(true);
                           }}
                         >
@@ -585,12 +614,12 @@ const OwnerReservationList = () => {
         )}
       </div>
 
-      {/* 취소 사유 선택 모달 */}
+      {/* 취소/거절 사유 선택 모달 (코드 선택, 라벨 표기) */}
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
-              <span>예약 취소 사유</span>
+              <span>{actionType === "reject" ? "예약 거절 사유" : "예약 취소 사유"}</span>
               <button
                 className={styles.closeBtn}
                 onClick={() => {
@@ -602,13 +631,13 @@ const OwnerReservationList = () => {
               </button>
             </div>
             <ul className={styles.reasonList}>
-              {cancelReasons.map((reason, idx) => (
+              {REASON_OPTIONS.map(([code, label]) => (
                 <li
-                  key={idx}
-                  className={selectedReason === reason ? styles.selectedReason : ""}
-                  onClick={() => setSelectedReason(reason)}
+                  key={code}
+                  className={selectedReason === code ? styles.selectedReason : ""}
+                  onClick={() => setSelectedReason(code)}
                 >
-                  {reason}
+                  {label}
                 </li>
               ))}
             </ul>
@@ -619,17 +648,18 @@ const OwnerReservationList = () => {
                   setShowConfirmModal(true);
                 }}
               >
-                예약 취소하기
+                {actionType === "reject" ? "예약 거절하기" : "예약 취소하기"}
               </button>
             )}
           </div>
         </div>
       )}
 
+      {/* 최종 확인 모달 */}
       {showConfirmModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
-            <p>예약을 취소하시겠어요?</p>
+            <p>{actionType === "reject" ? "예약을 거절하시겠어요?" : "예약을 취소하시겠어요?"}</p>
             <div className={styles.confirmBtns}>
               <button onClick={() => setShowConfirmModal(false)} className={styles.rejectBtn}>
                 아니요
@@ -638,7 +668,7 @@ const OwnerReservationList = () => {
                 onClick={async () => {
                   setShowConfirmModal(false);
                   setShowModal(false);
-                  await doCancel();
+                  await doDelete();
                 }}
                 className={styles.approveBtn}
               >
@@ -649,16 +679,20 @@ const OwnerReservationList = () => {
         </div>
       )}
 
+      {/* 처리 완료 모달 */}
       {showDoneModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
-            <p className={styles.doneText}>예약이 취소되었습니다.</p>
+            <p className={styles.doneText}>
+              {actionType === "reject" ? "예약이 거절되었습니다." : "예약이 취소되었습니다."}
+            </p>
             <div className={styles.confirmBtns}>
               <button
                 onClick={() => {
                   setShowDoneModal(false);
                   setSelectedReason(null);
-                  navigate("/owner/reservations?tab=request");
+                  const nextTab = actionType === "reject" ? "request" : "confirmed";
+                  navigate(`/owner/reservations?tab=${nextTab}`);
                 }}
                 className={styles.approveBtn}
               >
@@ -669,6 +703,7 @@ const OwnerReservationList = () => {
         </div>
       )}
 
+      {/* 승인 확인/완료 모달 */}
       {showApproveConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
@@ -710,6 +745,7 @@ const OwnerReservationList = () => {
         </div>
       )}
 
+      {/* 착석 확인/완료 모달 */}
       {showSeatedConfirm && (
         <div className={styles.modalOverlay}>
           <div className={styles.confirmModal}>
