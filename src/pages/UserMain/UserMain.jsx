@@ -189,9 +189,26 @@ const toFrontStatus = (reservationStatus, attendanceStatus) => {
   return 'pending';
 };
 
+/* ===================== ✅ API 설정 (배포에서도 절대경로로 고정) ===================== */
+
 const IS_DEV = process.env.NODE_ENV === 'development';
-const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : '';
+
+// ✅ 배포 환경에서는 반드시 백엔드 도메인으로 고정
+// (필요하면 REACT_APP_API_HOST를 Vercel 환경변수로 추가해서 덮어쓸 수 있음)
+const PROD_API_HOST = process.env.REACT_APP_API_HOST || 'https://mocacafe.site';
+const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : PROD_API_HOST;
+
+// ✅ 항상 절대경로가 되도록 구성
 const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+// ✅ 이미지/파일도 백엔드에서 내려주는 경우 동일 HOST로 붙임
+const MEDIA_HOST = API_HOST;
+const withHost = (url) => {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${MEDIA_HOST}${path}`;
+};
 
 /* ===================== 컴포넌트 ===================== */
 
@@ -346,7 +363,10 @@ export default function UserMain() {
       try {
         const res = await fetch(
           `${API_PREFIX}/reservation?userId=${encodeURIComponent(userId)}`,
-          { headers: { accept: '*/*' } }
+          {
+            headers: { accept: '*/*' },
+            credentials: 'include', // ✅ 카페 리스트와 동일하게 쿠키 포함
+          }
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -360,11 +380,7 @@ export default function UserMain() {
 
             // 이미지 URL 우선순위: cafeImageUrl → imageUrl
             const rawImg = row.cafeImageUrl ?? row.imageUrl ?? null;
-            const thumb = rawImg
-              ? /^https?:\/\//i.test(rawImg)
-                ? rawImg
-                : `${API_HOST}${rawImg}`
-              : null;
+            const thumb = withHost(rawImg);
 
             return {
               id: String(row.reservationsId ?? idx),
@@ -386,7 +402,7 @@ export default function UserMain() {
 
         if (!abort) setReservations(mapped);
       } catch (err) {
-        console.error(err);
+        console.error('reservation error', err);
         if (!abort) setReservations([]);
       }
     };
@@ -424,7 +440,7 @@ export default function UserMain() {
       cafeId: c.cafeId,
       name: c.name || '이름없는 카페',
       addr: c.address || '주소 준비중',
-      thumb: c.imageUrl ? (c.imageUrl.startsWith('http') ? c.imageUrl : `${API_HOST}${c.imageUrl}`) : null,
+      thumb: withHost(c.imageUrl),
       hours: hoursHint,
       hoursRaw: raw,
       hoursKind,
@@ -533,6 +549,7 @@ export default function UserMain() {
         accept: '*/*',
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // ✅ 취소도 쿠키 필요하면 포함
       body: JSON.stringify({ cancelReason: reasonCode }),
     });
 
@@ -580,9 +597,6 @@ export default function UserMain() {
   // ✅ (추가) 스토리 공유 버튼 클릭 핸들러
   const handleStoryShare = () => {
     if (!activeReservation) return;
-
-    // 필요 시 라우트만 너네 프로젝트 경로로 바꿔줘
-    // 예: '/user/story-share' or '/user/story'
     navigate('/user/story', {
       state: {
         reservation: activeReservation,
@@ -666,7 +680,6 @@ export default function UserMain() {
         </button>
       </div>
 
-      {/* backdrop 높이는 즉시 계산값 사용 */}
       <div className={styles.backdrop} style={{ height: `${Math.max(0, ch - sheetTop)}px` }} aria-hidden />
 
       <div className={styles.bottomSheet}>
@@ -688,7 +701,6 @@ export default function UserMain() {
 
           {visibleReservations.length > 0 && (
             <div
-              ref={stripRef}
               className={styles.reserveStrip}
               role="region"
               aria-label="예약 목록 가로 스크롤"
@@ -870,7 +882,6 @@ export default function UserMain() {
             <p>{activeReservation.people} 명</p>
           </div>
 
-          {/* ✅ (추가) 이용중일 때 스토리 공유 버튼 */}
           {activeReservation.status === 'inuse' && (
             <div className={styles.storyShareBar}>
               <button className={styles.storyShareBtn} onClick={handleStoryShare}>
