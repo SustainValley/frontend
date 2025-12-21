@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    
+    {
+      "source": "/hackathon/api/:path*",
+      "destination": "https://mocacafe.site/hackathon/:path*"
+    }
   ]
 }

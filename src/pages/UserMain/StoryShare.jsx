@@ -2,6 +2,57 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './StoryShare.module.css';
 
+/* ===================== API ===================== */
+// ✅ 개발: EC2(8080) 직접 호출 / 배포: mocacafe.site
+const IS_DEV = process.env.NODE_ENV === 'development';
+const API_HOST =
+  process.env.REACT_APP_API_HOST ||
+  (IS_DEV ? 'http://54.180.2.235:8080' : 'https://mocacafe.site');
+
+const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+async function uploadStoryToInstagram(imageFile) {
+    const form = new FormData();
+    form.append('image', imageFile);
+  
+    const res = await fetch(`${API_PREFIX}/instagram/story`, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers: { accept: '*/*' },
+    });
+  
+    // ✅ 응답 바디를 먼저 파싱(서버가 JSON 내려주는 케이스)
+    let data = null;
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      data = await res.json().catch(() => null);
+    } else {
+      const text = await res.text().catch(() => '');
+      data = text ? { message: text } : null;
+    }
+  
+    if (!res.ok) {
+      const msg =
+        data?.message ||
+        data?.error?.message ||
+        `스토리 업로드 실패 (HTTP ${res.status})`;
+  
+      // 서버가 result에 원인 문자열 담는 경우
+      const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
+      throw new Error(`${msg}${detail}`);
+    }
+  
+    // 서버 공통 응답(isSuccess false) 처리
+    if (data?.isSuccess === false) {
+      const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
+      throw new Error(`${data?.message || '스토리 업로드 실패'}${detail}`);
+    }
+  
+    return data;
+  }
+  
+
 /* ===================== 합성 유틸 ===================== */
 const STORY_W = 1080;
 const STORY_H = 1920;
@@ -90,7 +141,7 @@ async function composeStory({ bgUrl, fgUrl, titleText }) {
   // 1) 배경
   drawCover(ctx, bgImg, 0, 0, STORY_W, STORY_H);
 
-  // 2) 중앙 프레임(흰 카드 + 그림자)
+  // 2) 중앙 프레임
   const frameW = Math.round(STORY_W * 0.62);
   const frameH = Math.round(STORY_H * 0.45);
   const frameX = Math.round((STORY_W - frameW) / 2);
@@ -107,24 +158,25 @@ async function composeStory({ bgUrl, fgUrl, titleText }) {
   ctx.fill();
   ctx.restore();
 
-  // 3) 프레임 내부 이미지(2번째 사진)
+  // 3) 프레임 내부 이미지
   const pad = 14;
   const innerX = frameX + pad;
   const innerY = frameY + pad;
   const innerW = frameW - pad * 2;
   const innerH = frameH - pad * 2;
+
   drawRoundedImageContain(ctx, fgImg, innerX, innerY, innerW, innerH, radius - 8);
 
-  // 4) 상단 텍스트(원하는 디자인 있으면 여기만 바꾸면 됨)
+  // 4) 상단 텍스트 오버레이(원하면 지워도 됨)
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '700 46px Pretendard, system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
+  // 텍스트는 화면 위쪽에 얹는 방식(시안 느낌)
   const tx = 88;
   const ty = 140;
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText('남은시간', tx, ty);
   ctx.fillStyle = '#E74C3C';
   ctx.fillText('01:32', tx + 180, ty);
@@ -141,39 +193,7 @@ async function composeStory({ bgUrl, fgUrl, titleText }) {
   return { blob, canvas };
 }
 
-/* ===================== 촬영/공유 유틸 ===================== */
-function isMobileLike() {
-  const ua = navigator.userAgent || '';
-  return /Android|iPhone|iPad|iPod/i.test(ua);
-}
-
-function isSecureContextForCamera() {
-  return (
-    window.isSecureContext ||
-    window.location.protocol === 'https:' ||
-    window.location.hostname === 'localhost'
-  );
-}
-
-function openInstagramFallback() {
-  // 웹에서 “스토리 화면 + 파일 자동 주입”은 불가.
-  // 최대한: 앱/웹 열기 정도만 제공.
-  const ua = navigator.userAgent || '';
-  const isAndroid = /Android/i.test(ua);
-
-  if (isAndroid) {
-    window.location.href =
-      'intent://instagram.com/#Intent;package=com.instagram.android;scheme=https;end';
-  } else {
-    // iOS scheme
-    window.location.href = 'instagram://app';
-  }
-
-  setTimeout(() => {
-    window.location.href = 'https://www.instagram.com/';
-  }, 800);
-}
-
+/* ===================== 데스크탑 촬영 유틸 ===================== */
 function canvasToFile(canvas, filename = 'capture.jpg', mime = 'image/jpeg', quality = 0.92) {
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
@@ -210,7 +230,7 @@ export default function StoryShare() {
   const [resultBlob, setResultBlob] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
 
-  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // objectURL 정리
   useEffect(() => {
@@ -285,8 +305,16 @@ export default function StoryShare() {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('이 브라우저는 카메라 촬영을 지원하지 않아요.');
       }
-      if (!isSecureContextForCamera()) {
-        throw new Error('카메라 촬영은 https 또는 localhost에서만 가능해요.');
+
+      // ✅ localhost는 보안 컨텍스트로 인정됨. (데스크탑에서도 촬영 가능)
+      // https 배포도 가능.
+      const isSecure =
+        window.isSecureContext ||
+        window.location.protocol === 'https:' ||
+        window.location.hostname === 'localhost';
+
+      if (!isSecure) {
+        throw new Error('데스크탑 촬영은 https 또는 localhost에서만 가능해요.');
       }
 
       if (streamRef.current) {
@@ -402,50 +430,21 @@ export default function StoryShare() {
     a.remove();
   };
 
-  /**
-   * ✅ 내 인스타그램으로 “가게” 만들기
-   * - 모바일: Web Share API로 이미지 파일 공유(공유 시트에서 Instagram 선택)
-   * - PC: 자동 저장 + 인스타 웹 열기(파일 자동 주입은 불가)
-   */
-  const shareToMyInstagram = async () => {
-    if (!resultBlob || busy) return;
+  // ✅ 공유하기 = 서버 API 호출(인스타 스토리 업로드)
+  const share = async () => {
+    if (!resultBlob || uploading) return;
 
-    // PC: 파일 자동 전달이 사실상 불가 → 저장 유도 + 인스타 열기
-    if (!isMobileLike()) {
-      alert('PC에서는 인스타 스토리로 바로 넘기기가 어려워요.\n이미지를 저장한 뒤 인스타에서 업로드해 주세요.');
-      download();
-      window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
-      return;
-    }
-
-    // 모바일: Web Share API로 파일 공유 시도
-    setBusy(true);
+    setUploading(true);
     try {
       const file = new File([resultBlob], 'moca-story.png', { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: 'MOCA Story',
-          text: 'MOCA에서 만든 스토리 이미지',
-        });
-        return; // 사용자가 공유 완료/취소 후 돌아옴
-      }
-
-      // Web Share가 안 되면 저장 + 인스타 열기
-      alert('이 기기에서는 바로 공유가 어려워요.\n이미지를 저장한 뒤 인스타에서 업로드해 주세요.');
-      download();
-      openInstagramFallback();
+      await uploadStoryToInstagram(file);
+      alert('MOCA 인스타그램 스토리에 업로드 완료!');
+      navigate(-1);
     } catch (err) {
-      // 사용자가 공유 취소하면 AbortError가 자주 발생함
-      if (err?.name !== 'AbortError') {
-        console.error(err);
-        alert('공유를 열 수 없어요.\n이미지를 저장한 뒤 인스타에서 업로드해 주세요.');
-        download();
-        openInstagramFallback();
-      }
+      console.error(err);
+      alert(err?.message || '스토리 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
-      setBusy(false);
+      setUploading(false);
     }
   };
 
@@ -459,7 +458,7 @@ export default function StoryShare() {
         <div className={styles.right} />
       </header>
 
-      {/* 파일 선택 input (모바일은 capture가 카메라 유도, 데스크탑은 무시될 수 있음) */}
+      {/* 파일 선택 input (모바일은 capture가 카메라 유도, 데스크탑은 무시) */}
       <input
         ref={bgInputRef}
         type="file"
@@ -526,7 +525,7 @@ export default function StoryShare() {
         </div>
       )}
 
-      {/* STEP 3: 결과 미리보기 + 공유 */}
+      {/* STEP 3: 결과 미리보기 + 업로드 */}
       {step === 'preview' && (
         <div className={styles.previewWrap}>
           <div className={styles.storyStage}>
@@ -553,14 +552,13 @@ export default function StoryShare() {
             <button className={styles.bottomBtn} onClick={download} type="button" disabled={!resultUrl}>
               이미지 저장
             </button>
-
             <button
               className={styles.bottomBtnPrimary}
-              onClick={shareToMyInstagram}
+              onClick={share}
               type="button"
-              disabled={!resultBlob || busy}
+              disabled={!resultBlob || uploading}
             >
-              {busy ? '공유 준비 중…' : '내 인스타로 공유'}
+              {uploading ? '업로드 중…' : '공유하기'}
             </button>
           </div>
         </div>
