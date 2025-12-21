@@ -12,46 +12,42 @@ const API_HOST =
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 async function uploadStoryToInstagram(imageFile) {
-    const form = new FormData();
-    form.append('image', imageFile);
-  
-    const res = await fetch(`${API_PREFIX}/instagram/story`, {
-      method: 'POST',
-      body: form,
-      credentials: 'include',
-      headers: { accept: '*/*' },
-    });
-  
-    // ✅ 응답 바디를 먼저 파싱(서버가 JSON 내려주는 케이스)
-    let data = null;
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      data = await res.json().catch(() => null);
-    } else {
-      const text = await res.text().catch(() => '');
-      data = text ? { message: text } : null;
-    }
-  
-    if (!res.ok) {
-      const msg =
-        data?.message ||
-        data?.error?.message ||
-        `스토리 업로드 실패 (HTTP ${res.status})`;
-  
-      // 서버가 result에 원인 문자열 담는 경우
-      const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
-      throw new Error(`${msg}${detail}`);
-    }
-  
-    // 서버 공통 응답(isSuccess false) 처리
-    if (data?.isSuccess === false) {
-      const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
-      throw new Error(`${data?.message || '스토리 업로드 실패'}${detail}`);
-    }
-  
-    return data;
+  const form = new FormData();
+  form.append('image', imageFile);
+
+  const res = await fetch(`${API_PREFIX}/instagram/story`, {
+    method: 'POST',
+    body: form,
+    credentials: 'include',
+    headers: { accept: '*/*' },
+  });
+
+  let data = null;
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    data = await res.json().catch(() => null);
+  } else {
+    const text = await res.text().catch(() => '');
+    data = text ? { message: text } : null;
   }
-  
+
+  if (!res.ok) {
+    const msg =
+      data?.message ||
+      data?.error?.message ||
+      `스토리 업로드 실패 (HTTP ${res.status})`;
+
+    const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
+    throw new Error(`${msg}${detail}`);
+  }
+
+  if (data?.isSuccess === false) {
+    const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
+    throw new Error(`${data?.message || '스토리 업로드 실패'}${detail}`);
+  }
+
+  return data;
+}
 
 /* ===================== 합성 유틸 ===================== */
 const STORY_W = 1080;
@@ -66,7 +62,6 @@ function loadImage(url) {
   });
 }
 
-// cover (배경 꽉 채우기)
 function drawCover(ctx, img, x, y, w, h) {
   const iw = img.width;
   const ih = img.height;
@@ -99,7 +94,6 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// contain (프레임 안에 맞추기)
 function drawRoundedImageContain(ctx, img, x, y, w, h, r) {
   const iw = img.width;
   const ih = img.height;
@@ -126,7 +120,6 @@ function drawRoundedImageContain(ctx, img, x, y, w, h, r) {
   ctx.restore();
 }
 
-// 합성: 배경 cover + 가운데 작은 프레임(2번째 사진)
 async function composeStory({ bgUrl, fgUrl, titleText }) {
   const canvas = document.createElement('canvas');
   canvas.width = STORY_W;
@@ -164,19 +157,18 @@ async function composeStory({ bgUrl, fgUrl, titleText }) {
   const innerY = frameY + pad;
   const innerW = frameW - pad * 2;
   const innerH = frameH - pad * 2;
-
   drawRoundedImageContain(ctx, fgImg, innerX, innerY, innerW, innerH, radius - 8);
 
-  // 4) 상단 텍스트 오버레이(원하면 지워도 됨)
+  // 4) 상단 텍스트
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = '700 46px Pretendard, system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
-  // 텍스트는 화면 위쪽에 얹는 방식(시안 느낌)
   const tx = 88;
   const ty = 140;
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.fillText('남은시간', tx, ty);
   ctx.fillStyle = '#E74C3C';
   ctx.fillText('01:32', tx + 180, ty);
@@ -202,6 +194,59 @@ function canvasToFile(canvas, filename = 'capture.jpg', mime = 'image/jpeg', qua
   });
 }
 
+/* ===================== 내 인스타로 공유 유틸 ===================== */
+function isMobileLike() {
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod/i.test(ua);
+}
+
+function openInstagramWeb() {
+  window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
+}
+
+function downloadBlob(blob, filename = 'moca-story.png') {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ✅ “내 인스타로 넘어가도록” = (모바일) 공유 시트 열기 / (PC) 저장 + 인스타 열기
+async function shareToMyInstagramWithFile(file, resultBlob) {
+  // PC
+  if (!isMobileLike()) {
+    // 인스타에 파일 자동 주입은 불가 → 저장 + 인스타 열기
+    downloadBlob(resultBlob, 'moca-story.png');
+    openInstagramWeb();
+    alert(
+      'PC에서는 인스타 스토리에 이미지를 자동으로 넣을 수 없어요.\n\n' +
+        '1) 방금 저장된 moca-story.png 파일을\n' +
+        '2) 인스타그램에서 + 만들기 → 스토리로 업로드해 주세요.'
+    );
+    return;
+  }
+
+  // 모바일
+  // Web Share API로 "공유 시트"를 띄우면 Instagram 선택이 가능(기기/브라우저에 따라 다름)
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    await navigator.share({
+      files: [file],
+      title: 'MOCA Story',
+      text: 'MOCA에서 만든 스토리 이미지',
+    });
+    return;
+  }
+
+  // Web Share 미지원이면 저장 + 인스타 열기
+  downloadBlob(resultBlob, 'moca-story.png');
+  openInstagramWeb();
+  alert('이 기기에서는 바로 공유가 어려워요.\n저장된 이미지를 인스타 스토리에 업로드해 주세요.');
+}
+
 /* ===================== 컴포넌트 ===================== */
 export default function StoryShare() {
   const navigate = useNavigate();
@@ -213,7 +258,6 @@ export default function StoryShare() {
     return '‘카페’를 이용중이에요';
   }, [reservation]);
 
-  // bg -> fg -> preview
   const [step, setStep] = useState('bg');
 
   const bgInputRef = useRef(null);
@@ -230,28 +274,14 @@ export default function StoryShare() {
   const [resultBlob, setResultBlob] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
 
+  // ✅ 서버 업로드 로딩(유지)
   const [uploading, setUploading] = useState(false);
 
   // objectURL 정리
-  useEffect(() => {
-    return () => {
-      if (bgUrl) URL.revokeObjectURL(bgUrl);
-    };
-  }, [bgUrl]);
+  useEffect(() => () => bgUrl && URL.revokeObjectURL(bgUrl), [bgUrl]);
+  useEffect(() => () => fgUrl && URL.revokeObjectURL(fgUrl), [fgUrl]);
+  useEffect(() => () => resultUrl && URL.revokeObjectURL(resultUrl), [resultUrl]);
 
-  useEffect(() => {
-    return () => {
-      if (fgUrl) URL.revokeObjectURL(fgUrl);
-    };
-  }, [fgUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (resultUrl) URL.revokeObjectURL(resultUrl);
-    };
-  }, [resultUrl]);
-
-  // bg/fg 바뀌면 결과 초기화
   useEffect(() => {
     setResultBlob(null);
     if (resultUrl) {
@@ -282,7 +312,7 @@ export default function StoryShare() {
 
   /* ===== 촬영 모달(WebRTC) ===== */
   const [camOpen, setCamOpen] = useState(false);
-  const [camTarget, setCamTarget] = useState('bg'); // 'bg' | 'fg'
+  const [camTarget, setCamTarget] = useState('bg');
   const [camError, setCamError] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -306,8 +336,6 @@ export default function StoryShare() {
         throw new Error('이 브라우저는 카메라 촬영을 지원하지 않아요.');
       }
 
-      // ✅ localhost는 보안 컨텍스트로 인정됨. (데스크탑에서도 촬영 가능)
-      // https 배포도 가능.
       const isSecure =
         window.isSecureContext ||
         window.location.protocol === 'https:' ||
@@ -430,21 +458,44 @@ export default function StoryShare() {
     a.remove();
   };
 
-  // ✅ 공유하기 = 서버 API 호출(인스타 스토리 업로드)
+  /**
+   * ✅ 공유하기 버튼: (1) 서버 업로드 유지 + (2) 내 인스타 공유 흐름 열기
+   * - 포인트: Web Share는 “유저 제스처”가 중요해서, 네트워크 await 전에 share를 먼저 띄움
+   */
   const share = async () => {
     if (!resultBlob || uploading) return;
 
     setUploading(true);
+
+    // 합성 결과 파일
+    const file = new File([resultBlob], 'moca-story.png', { type: 'image/png' });
+
+    // 1) 서버 업로드는 "백그라운드처럼" 즉시 시작 (await는 뒤에서)
+    const uploadPromise = uploadStoryToInstagram(file);
+
+    // 2) 내 인스타 공유 흐름은 바로 실행(유저 제스처 유지 목적)
+    const sharePromise = shareToMyInstagramWithFile(file, resultBlob);
+
+    // 3) 둘 다 끝나면 상태 정리/에러 처리
     try {
-      const file = new File([resultBlob], 'moca-story.png', { type: 'image/png' });
-      await uploadStoryToInstagram(file);
-      alert('MOCA 인스타그램 스토리에 업로드 완료!');
-      navigate(-1);
-    } catch (err) {
-      console.error(err);
-      alert(err?.message || '스토리 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      const [uploadRes, shareRes] = await Promise.allSettled([uploadPromise, sharePromise]);
+
+      if (uploadRes.status === 'rejected') {
+        // 서버 업로드 실패는 사용자에게 알려주기(인스타 공유는 별개로 진행됨)
+        console.error(uploadRes.reason);
+        alert(uploadRes.reason?.message || 'MOCA 인스타 업로드에 실패했어요.');
+      } else {
+        // 성공 시 굳이 alert는 안 띄움(사용자는 인스타로 넘어갔을 확률이 높음)
+        console.log('MOCA story uploaded:', uploadRes.value);
+      }
+
+      // share는 사용자가 취소할 수 있으므로 강제 alert 하지 않음
+      if (shareRes.status === 'rejected' && shareRes.reason?.name !== 'AbortError') {
+        console.error(shareRes.reason);
+      }
     } finally {
       setUploading(false);
+      // 여기서 navigate(-1)은 제거 (사용자가 인스타로 넘어갈 수 있어서 강제 이동하면 UX 깨짐)
     }
   };
 
@@ -458,7 +509,7 @@ export default function StoryShare() {
         <div className={styles.right} />
       </header>
 
-      {/* 파일 선택 input (모바일은 capture가 카메라 유도, 데스크탑은 무시) */}
+      {/* 파일 선택 input */}
       <input
         ref={bgInputRef}
         type="file"
@@ -476,7 +527,7 @@ export default function StoryShare() {
         className={styles.hiddenInput}
       />
 
-      {/* STEP 1: 배경 선택/촬영 */}
+      {/* STEP 1 */}
       {step === 'bg' && (
         <div className={styles.guide}>
           <div className={styles.guideInner}>
@@ -497,7 +548,7 @@ export default function StoryShare() {
         </div>
       )}
 
-      {/* STEP 2: 두 번째 사진 선택/촬영 */}
+      {/* STEP 2 */}
       {step === 'fg' && (
         <div className={styles.guide}>
           <div className={styles.guideInner}>
@@ -525,7 +576,7 @@ export default function StoryShare() {
         </div>
       )}
 
-      {/* STEP 3: 결과 미리보기 + 업로드 */}
+      {/* STEP 3 */}
       {step === 'preview' && (
         <div className={styles.previewWrap}>
           <div className={styles.storyStage}>
@@ -558,7 +609,7 @@ export default function StoryShare() {
               type="button"
               disabled={!resultBlob || uploading}
             >
-              {uploading ? '업로드 중…' : '공유하기'}
+              {uploading ? '공유 중…' : '공유하기'}
             </button>
           </div>
         </div>

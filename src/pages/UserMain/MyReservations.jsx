@@ -9,9 +9,14 @@ import clockIcon from '../../assets/clock.svg';
 
 import { getUserId as getStoredUserId } from '../../lib/axios';
 
+/* ===================== ✅ API 설정 (배포에서도 절대경로로 고정) ===================== */
+
 const IS_DEV = process.env.NODE_ENV === 'development';
-const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : '';
+const PROD_API_HOST = process.env.REACT_APP_API_HOST || 'https://mocacafe.site';
+const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : PROD_API_HOST;
 const API_PREFIX = `${API_HOST}/hackathon/api`;
+
+/* ===================== 유틸 ===================== */
 
 const fmtHHMM = (t = '') => {
   if (!t) return '';
@@ -39,8 +44,8 @@ export default function MyReservations() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [tab, setTab] = useState('request');      
-  const [sub, setSub] = useState('ongoing');     
+  const [tab, setTab] = useState('request');
+  const [sub, setSub] = useState('ongoing');
 
   const userId = useMemo(() => getStoredUserId() || null, []);
   const [items, setItems] = useState([]);
@@ -60,6 +65,7 @@ export default function MyReservations() {
     if (next !== 'request') p.delete('sub');
     setSearchParams(p);
   };
+
   const goSub = (next) => {
     setSub(next);
     const p = new URLSearchParams(searchParams.toString());
@@ -70,17 +76,26 @@ export default function MyReservations() {
 
   useEffect(() => {
     let abort = false;
+
     (async () => {
       try {
         setLoading(true);
+
         if (!userId) {
           if (!abort) setItems([]);
           return;
         }
-        const res = await fetch(`${API_PREFIX}/reservation?userId=${encodeURIComponent(userId)}`, {
-          headers: { accept: '*/*' },
-        });
+
+        const res = await fetch(
+          `${API_PREFIX}/reservation?userId=${encodeURIComponent(userId)}`,
+          {
+            headers: { accept: '*/*' },
+            credentials: 'include', // ✅ 배포에서 인증/세션 쿠키 쓰면 필수
+          }
+        );
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
         const arr = Array.isArray(data?.result) ? data.result : [];
 
@@ -97,14 +112,16 @@ export default function MyReservations() {
           cancelReason: r.cancelReason || '',
           group: groupOf(r),
         }));
+
         if (!abort) setItems(mapped);
       } catch (e) {
-        console.error(e);
+        console.error('my reservations error', e);
         if (!abort) setItems([]);
       } finally {
         if (!abort) setLoading(false);
       }
     })();
+
     return () => { abort = true; };
   }, [userId]);
 
@@ -112,8 +129,10 @@ export default function MyReservations() {
     let base = [];
     if (tab === 'confirmed') base = items.filter((x) => x.group === 'confirmed');
     else if (tab === 'completed') base = items.filter((x) => x.group === 'completed');
-    else base = sub === 'rejected' ? items.filter((x) => x.group === 'rejected')
-                                   : items.filter((x) => x.group === 'request');
+    else base = sub === 'rejected'
+      ? items.filter((x) => x.group === 'rejected')
+      : items.filter((x) => x.group === 'request');
+
     return base.sort((a, b) => (a.dateKey < b.dateKey ? 1 : a.dateKey > b.dateKey ? -1 : 0));
   }, [items, tab, sub]);
 
