@@ -10,12 +10,10 @@ import sendIcon from "../../assets/tabler_send.svg";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
-
-const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "https://mocacafe.site";
+const API_HOST = IS_DEV ? "http://54.180.2.235:8080" : "https://mocacafe.site";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://mocacafe.site";
-
+const WS_BASE = IS_DEV ? "ws://54.180.2.235:8080" : "wss://mocacafe.site";
 const WS_PATH = "/hackathon/api/ws-stomp";
 const WS_URL = `${WS_BASE}${WS_PATH}`;
 
@@ -39,20 +37,28 @@ const sameByIdentity = (a, b) => {
   return (num(a.sender) ?? null) === (num(b.sender) ?? null) && String(a.createdAt) === String(b.createdAt);
 };
 
-const isMatchPending = (pending, incoming, myId) => {
+const isMatchPending = (pending, incoming, mySenderKey) => {
   if (pending.state !== "pending") return false;
 
+  // 1) tempId/clientId 매칭 (가장 정확)
   if (pending.clientId && incoming.tempId && String(pending.clientId) === String(incoming.tempId)) {
     return true;
   }
 
-  const sameSenderIsMe = num(pending.sender) === num(myId) && num(incoming.sender) === num(myId);
+  // 2) sender가 "내 senderKey"인 메시지만 pending 매칭 대상으로 본다
+  const sameSenderIsMe =
+    Number.isFinite(num(mySenderKey)) &&
+    num(pending.sender) === num(mySenderKey) &&
+    num(incoming.sender) === num(mySenderKey);
+
   if (!sameSenderIsMe) return false;
 
+  // 3) 텍스트 동일
   if (normalizeText(pending.text ?? pending.message) !== normalizeText(incoming.text ?? incoming.message)) {
     return false;
   }
 
+  // 4) 시간 근접
   const dt = Math.abs(new Date(incoming.createdAt).getTime() - new Date(pending.createdAt).getTime());
   return dt <= 10000;
 };
@@ -81,14 +87,17 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
+  /**
+   * ✅ 내 메시지 판별 기준을 "sender만"으로 고정
+   * - 서버가 userId/fromUserId/authorId 같은 필드에 "수신자(내 id)"를 실어 보내는 케이스가 있어서,
+   *   그것까지 candidates에 넣으면 사용자 화면에서 전부 mine=true가 되어버림.
+   */
+  const mySenderKey = num(chatRoomUserId) ?? num(globalUserId) ?? null;
+
   const isMine = (payload) => {
-    const candidates = [
-      num(payload?.sender),
-      num(payload?.userId),
-      num(payload?.fromUserId),
-      num(payload?.authorId),
-    ].filter((v) => Number.isFinite(v));
-    return candidates.some((id) => id === num(chatRoomUserId) || id === num(globalUserId));
+    const s = num(payload?.sender);
+    if (!Number.isFinite(s) || !Number.isFinite(num(mySenderKey))) return false;
+    return s === num(mySenderKey);
   };
 
   const loadChatRoomUserId = async () => {
@@ -126,7 +135,7 @@ export default function ChatRoom() {
     let out = [...prev];
 
     for (const s of serverList) {
-      const pIdx = out.findIndex((m) => isMatchPending(m, s, chatRoomUserId ?? globalUserId));
+      const pIdx = out.findIndex((m) => isMatchPending(m, s, mySenderKey));
       if (pIdx !== -1) {
         const copy = [...out];
         copy[pIdx] = { ...copy[pIdx], ...s, state: "sent" };
@@ -155,14 +164,19 @@ export default function ChatRoom() {
       });
       if (!res.ok) return;
       const data = await res.json();
+
       const list = (data.result || []).map((m) => {
         const text = safeText(m);
         const mine = isMine(m);
+
         return {
           serverId: m.id ?? undefined,
           id: m.id ?? undefined,
           tempId: m.tempId ?? undefined,
-          sender: num(m.sender) ?? num(m.userId) ?? undefined,
+
+          // ✅ sender는 "서버가 준 sender"만 신뢰 (userId로 대체하지 않음)
+          sender: num(m.sender) ?? undefined,
+
           message: text,
           text,
           createdAt: toISO(m.createdAt ?? m.timestamp),
@@ -170,6 +184,7 @@ export default function ChatRoom() {
           state: "sent",
         };
       });
+
       setMessages((prev) => reconcileWithServer(prev, list));
     } catch {}
   };
@@ -197,7 +212,10 @@ export default function ChatRoom() {
             serverId: payload.id ?? undefined,
             id: payload.id ?? undefined,
             tempId: payload.tempId ?? undefined,
-            sender: num(payload.sender) ?? num(payload.userId) ?? undefined,
+
+            // ✅ sender는 payload.sender만 신뢰
+            sender: num(payload.sender) ?? undefined,
+
             message: text,
             text,
             createdAt: toISO(payload.createdAt ?? payload.timestamp),
@@ -206,7 +224,7 @@ export default function ChatRoom() {
           };
 
           setMessages((prev) => {
-            const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, chatRoomUserId ?? globalUserId));
+            const pIdx = prev.findIndex((m) => isMatchPending(m, incoming, mySenderKey));
             if (pIdx !== -1) {
               const copy = [...prev];
               copy[pIdx] = { ...copy[pIdx], ...incoming, state: "sent" };
@@ -216,15 +234,17 @@ export default function ChatRoom() {
             const dup = prev.some((m) => sameByIdentity(m, incoming));
             if (dup) return prev;
 
-            const myId = chatRoomUserId ?? globalUserId;
+            // ✅ 텍스트로만 매칭할 때도 sender를 mySenderKey로 제한
             const sameTextPendings = prev
               .map((m, idx) => ({ m, idx }))
               .filter(
                 ({ m }) =>
                   m.state === "pending" &&
-                  num(m.sender) === num(myId) &&
+                  Number.isFinite(num(mySenderKey)) &&
+                  num(m.sender) === num(mySenderKey) &&
                   normalizeText(m.text ?? m.message) === normalizeText(incoming.text ?? incoming.message)
               );
+
             if (sameTextPendings.length === 1) {
               const copy = [...prev];
               const { idx } = sameTextPendings[0];
@@ -300,11 +320,13 @@ export default function ChatRoom() {
     const nowISO = new Date().toISOString();
     const clientId = uuid();
 
+    // ✅ pending sender도 mySenderKey(=chatRoomUserId)를 사용
+    // (서버 sender와 같은 도메인으로 맞춰야 pending 매칭이 안 꼬임)
     setMessages((prev) => [
       ...prev,
       {
         clientId,
-        sender: chatRoomUserId,
+        sender: num(chatRoomUserId),
         message: text,
         text,
         createdAt: nowISO,
@@ -319,7 +341,13 @@ export default function ChatRoom() {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         "content-type": "application/json",
       },
-      body: JSON.stringify({ roomId, message: text, sender: chatRoomUserId, tempId: clientId, createdAt: nowISO }),
+      body: JSON.stringify({
+        roomId,
+        message: text,
+        sender: chatRoomUserId,
+        tempId: clientId,
+        createdAt: nowISO,
+      }),
     });
 
     setInput("");
@@ -371,7 +399,7 @@ export default function ChatRoom() {
               : `at-${msg.createdAt}-${i}`;
 
           const isStore = msg.from === "store";
-          const senderLabel = isStore ? otherDisplayName : "나"; 
+          const senderLabel = isStore ? otherDisplayName : "나";
 
           return isStore ? (
             <div key={key} className={styles.messageRow}>

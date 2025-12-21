@@ -9,11 +9,11 @@ import { Client } from "@stomp/stompjs";
 const IS_DEV = process.env.NODE_ENV === "development";
 
 // REST 베이스 (개발=EC2, 배포=도메인)
-const API_HOST = IS_DEV ? "http://3.27.150.124:8080" : "https://mocacafe.site";
+const API_HOST = IS_DEV ? "http://54.180.2.235:8080" : "https://mocacafe.site";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 // WS-STOMP 베이스 (개발=EC2, 배포=도메인 직결)
-const WS_BASE = IS_DEV ? "ws://3.27.150.124:8080" : "wss://mocacafe.site";
+const WS_BASE = IS_DEV ? "ws://54.180.2.235:8080" : "wss://mocacafe.site";
 const WS_PATH = "/hackathon/api/ws-stomp";
 const WS_URL = `${WS_BASE}${WS_PATH}`;
 

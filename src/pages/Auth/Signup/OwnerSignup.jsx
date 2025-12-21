@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import styles from './OwnerSignup.module.css';
 import { useOwnerSignup } from '../../../context/OwnerSignupContext';
 import axios from 'axios';
+import instance from '../../../lib/axios';
 
 import logoImg from '../../../assets/Logo-main-fin.svg';
-
-const API_PREFIX = process.env.REACT_APP_API_PREFIX || '/hackathon/api';
 
 const loadDaumPostcode = () =>
   new Promise((resolve, reject) => {
@@ -19,7 +18,8 @@ const loadDaumPostcode = () =>
     }
     const script = document.createElement('script');
     script.id = 'daum-postcode-script';
-    script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    script.src =
+      'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
     script.async = true;
     script.onload = () => resolve(window.daum.Postcode);
     script.onerror = reject;
@@ -64,26 +64,21 @@ const OwnerSignup = () => {
       .catch(() => setPostcodeReady(false));
   }, []);
 
+  /* ✅ UserSignup과 동일한 호출 방식 */
   const checkUsername = async (bizNoFormatted) => {
     setUsernameErr('');
     setUsernameMsg('');
     try {
-      const { data } = await axios.post(
-        `${API_PREFIX}/users/signup/check-username`,
-        { username: bizNoFormatted },
-        { headers: { 'Content-Type': 'application/json' } }
+      const { data } = await instance.post(
+        '/api/users/signup/check-username',
+        { username: bizNoFormatted }
       );
-      if (typeof data?.message === 'string') {
-        setUsernameMsg(data.message);
-      } else {
-        setUsernameMsg('아이디 확인 결과를 불러왔습니다.');
-      }
+      setUsernameMsg(data?.message || '아이디 확인 결과를 불러왔습니다.');
     } catch (e) {
-      const msg =
+      setUsernameErr(
         e?.response?.data?.message ||
-        e?.message ||
-        '아이디 확인 중 오류가 발생했어요.';
-      setUsernameErr(msg);
+        '아이디 확인 중 오류가 발생했어요.'
+      );
     }
   };
 
@@ -99,7 +94,9 @@ const OwnerSignup = () => {
       return;
     }
     if (!RAW_KEY) {
-      setVerifyError('서비스 키가 비어있어요. .env.local에 REACT_APP_NTS_SERVICE_KEY 설정 후 개발 서버 재시작하세요.');
+      setVerifyError(
+        '서비스 키가 비어있어요. .env.local에 REACT_APP_NTS_SERVICE_KEY 설정 후 개발 서버 재시작하세요.'
+      );
       return;
     }
 
@@ -107,22 +104,32 @@ const OwnerSignup = () => {
       setVerifying(true);
 
       const keyParam = IS_ENCODED ? RAW_KEY : encodeURIComponent(RAW_KEY);
-      const ntsUrl = `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${keyParam}&returnType=JSON`;
+      const ntsUrl =
+        `https://api.odcloud.kr/api/nts-businessman/v1/status` +
+        `?serviceKey=${keyParam}&returnType=JSON`;
 
       const [ntsRes] = await Promise.all([
-        axios.post(ntsUrl, { b_no: [clean] }, { headers: { 'Content-Type': 'application/json' } }),
-        checkUsername(bno)
+        axios.post(
+          ntsUrl,
+          { b_no: [clean] },
+          { headers: { 'Content-Type': 'application/json' } }
+        ),
+        checkUsername(bno),
       ]);
 
-      const json = ntsRes.data;
-      const first = Array.isArray(json?.data) ? json.data[0] : null;
+      const first = ntsRes?.data?.data?.[0];
       if (!first || !first.b_stt) {
-        setVerifyError('국세청에 등록되지 않은 사업자번호일 수 있어요. 다시 확인해주세요.');
+        setVerifyError(
+          '국세청에 등록되지 않은 사업자번호일 수 있어요. 다시 확인해주세요.'
+        );
         return;
       }
       setVerifyResult(first);
     } catch (e) {
-      setVerifyError(e?.response?.data?.message || e?.message || '인증 중 오류가 발생했어요.');
+      setVerifyError(
+        e?.response?.data?.message ||
+        '인증 중 오류가 발생했어요.'
+      );
     } finally {
       setVerifying(false);
     }
@@ -132,26 +139,20 @@ const OwnerSignup = () => {
     try {
       await loadDaumPostcode();
       new window.daum.Postcode({
-        oncomplete: function (data) {
-          const baseAddr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
-          let extra = '';
-          if (data.userSelectedType === 'R') {
-            if (data.bname && /(동|로|가)$/.test(data.bname)) extra += data.bname;
-            if (data.buildingName && data.apartment === 'Y') {
-              extra += (extra ? ', ' : '') + data.buildingName;
-            }
-            if (extra) extra = ` (${extra})`;
-          }
+        oncomplete: (data) => {
+          const baseAddr =
+            data.userSelectedType === 'R'
+              ? data.roadAddress
+              : data.jibunAddress;
           setZip(data.zonecode);
-          setAddr1(baseAddr + extra);
+          setAddr1(baseAddr);
           setTimeout(() => {
-            const el = document.getElementById('addr2');
-            if (el) el.focus();
+            document.getElementById('addr2')?.focus();
           }, 0);
         },
       }).open();
     } catch {
-      alert('주소 검색 스크립트를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
+      alert('주소 검색 스크립트를 불러오지 못했습니다.');
     }
   };
 
@@ -159,60 +160,50 @@ const OwnerSignup = () => {
     if (!verifyResult) return null;
     const st = verifyResult.b_stt;
     const cls =
-      st === '계속사업자' ? styles.badgeGreen :
-      st === '휴업자'     ? styles.badgeOrange :
-      styles.badgeRed;
+      st === '계속사업자'
+        ? styles.badgeGreen
+        : st === '휴업자'
+        ? styles.badgeOrange
+        : styles.badgeRed;
 
     return (
       <div className={styles.verifyBox}>
         <span className={cls}>{st}</span>
-        {verifyResult.tax_type && <span className={styles.taxType}>과세유형: {verifyResult.tax_type}</span>}
-        {verifyResult.end_dt && <span className={styles.endDt}>폐업일: {verifyResult.end_dt}</span>}
+        {verifyResult.tax_type && (
+          <span className={styles.taxType}>
+            과세유형: {verifyResult.tax_type}
+          </span>
+        )}
+        {verifyResult.end_dt && (
+          <span className={styles.endDt}>
+            폐업일: {verifyResult.end_dt}
+          </span>
+        )}
       </div>
     );
   };
 
   const fieldsFilled = useMemo(() => {
-    const hasOwner = (ownerName || '').trim().length > 0;
-    const hasBrand = (brandName || '').trim().length > 0;
-    const hasZip   = (zip || '').trim().length > 0;
-    const hasAddr1 = (addr1 || '').trim().length > 0;
-    const hasAddr2 = (addr2 || '').trim().length > 0;
-    return hasOwner && hasBrand && hasZip && hasAddr1 && hasAddr2;
+    return (
+      ownerName?.trim() &&
+      brandName?.trim() &&
+      zip?.trim() &&
+      addr1?.trim() &&
+      addr2?.trim()
+    );
   }, [ownerName, brandName, zip, addr1, addr2]);
 
   const usernameOK = useMemo(() => {
     if (usernameErr) return false;
     if (!usernameMsg) return false;
-    if (/이미\s*사용중|already\s*in\s*use/i.test(usernameMsg)) return false;
-    return /가능|available|ok|사용 할 수|사용하실 수/i.test(usernameMsg);
+    if (/이미\s*사용중/i.test(usernameMsg)) return false;
+    return true;
   }, [usernameErr, usernameMsg]);
 
-  const bnoHelpRender = useMemo(() => {
-    if (usernameErr) {
-      return (
-        <div id="bnoHelp" className={styles.errorText} role="alert" aria-live="assertive">
-          {usernameErr}
-        </div>
-      );
-    }
-    if (usernameMsg) {
-      const isUsed = /이미\s*사용중|already\s*in\s*use/i.test(usernameMsg);
-      const cls = isUsed ? styles.errorText : styles.successText;
-      return (
-        <div id="bnoHelp" className={cls} aria-live="polite">
-          {usernameMsg}
-        </div>
-      );
-    }
-    return (
-      <div id="bnoHelp" className={styles.subHint}>
-        숫자 입력 시 자동으로 하이픈(-)이 붙어요.
-      </div>
-    );
-  }, [usernameErr, usernameMsg]);
-
-  const canProceed = verifyResult?.b_stt === '계속사업자' && usernameOK && fieldsFilled;
+  const canProceed =
+    verifyResult?.b_stt === '계속사업자' &&
+    usernameOK &&
+    fieldsFilled;
 
   return (
     <div className={styles.userSignupContainer}>
@@ -222,51 +213,37 @@ const OwnerSignup = () => {
 
       <div className={styles.formSection}>
         <div className={styles.inputCard}>
-          <label className={styles.label} htmlFor="bno">사업자 번호</label>
+          <label className={styles.label}>사업자 번호</label>
           <div className={styles.inputRow}>
             <input
-              id="bno"
-              type="text"
-              placeholder="사업자 번호 입력 (숫자 10자리)"
               className={styles.input}
               value={bno}
               onChange={(e) => {
                 setBno(formatBizNo(e.target.value));
+                setVerifyResult(null);
+                setVerifyError('');
                 setUsernameMsg('');
                 setUsernameErr('');
-                setVerifyError('');
-                setVerifyResult(null);
               }}
-              inputMode="numeric"
-              aria-describedby="bnoHelp bnoError"
             />
             <button
               className={styles.checkButton}
               onClick={handleVerify}
               disabled={verifying}
-              title="국세청 상태 확인과 아이디(=사업자번호) 중복 여부를 함께 확인합니다."
             >
               {verifying ? '인증중…' : '인증하기'}
             </button>
           </div>
 
-          {bnoHelpRender}
-
-          {verifyError && (
-            <div id="bnoError" className={styles.errorText} role="alert" aria-live="assertive">
-              {verifyError}
-            </div>
-          )}
-
+          {usernameErr && <div className={styles.errorText}>{usernameErr}</div>}
+          {usernameMsg && <div className={styles.successText}>{usernameMsg}</div>}
+          {verifyError && <div className={styles.errorText}>{verifyError}</div>}
           {statusBadge()}
         </div>
 
         <div className={styles.inputCard}>
-          <label className={styles.label} htmlFor="ownerName">대표자 명</label>
+          <label className={styles.label}>대표자 명</label>
           <input
-            id="ownerName"
-            type="text"
-            placeholder="대표자 명 입력"
             className={styles.input}
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
@@ -274,11 +251,8 @@ const OwnerSignup = () => {
         </div>
 
         <div className={styles.inputCard}>
-          <label className={styles.label} htmlFor="brandName">상호</label>
+          <label className={styles.label}>상호</label>
           <input
-            id="brandName"
-            type="text"
-            placeholder="상호명 입력"
             className={styles.input}
             value={brandName}
             onChange={(e) => setBrandName(e.target.value)}
@@ -288,35 +262,18 @@ const OwnerSignup = () => {
         <div className={styles.inputCard}>
           <label className={styles.label}>사업장주소</label>
           <div className={styles.inputRow}>
-            <input
-              type="text"
-              placeholder="우편번호"
-              className={styles.input}
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-              readOnly
-            />
+            <input className={styles.input} value={zip} readOnly />
             <button
               className={styles.checkButton}
               onClick={handleOpenPostcode}
               disabled={!postcodeReady}
-              title={postcodeReady ? '' : '클릭 시 스크립트를 불러와요'}
             >
               주소 검색
             </button>
           </div>
-          <input
-            type="text"
-            placeholder="기본주소"
-            className={styles.input}
-            value={addr1}
-            onChange={(e) => setAddr1(e.target.value)}
-            readOnly
-          />
+          <input className={styles.input} value={addr1} readOnly />
           <input
             id="addr2"
-            type="text"
-            placeholder="상세주소"
             className={styles.input}
             value={addr2}
             onChange={(e) => setAddr2(e.target.value)}
@@ -327,19 +284,8 @@ const OwnerSignup = () => {
       <div className={styles.inputCard}>
         <button
           className={styles.nextButton}
-          onClick={() => navigate('/signup/owner/password')}
           disabled={!canProceed || verifying}
-          title={
-            !verifyResult
-              ? '사업자번호 인증을 먼저 진행하세요.'
-              : verifyResult.b_stt !== '계속사업자'
-              ? '계속사업자만 진행 가능합니다.'
-              : !usernameOK
-              ? '아이디(=사업자번호) 중복 확인을 통과해야 합니다.'
-              : !fieldsFilled
-              ? '대표자명, 상호, 주소(우편번호/기본/상세)를 모두 입력하세요.'
-              : ''
-          }
+          onClick={() => navigate('/signup/owner/password')}
         >
           다음으로
         </button>

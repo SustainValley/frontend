@@ -1,3 +1,4 @@
+// src/pages/UserMain/UserMain.jsx
 import React, {
   useEffect,
   useLayoutEffect,
@@ -87,7 +88,6 @@ function isOpenNowByText(rawText, nowMin, nowDow) {
   if (!s) return false;
   if (/상시|24\s*시간|24h/i.test(s)) return true;
 
-  // 불필요 이스케이프 경고 제거: /[/|,\n]/ 로 수정
   const segs = s.split(/[/|,\n]/).map((x) => x.trim()).filter(Boolean);
   let openRanges = [];
 
@@ -190,7 +190,7 @@ const toFrontStatus = (reservationStatus, attendanceStatus) => {
 };
 
 const IS_DEV = process.env.NODE_ENV === 'development';
-const API_HOST = IS_DEV ? 'http://3.27.150.124:8080' : '';
+const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : '';
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 /* ===================== 컴포넌트 ===================== */
@@ -577,6 +577,19 @@ export default function UserMain() {
     img.src = defaultCafeLogo;
   };
 
+  // ✅ (추가) 스토리 공유 버튼 클릭 핸들러
+  const handleStoryShare = () => {
+    if (!activeReservation) return;
+
+    // 필요 시 라우트만 너네 프로젝트 경로로 바꿔줘
+    // 예: '/user/story-share' or '/user/story'
+    navigate('/user/story', {
+      state: {
+        reservation: activeReservation,
+      },
+    });
+  };
+
   return (
     <div ref={wrapRef} className={styles.wrap}>
       <div className={styles.topbar}>
@@ -589,7 +602,6 @@ export default function UserMain() {
         </button>
       </div>
 
-      {/* ✅ 초기 중심=공릉역, 확대=4 */}
       <KakaoMap
         ref={mapRef}
         cafes={cafesForMap}
@@ -608,7 +620,7 @@ export default function UserMain() {
                 onClick={() => {
                   closeMenu();
                   navigate('/user/reservations');
-                }}  
+                }}
               >
                 나의 예약
               </button>
@@ -857,6 +869,15 @@ export default function UserMain() {
             <h4>회의 인원</h4>
             <p>{activeReservation.people} 명</p>
           </div>
+
+          {/* ✅ (추가) 이용중일 때 스토리 공유 버튼 */}
+          {activeReservation.status === 'inuse' && (
+            <div className={styles.storyShareBar}>
+              <button className={styles.storyShareBtn} onClick={handleStoryShare}>
+                스토리 공유
+              </button>
+            </div>
+          )}
 
           {(activeReservation.status === 'pending' || activeReservation.status === 'scheduled') && (
             <button

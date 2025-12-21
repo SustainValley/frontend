@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/hackathon/:path*",
-      "destination": "http://3.27.150.124:8080/hackathon/:path*"
-    }
+    
   ]
 }

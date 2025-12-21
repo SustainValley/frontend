@@ -141,7 +141,7 @@ export default function OwnerReservationDetail() {
 
       setItem({
         id: Number(found.reservationsId),
-        customerUserId: Number(found.userId) || null, // ✅ 고객 userId 보관
+        customerUserId: Number(found.userId) || null, 
         userName,
         phone,
         people: found.peopleCount,
@@ -238,7 +238,7 @@ export default function OwnerReservationDetail() {
         `/api/reservation/delete/${id}`,
         { cancelReason: reasonCode },
         {
-          params: { userId: customerId }, // ✅ 고객 userId 전송
+          params: { userId: customerId }, 
           headers: { "Content-Type": "application/json" },
         }
       );

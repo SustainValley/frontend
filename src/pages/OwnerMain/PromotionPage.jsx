@@ -81,7 +81,7 @@ export default function PromotionPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://3.27.150.124:8080/hackathon/api/cafe/${cafeId}/promotions/save`,
+        `http://54.180.2.235:8080/hackathon/api/cafe/${cafeId}/promotions/save`,
         {
           method: "POST",
           headers: {

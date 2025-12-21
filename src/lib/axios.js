@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || "/hackathon";
+const BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://mocacafe.site/hackathon";
 
 const ACCESS_KEY = "access_token";
 const REFRESH_KEY = "refresh_token";

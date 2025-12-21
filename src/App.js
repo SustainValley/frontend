@@ -22,22 +22,25 @@ import OwnerCompleteSignup from './pages/Auth/Signup/OwnerCompleteSignup';
 import KakaoCallback from './pages/Auth/Login/KakaoCallback';
 import FilterPage from './pages/UserMain/FilterPage';
 
-const Reserve       = React.lazy(() => import('./pages/UserMain/Reserve'));
+const Reserve        = React.lazy(() => import('./pages/UserMain/Reserve'));
 const MyReservations = React.lazy(() => import('./pages/UserMain/MyReservations'));
-const UserMain      = React.lazy(() => import('./pages/UserMain/UserMain'));
-const OwnerMain     = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
-const OwnerAnalysis = React.lazy(() => import('./pages/OwnerMain/OwnerAnalysis'));
-const ChatList      = React.lazy(() => import('./pages/UserMain/ChatList'));
-const ChatRoom      = React.lazy(() => import('./pages/UserMain/ChatRoom'));
+const UserMain       = React.lazy(() => import('./pages/UserMain/UserMain'));
+const OwnerMain      = React.lazy(() => import('./pages/OwnerMain/OwnerMain'));
+const OwnerAnalysis  = React.lazy(() => import('./pages/OwnerMain/OwnerAnalysis'));
+const ChatList       = React.lazy(() => import('./pages/UserMain/ChatList'));
+const ChatRoom       = React.lazy(() => import('./pages/UserMain/ChatRoom'));
 
-const StoreInfo       = React.lazy(() => import('./pages/OwnerMain/StoreInfo'));
-const OperatingHours  = React.lazy(() => import('./pages/OwnerMain/OperatingHours'));
-const BlockTime       = React.lazy(() => import('./pages/OwnerMain/BlockTime'));
+const StoreInfo      = React.lazy(() => import('./pages/OwnerMain/StoreInfo'));
+const OperatingHours = React.lazy(() => import('./pages/OwnerMain/OperatingHours'));
+const BlockTime      = React.lazy(() => import('./pages/OwnerMain/BlockTime'));
 
 const OwnerReservationList   = React.lazy(() => import('./pages/OwnerMain/OwnerReservationList'));
 const OwnerReservationDetail = React.lazy(() => import('./pages/OwnerMain/OwnerReservationDetail'));
 
 const PromotionPage = React.lazy(() => import('./pages/OwnerMain/PromotionPage'));
+
+/* ✅ 추가: 스토리 공유 페이지 */
+const StoryShare = React.lazy(() => import('./pages/UserMain/StoryShare'));
 
 const RootRedirect = () => {
   const { isAuthenticated, role, refreshNow } = useAuth();
@@ -90,7 +93,7 @@ function RequirePhone({ children }) {
 
   if (!isAuthenticated || role !== 'user') return children;
 
-  const hasPhoneRaw   = localStorage.getItem('has_phone_number');     
+  const hasPhoneRaw   = localStorage.getItem('has_phone_number');
   const enforcePhone  = localStorage.getItem('phone_enforce') === '1';
   const isOnPhonePage = location.pathname.startsWith('/signup/user/phone');
 
@@ -166,6 +169,16 @@ function App() {
                     element={
                       <RequirePhone>
                         <MyReservations />
+                      </RequirePhone>
+                    }
+                  />
+
+                  {/* ✅ 추가: 스토리 공유 */}
+                  <Route
+                    path="/user/story"
+                    element={
+                      <RequirePhone>
+                        <StoryShare />
                       </RequirePhone>
                     }
                   />
