@@ -68,8 +68,8 @@ const Login = () => {
     // 프로덕션은 mocacafe.site, 로컬은 window.location.origin 사용
     const isProduction = window.location.hostname === "mocacafe.site" || !window.location.hostname.includes("localhost");
     const REDIRECT_URI = isProduction 
-      ? "https://mocacafe.site/oauth/kakao/callback"
-      : `${window.location.origin}/oauth/kakao/callback`;
+      ? "https://mocacafe.site/hackathon/api/oauth/kakao/callback"
+      : `${window.location.origin}/hackathon/api/oauth/kakao/callback`;
     // CSRF 방지를 위한 state 생성
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     sessionStorage.setItem("kakao_oauth_state", state);
