@@ -5,6 +5,10 @@ import backIcon from "../../assets/chevron-right.svg";
 
 const MAX_LEN = 100;
 
+const IS_DEV = process.env.NODE_ENV === "development";
+const API_HOST = IS_DEV ? "http://54.180.2.235:8080" : "https://mocacafe.site";
+const API_PREFIX = `${API_HOST}/hackathon/api`;
+
 export default function PromotionPage() {
   const navigate = useNavigate();
   const { state } = useLocation() || {};
@@ -81,7 +85,7 @@ export default function PromotionPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `http://54.180.2.235:8080/hackathon/api/cafe/${cafeId}/promotions/save`,
+        `${API_PREFIX}/cafe/${cafeId}/promotions/save`,
         {
           method: "POST",
           headers: {
