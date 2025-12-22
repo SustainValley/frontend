@@ -156,7 +156,7 @@ function buildWeeklyFromOperating(op) {
 }
 
 const IS_DEV = process.env.NODE_ENV === "development";
-const API_HOST = IS_DEV ? "http://54.180.2.235:8080" : "";
+const API_HOST = IS_DEV ? "http://54.180.2.235:8080" : "https://mocacafe.site";
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 function toUiCafe(api) {
