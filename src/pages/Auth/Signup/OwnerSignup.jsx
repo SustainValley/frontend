@@ -64,7 +64,6 @@ const OwnerSignup = () => {
       .catch(() => setPostcodeReady(false));
   }, []);
 
-  /* ✅ UserSignup과 동일한 호출 방식 */
   const checkUsername = async (bizNoFormatted) => {
     setUsernameErr('');
     setUsernameMsg('');
@@ -218,6 +217,7 @@ const OwnerSignup = () => {
             <input
               className={styles.input}
               value={bno}
+              placeholder='사업자 번호 입력'
               onChange={(e) => {
                 setBno(formatBizNo(e.target.value));
                 setVerifyResult(null);
@@ -246,6 +246,7 @@ const OwnerSignup = () => {
           <input
             className={styles.input}
             value={ownerName}
+            placeholder='대표자 명 입력'
             onChange={(e) => setOwnerName(e.target.value)}
           />
         </div>
@@ -255,6 +256,7 @@ const OwnerSignup = () => {
           <input
             className={styles.input}
             value={brandName}
+            placeholder='상호명 입력'
             onChange={(e) => setBrandName(e.target.value)}
           />
         </div>
@@ -262,7 +264,7 @@ const OwnerSignup = () => {
         <div className={styles.inputCard}>
           <label className={styles.label}>사업장주소</label>
           <div className={styles.inputRow}>
-            <input className={styles.input} value={zip} readOnly />
+            <input className={styles.input} placeholder='우편번호' value={zip} readOnly />
             <button
               className={styles.checkButton}
               onClick={handleOpenPostcode}
@@ -271,11 +273,12 @@ const OwnerSignup = () => {
               주소 검색
             </button>
           </div>
-          <input className={styles.input} value={addr1} readOnly />
+          <input className={styles.input} placeholder='기본주소' value={addr1} readOnly />
           <input
             id="addr2"
             className={styles.input}
             value={addr2}
+            placeholder='상세주소'
             onChange={(e) => setAddr2(e.target.value)}
           />
         </div>

@@ -120,7 +120,7 @@ const UserPhoneSignup = () => {
           <input
             className={styles.input}
             type="text"
-            placeholder="010-1234-5678"
+            placeholder="전화번호"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             onBlur={() => setPhone((p) => normalizePhone(p))}

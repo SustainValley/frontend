@@ -68,14 +68,6 @@
   outline: none;
 }
 
-.input::placeholder {
-  color: var(--gray-40, #96A1A6);
-}
-
-.input:focus {
-  box-shadow: 0 0 0 2px rgba(58,62,64,0.1);
-}
-
 .checkButton {
   min-width: 96px;
   height: 52px;

@@ -1,14 +1,31 @@
+// src/pages/StoryShare/StoryShare.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './StoryShare.module.css';
 
+/* ===================== ✅ 버튼 이미지 import (원하는 파일로 교체) ===================== */
+import imgClose from '../../assets/x.svg';
+import imgShutter from '../../assets/Button-camera.svg';
+import imgFlip from '../../assets/Button-camera-2.svg';
+import imgInfo from '../../assets/info.svg';
+
+/* ✅ confirm(촬영 직후) 하단 버튼들: 너가 "사진"으로 교체할 곳 */
+import imgRetakePill from '../../assets/Button-camera1.svg'; // 예: 다시찍기 pill 이미지 (없으면 fallback 텍스트)
+import imgNextCircle from '../../assets/Button-camera-3.svg'; // 예: 오른쪽 원형 다음 버튼 이미지 (없으면 fallback)
+import imgSquareLeft from '../../assets/Button-camera-2.svg'; // 예: 왼쪽 네모 버튼 이미지 (없으면 placeholder)
+import imgArrowRight from '../../assets/arrow-right2.svg'; // preview 화면 오른쪽 화살표
+
+/* ✅ 안내(핸드폰 모양) 오버레이 이미지: 너가 원하는 이미지로 교체 */
+import imgGuidePhone from '../../assets/phone.svg';
+import imgGuidePhone2 from '../../assets/phone2.svg';
+import imgLocationPin from '../../assets/map-pin1.svg';
+/* ================================================================================ */
+
 /* ===================== API ===================== */
-// ✅ 개발: EC2(8080) 직접 호출 / 배포: mocacafe.site
 const IS_DEV = process.env.NODE_ENV === 'development';
 const API_HOST =
   process.env.REACT_APP_API_HOST ||
   (IS_DEV ? 'http://54.180.2.235:8080' : 'https://mocacafe.site');
-
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
 async function uploadStoryToInstagram(imageFile) {
@@ -24,28 +41,20 @@ async function uploadStoryToInstagram(imageFile) {
 
   let data = null;
   const ct = res.headers.get('content-type') || '';
-  if (ct.includes('application/json')) {
-    data = await res.json().catch(() => null);
-  } else {
+  if (ct.includes('application/json')) data = await res.json().catch(() => null);
+  else {
     const text = await res.text().catch(() => '');
     data = text ? { message: text } : null;
   }
 
-  if (!res.ok) {
+  if (!res.ok || data?.isSuccess === false) {
     const msg =
       data?.message ||
       data?.error?.message ||
       `스토리 업로드 실패 (HTTP ${res.status})`;
-
     const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
     throw new Error(`${msg}${detail}`);
   }
-
-  if (data?.isSuccess === false) {
-    const detail = data?.result ? `\n\n[서버 상세]\n${String(data.result)}` : '';
-    throw new Error(`${data?.message || '스토리 업로드 실패'}${detail}`);
-  }
-
   return data;
 }
 
@@ -62,15 +71,13 @@ function loadImage(url) {
   });
 }
 
-// cover (배경 꽉 채우기)
 function drawCover(ctx, img, x, y, w, h) {
-  const iw = img.width;
-  const ih = img.height;
-  const ir = iw / ih;
+  const ir = img.width / img.height;
   const rr = w / h;
 
   let dw = w;
   let dh = h;
+
   if (ir > rr) {
     dh = h;
     dw = dh * ir;
@@ -95,15 +102,13 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// contain (프레임 안에 맞추기)
 function drawRoundedImageContain(ctx, img, x, y, w, h, r) {
-  const iw = img.width;
-  const ih = img.height;
-  const ir = iw / ih;
+  const ir = img.width / img.height;
   const rr = w / h;
 
   let dw = w;
   let dh = h;
+
   if (ir > rr) {
     dw = w;
     dh = dw / ir;
@@ -122,24 +127,23 @@ function drawRoundedImageContain(ctx, img, x, y, w, h, r) {
   ctx.restore();
 }
 
-// 합성: 배경 cover + 가운데 작은 프레임(2번째 사진)
-async function composeStory({ bgUrl, fgUrl, titleText }) {
+async function composeStory({ bgUrl, fgUrl, userName, cafeName }) {
   const canvas = document.createElement('canvas');
   canvas.width = STORY_W;
   canvas.height = STORY_H;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, STORY_W, STORY_H);
+  // 위치 아이콘 로드
+  const locationPinImg = await loadImage(imgLocationPin).catch(() => null);
 
   const [bgImg, fgImg] = await Promise.all([loadImage(bgUrl), loadImage(fgUrl)]);
-
-  // 1) 배경
+  
+  // 첫 번째 사진(bgImg)을 전체 배경으로 길게 쭉 배치
   drawCover(ctx, bgImg, 0, 0, STORY_W, STORY_H);
 
-  // 2) 중앙 프레임
-  const frameW = Math.round(STORY_W * 0.62);
-  const frameH = Math.round(STORY_H * 0.45);
+  // 두 번째 사진(fgImg)을 가운데 프레임에 배치 (세로가 길게, 더 크게)
+  const frameW = 700; // 가로를 더 크게
+  const frameH = 1100; // 세로를 더 크게
   const frameX = Math.round((STORY_W - frameW) / 2);
   const frameY = Math.round((STORY_H - frameH) / 2);
 
@@ -154,60 +158,218 @@ async function composeStory({ bgUrl, fgUrl, titleText }) {
   ctx.fill();
   ctx.restore();
 
-  // 3) 프레임 내부 이미지
-  const pad = 14;
-  const innerX = frameX + pad;
-  const innerY = frameY + pad;
-  const innerW = frameW - pad * 2;
-  const innerH = frameH - pad * 2;
-  drawRoundedImageContain(ctx, fgImg, innerX, innerY, innerW, innerH, radius - 8);
-
-  // 4) 상단 텍스트 (원하면 제거 가능)
+  // 두 번째 사진을 프레임 안에 여백 없이 확대하고 잘라서 꽉 채움 (cover 방식)
   ctx.save();
+  roundRectPath(ctx, frameX, frameY, frameW, frameH, radius);
+  ctx.clip();
+  
+  const imgRatio = fgImg.width / fgImg.height;
+  const frameRatio = frameW / frameH;
+  
+  let drawWidth, drawHeight, drawX, drawY;
+  
+  if (imgRatio > frameRatio) {
+    // 이미지가 더 넓으면 높이에 맞추고 가로를 잘라냄
+    drawHeight = frameH;
+    drawWidth = drawHeight * imgRatio;
+    drawX = frameX - (drawWidth - frameW) / 2;
+    drawY = frameY;
+  } else {
+    // 이미지가 더 길면 가로에 맞추고 세로를 잘라냄
+    drawWidth = frameW;
+    drawHeight = drawWidth / imgRatio;
+    drawX = frameX;
+    drawY = frameY - (drawHeight - frameH) / 2;
+  }
+  
+  ctx.drawImage(fgImg, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
+
+  // 위쪽 말풍선: "~님이 카페를 추천했어요"
+const bubblePadding = 28;
+const bubbleRadius = 30; // border-radius: 12px
+const recommendText = userName ? `${userName}님이 카페를 추천했어요` : '카페를 추천했어요';
+const emoji = '☕';
+
+ctx.save();
+ctx.font = '600 36px Pretendard, system-ui, -apple-system, sans-serif';
+ctx.textAlign = 'left';
+ctx.textBaseline = 'middle';
+
+// 텍스트와 이모지 너비 측정
+ctx.font = '400 30px Pretendard, system-ui, -apple-system, sans-serif';
+const textMetrics = ctx.measureText(recommendText);
+const emojiSize = 28;
+const emojiSpacing = 0; // 텍스트 바로 옆에 붙이기
+const totalTextWidth = textMetrics.width + emojiSize + emojiSpacing;
+
+const bubbleWidth = Math.max(totalTextWidth + bubblePadding * 2, 320);
+const bubbleHeight = 64;
+
+// ✅ 말풍선 X: 프레임 왼쪽부터 시작
+const bubbleX = frameX; // or frameX + 12
+const bubbleY = frameY - bubbleHeight - 20;
+
+const bubbleFill = '#EBF7CE'; // background: var(--limerick-00, #EBF7CE)
+const bubbleStroke = 'rgba(0, 0, 0, 0.08)';
+const bubbleLineW = 1.5;
+
+// ===== 말풍선 본체 (그림자 없이 깔끔하게) =====
+ctx.save();
+roundRectPath(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, bubbleRadius);
+ctx.fillStyle = bubbleFill;
+ctx.fill();
+ctx.restore();
+
+// ===== 말풍선 테두리 =====
+ctx.save();
+ctx.strokeStyle = bubbleStroke;
+ctx.lineWidth = bubbleLineW;
+roundRectPath(ctx, bubbleX, bubbleY, bubbleWidth, bubbleHeight, bubbleRadius);
+ctx.stroke();
+ctx.restore();
+
+// ===== 꼬리 (말풍선에 "붙어서" 아래로 내려가는 삼각형) =====
+// 꼬리 중심 X: 말풍선 왼쪽에서 조금 떨어진 지점(원하는 위치로 조절)
+const tailCenterX = bubbleX + 70;  // ✅ 숫자만 조절하면 꼬리 좌우 위치 이동
+const tailTopY = bubbleY + bubbleHeight - 1; // ✅ 말풍선 바닥선에 겹치게(틈 방지)
+const tailH = 18;
+const tailW = 22;
+
+ctx.save();
+// 꼬리 (그림자 없이 깔끔하게)
+ctx.beginPath();
+// 윗변(말풍선 바닥)에 붙는 두 점
+ctx.moveTo(tailCenterX - tailW / 2, tailTopY);
+ctx.lineTo(tailCenterX + tailW / 2, tailTopY);
+// 아래 꼭짓점
+ctx.lineTo(tailCenterX, tailTopY + tailH);
+ctx.closePath();
+
+ctx.fillStyle = bubbleFill;
+ctx.fill();
+ctx.restore();
+
+// 꼬리 테두리 (말풍선 테두리랑 동일)
+ctx.save();
+ctx.strokeStyle = bubbleStroke;
+ctx.lineWidth = bubbleLineW;
+ctx.beginPath();
+ctx.moveTo(tailCenterX - tailW / 2, tailTopY);
+ctx.lineTo(tailCenterX + tailW / 2, tailTopY);
+ctx.lineTo(tailCenterX, tailTopY + tailH);
+ctx.closePath();
+ctx.stroke();
+ctx.restore();
+
+// ===== 텍스트 + 이모지 (바로 옆에 붙여서) =====
+const textX = bubbleX + bubblePadding;
+const textY = bubbleY + bubbleHeight / 2;
+
+ctx.fillStyle = '#232526';
+ctx.font = '400 30px Pretendard, system-ui, -apple-system, sans-serif';
+ctx.fillText(recommendText, textX, textY);
+
+// 이모지를 텍스트 옆에 띄어쓰기 2번 정도 간격으로 그리기
+ctx.font = `${emojiSize}px Arial`;
+// 띄어쓰기 2번 정도의 간격 (약 8px)
+ctx.fillText(emoji, textX + textMetrics.width + 8, textY);
+
+ctx.restore();
+
+
+  // 아래쪽 구분선과 카페 이름 (사진과 간격을 더 넓게)
+  const bottomY = frameY + frameH + 180; // 사진 아래 180px로 간격 더 넓히기
+  const lineStartX = 40; // 왼쪽부터 시작
+  const lineEndX = STORY_W - 40; // 오른쪽까지
+  const cafeText = cafeName || '카페';
+  
+  // 구분선 (왼쪽부터 오른쪽까지 긴 가로선, 그림자 없이 깔끔하게)
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(lineStartX, bottomY);
+  ctx.lineTo(lineEndX, bottomY);
+  ctx.stroke();
+  ctx.restore();
+  
+  // 지도 아이콘과 카페 이름 (구분선 아래에 배치, 오른쪽 정렬)
+  const iconSize = 42; // 더 크게
+  const iconY = bottomY + 50;
+  
+  // 텍스트 너비 측정
+  ctx.save();
+  ctx.font = '600 38px Pretendard, system-ui, -apple-system, sans-serif';
+  const textMetrics2 = ctx.measureText(cafeText);
+  const totalWidth = iconSize + 16 + textMetrics2.width;
+  const startX = STORY_W - totalWidth - 40; // 오른쪽에 붙임
+  ctx.restore();
+  
+  // 위치 아이콘 (map-pin1.svg 사용, 원본 비율 유지, 그림자 없이)
+  if (locationPinImg) {
+    ctx.save();
+    // SVG 원본 비율 계산 (16:16 = 1:1)
+    const svgAspectRatio = 16 / 16;
+    let drawWidth = iconSize;
+    let drawHeight = iconSize / svgAspectRatio;
+    
+    // 세로가 더 길면 가로를 조정
+    if (drawHeight > iconSize) {
+      drawHeight = iconSize;
+      drawWidth = iconSize * svgAspectRatio;
+    }
+    
+    const drawX = startX;
+    const drawY = iconY - drawHeight / 2;
+    
+    ctx.drawImage(locationPinImg, drawX, drawY, drawWidth, drawHeight);
+    ctx.restore();
+  } else {
+    // SVG 로드 실패 시 fallback
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath();
+    ctx.arc(startX + iconSize / 2, iconY, iconSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  
+  // 카페 이름 텍스트 (그림자 없이 깔끔하게)
+  ctx.save();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '600 38px Pretendard, system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-
-  const tx = 88;
-  const ty = 140;
-  ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.font = '700 46px Pretendard, system-ui, -apple-system, sans-serif';
-  ctx.fillText('남은시간', tx, ty);
-
-  ctx.fillStyle = '#E74C3C';
-  ctx.fillText('01:32', tx + 180, ty);
-
-  ctx.fillStyle = '#111';
-  ctx.font = '700 44px Pretendard, system-ui, -apple-system, sans-serif';
-  ctx.fillText(titleText || '‘카페’를 이용중이에요', tx, ty + 80);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(cafeText, startX + iconSize + 16, iconY);
   ctx.restore();
 
   const blob = await new Promise((resolve) => {
     canvas.toBlob((b) => resolve(b), 'image/png', 1.0);
   });
 
-  return { blob, canvas };
+  return { blob };
 }
 
-/* ===================== 데스크탑 촬영 유틸 ===================== */
-function canvasToFile(canvas, filename = 'capture.jpg', mime = 'image/jpeg', quality = 0.92) {
+/* ===================== 촬영 유틸 ===================== */
+function canvasToFile(canvas, filename, mime = 'image/jpeg', quality = 0.92) {
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(new File([blob], filename, { type: mime }));
-    }, mime, quality);
+    canvas.toBlob(
+      (blob) => resolve(new File([blob], filename, { type: mime })),
+      mime,
+      quality
+    );
   });
 }
 
-/* ===================== 내 인스타로 공유 유틸 ===================== */
+/* ===================== 공유 유틸 ===================== */
 function isMobileLike() {
   const ua = navigator.userAgent || '';
   return /Android|iPhone|iPad|iPod/i.test(ua);
 }
-
 function openInstagramWebNow() {
-  // ✅ 유저 제스처 안에서 열려야 팝업 차단이 덜함
   window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
 }
-
 function downloadBlob(blob, filename = 'moca-story.png') {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -218,40 +380,27 @@ function downloadBlob(blob, filename = 'moca-story.png') {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
 function canShareFiles(file) {
-  // iOS Safari는 canShare가 없는 경우도 있어서 방어
   try {
     if (!navigator.share) return false;
     if (navigator.canShare) return navigator.canShare({ files: [file] });
-    // canShare 없는 환경은 "해볼 수는 있음"
     return true;
   } catch {
     return false;
   }
 }
-
-/**
- * ✅ “내 인스타로 넘어가도록”
- * - 모바일: 공유 시트(Instagram 선택 가능)
- * - PC: 자동 업로드 불가 → 저장 + 인스타 웹 열기 안내
- */
 async function shareToMyInstagramWithFile(file, resultBlob) {
-  // PC
   if (!isMobileLike()) {
     downloadBlob(resultBlob, 'moca-story.png');
     openInstagramWebNow();
     alert(
       'PC에서는 인스타 스토리에 이미지를 자동으로 넣을 수 없어요.\n\n' +
-        '1) 방금 저장된 moca-story.png 파일을\n' +
-        '2) 인스타그램에서 + 만들기 → 스토리로 업로드해 주세요.'
+        '1) 저장된 moca-story.png 파일을\n' +
+        '2) 인스타그램에서 스토리로 업로드해 주세요.'
     );
     return;
   }
-
-  // 모바일: Web Share API
   if (canShareFiles(file)) {
-    // 사용자가 공유 시트에서 Instagram을 선택하면 스토리/DM 등으로 전달 가능(기기/OS에 따라 다름)
     await navigator.share({
       files: [file],
       title: 'MOCA Story',
@@ -259,11 +408,49 @@ async function shareToMyInstagramWithFile(file, resultBlob) {
     });
     return;
   }
-
-  // 공유 미지원 → 저장 + 인스타 웹
   downloadBlob(resultBlob, 'moca-story.png');
   openInstagramWebNow();
   alert('이 기기에서는 바로 공유가 어려워요.\n저장된 이미지를 인스타 스토리에 업로드해 주세요.');
+}
+
+/* ===================== 카메라 ===================== */
+function ensureSecureContextForCamera() {
+  const isSecure =
+    window.isSecureContext ||
+    window.location.protocol === 'https:' ||
+    window.location.hostname === 'localhost';
+  if (!isSecure) throw new Error('카메라 촬영은 https 또는 localhost에서만 가능해요.');
+}
+
+async function listVideoInputs() {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices.filter((d) => d.kind === 'videoinput');
+}
+
+async function getStream({ facingMode, deviceId }) {
+  ensureSecureContextForCamera();
+
+  const video = deviceId
+    ? {
+        deviceId: { exact: deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      }
+    : {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      };
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video, audio: false });
+  } catch {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    });
+  }
 }
 
 /* ===================== 컴포넌트 ===================== */
@@ -272,16 +459,28 @@ export default function StoryShare() {
   const routerLoc = useLocation();
   const reservation = routerLoc.state?.reservation ?? null;
 
-  const titleText = useMemo(() => {
-    if (reservation?.cafe) return `‘${reservation.cafe}’을 이용중이에요`;
-    return '‘카페’를 이용중이에요';
+  const userName = useMemo(() => {
+    return reservation?.name || '';
   }, [reservation]);
 
-  // bg -> fg -> preview
-  const [step, setStep] = useState('bg');
+  const cafeName = useMemo(() => {
+    return reservation?.cafe || '카페';
+  }, [reservation]);
 
-  const bgInputRef = useRef(null);
-  const fgInputRef = useRef(null);
+  // ✅ 안내 오버레이(모달)
+  const [infoOpen, setInfoOpen] = useState(true); // 처음에는 열려있음
+  const openInfo = () => setInfoOpen(true);
+  const closeInfo = () => setInfoOpen(false);
+
+  const [step, setStep] = useState('bg'); // 'bg' | 'fg' | 'preview'
+  const [screen, setScreen] = useState('camera'); // 'camera' | 'confirm'
+  
+  // step이 변경되고 camera 화면일 때 안내 모달 자동으로 열기
+  useEffect(() => {
+    if (screen === 'camera' && (step === 'bg' || step === 'fg')) {
+      setInfoOpen(true);
+    }
+  }, [step, screen]);
 
   const [bgFile, setBgFile] = useState(null);
   const [fgFile, setFgFile] = useState(null);
@@ -290,16 +489,101 @@ export default function StoryShare() {
   const fgUrl = useMemo(() => (fgFile ? URL.createObjectURL(fgFile) : null), [fgFile]);
 
   const canPreview = Boolean(bgUrl && fgUrl);
-
   const [resultBlob, setResultBlob] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
-
-  // ✅ 서버 업로드 로딩(유지)
   const [uploading, setUploading] = useState(false);
+
+  // 촬영/선택 확인용(= confirm에서 왼쪽 썸네일로도 사용)
+  const [pendingFile, setPendingFile] = useState(null);
+  const pendingUrl = useMemo(
+    () => (pendingFile ? URL.createObjectURL(pendingFile) : null),
+    [pendingFile]
+  );
+
+  // 카메라 화면에서 왼쪽 갤러리 썸네일로 사용
+  const [thumbUrl, setThumbUrl] = useState(null);
+
+  // 카메라
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [camError, setCamError] = useState('');
+  const [camReady, setCamReady] = useState(false);
+
+  // 전면/후면
+  const [facingMode, setFacingMode] = useState('user'); // 'user' | 'environment'
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [activeDeviceId, setActiveDeviceId] = useState(null);
+
+  // ✅ 전면(user)일 때만 좌우 반전(미리보기 + 저장)
+  const mirrorOn = facingMode === 'user';
+
+  // 갤러리 input
+  const bgInputRef = useRef(null);
+  const fgInputRef = useRef(null);
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const refreshDevices = async () => {
+    const vids = await listVideoInputs();
+    setVideoDevices(vids);
+    if (!activeDeviceId && vids.length > 0) setActiveDeviceId(vids[0].deviceId);
+  };
+
+  const startCamera = async () => {
+    setCamError('');
+    setCamReady(false);
+
+    try {
+      stopStream();
+      await refreshDevices();
+
+      const stream = await getStream({ facingMode, deviceId: activeDeviceId });
+      streamRef.current = stream;
+
+      refreshDevices().catch(() => {});
+
+      const video = videoRef.current;
+      if (!video) return;
+
+      video.srcObject = stream;
+
+      await new Promise((resolve) => {
+        const onMeta = () => {
+          video.removeEventListener('loadedmetadata', onMeta);
+          resolve();
+        };
+        video.addEventListener('loadedmetadata', onMeta);
+      });
+
+      await video.play().catch(() => {});
+      setCamReady(true);
+    } catch (e) {
+      console.error(e);
+      setCamError(e?.message || '카메라를 열 수 없어요.');
+    }
+  };
+
+  // camera screen일 때만 카메라 켜기
+  useEffect(() => {
+    if (step === 'preview') return;
+    if (screen !== 'camera') return;
+    startCamera();
+    return () => stopStream();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, screen, facingMode, activeDeviceId]);
+
+  useEffect(() => () => stopStream(), []);
 
   // objectURL 정리
   useEffect(() => () => bgUrl && URL.revokeObjectURL(bgUrl), [bgUrl]);
   useEffect(() => () => fgUrl && URL.revokeObjectURL(fgUrl), [fgUrl]);
+  useEffect(() => () => pendingUrl && URL.revokeObjectURL(pendingUrl), [pendingUrl]);
+  useEffect(() => () => thumbUrl && URL.revokeObjectURL(thumbUrl), [thumbUrl]);
   useEffect(() => () => resultUrl && URL.revokeObjectURL(resultUrl), [resultUrl]);
 
   // bg/fg 바뀌면 결과 초기화
@@ -312,108 +596,49 @@ export default function StoryShare() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bgUrl, fgUrl]);
 
-  const pickBgFile = () => bgInputRef.current?.click();
-  const pickFgFile = () => fgInputRef.current?.click();
+  /* ===================== 안내 문구 (info 눌렀을 때만) ===================== */
+  const infoHintText = useMemo(() => {
+    if (step === 'bg') return '첫 번째 사진은\n배경사진으로 사용돼요!';
+    if (step === 'fg') return '두 번째 사진은\n꾸밈사진으로 사용돼요!';
+    return '';
+  }, [step]);
 
-  const onBgChange = (e) => {
+  /* ===================== 안내 이미지 (step에 따라 다르게) ===================== */
+  const infoPhoneImg = useMemo(() => {
+    if (step === 'fg') return imgGuidePhone2;
+    return imgGuidePhone;
+  }, [step]);
+
+  /* ===================== 갤러리 ===================== */
+  const openGallery = () => {
+    if (step === 'bg') bgInputRef.current?.click();
+    else fgInputRef.current?.click();
+  };
+
+  const onPickBg = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBgFile(file);
-    setStep('fg');
+    setPendingFile(file);
+    setThumbUrl(URL.createObjectURL(file)); // 다음 카메라 화면에서도 최근사진으로 보이게
+    setScreen('confirm');
+    stopStream();
     e.target.value = '';
   };
 
-  const onFgChange = (e) => {
+  const onPickFg = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFgFile(file);
-    setStep('preview');
+    setPendingFile(file);
+    setThumbUrl(URL.createObjectURL(file));
+    setScreen('confirm');
+    stopStream();
     e.target.value = '';
   };
 
-  /* ===== 촬영 모달(WebRTC) ===== */
-  const [camOpen, setCamOpen] = useState(false);
-  const [camTarget, setCamTarget] = useState('bg'); // 'bg' | 'fg'
-  const [camError, setCamError] = useState('');
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-
-  const closeCamera = () => {
-    setCamOpen(false);
-    setCamError('');
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-  };
-
-  const ensureSecureContextForCamera = () => {
-    const isSecure =
-      window.isSecureContext ||
-      window.location.protocol === 'https:' ||
-      window.location.hostname === 'localhost';
-    if (!isSecure) {
-      throw new Error('데스크탑 촬영은 https 또는 localhost에서만 가능해요.');
-    }
-  };
-
-  const openCamera = async (target) => {
-    setCamTarget(target);
-    setCamError('');
-    setCamOpen(true);
-
+  /* ===================== 촬영 ===================== */
+  const capture = async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('이 브라우저는 카메라 촬영을 지원하지 않아요.');
-      }
-      ensureSecureContextForCamera();
-
-      // 기존 스트림 정리
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-
-      // ✅ PC에서 facingMode 환경이 종종 실패 → 2단계 fallback
-      const primaryConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
-
-      const fallbackConstraints = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
-
-      let stream = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(primaryConstraints);
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-      }
-
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await video.play();
-      }
-    } catch (err) {
-      console.error(err);
-      setCamError(err?.message || '카메라를 열 수 없어요. 권한을 확인해 주세요.');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
+      if (!camReady || camError) return;
       const video = videoRef.current;
       if (!video) return;
 
@@ -424,52 +649,133 @@ export default function StoryShare() {
       canvas.width = vw;
       canvas.height = vh;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, vw, vh);
 
-      const ts = Date.now();
-      const file = await canvasToFile(canvas, `moca_${camTarget}_${ts}.jpg`, 'image/jpeg', 0.92);
-
-      if (camTarget === 'bg') {
-        setBgFile(file);
-        setStep('fg');
+      // ✅ 전면(user)일 때만 미러링 저장
+      if (mirrorOn) {
+        ctx.save();
+        ctx.translate(vw, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, vw, vh);
+        ctx.restore();
       } else {
-        setFgFile(file);
-        setStep('preview');
+        ctx.drawImage(video, 0, 0, vw, vh);
       }
-      closeCamera();
-    } catch (err) {
-      console.error(err);
+
+      const file = await canvasToFile(
+        canvas,
+        `moca_${step}_${Date.now()}.jpg`,
+        'image/jpeg',
+        0.92
+      );
+
+      setPendingFile(file);
+      setThumbUrl(URL.createObjectURL(file));
+      setScreen('confirm'); // ✅ 찍자마자 confirm
+      stopStream();
+    } catch (e) {
+      console.error(e);
       alert('촬영에 실패했어요. 다시 시도해 주세요.');
     }
   };
 
-  /* ===== 결과 생성 ===== */
+  /* ===================== 전/후면 전환 ===================== */
+  const flipCamera = async () => {
+    try {
+      const vids = await listVideoInputs();
+      setVideoDevices(vids);
+
+      if (vids.length >= 2) {
+        const idx = vids.findIndex((d) => d.deviceId === activeDeviceId);
+        const next = vids[(idx + 1 + vids.length) % vids.length];
+        setActiveDeviceId(next.deviceId);
+        setFacingMode((p) => (p === 'user' ? 'environment' : 'user'));
+        return;
+      }
+
+      setFacingMode((p) => (p === 'user' ? 'environment' : 'user'));
+    } catch (e) {
+      console.error(e);
+      setFacingMode((p) => (p === 'user' ? 'environment' : 'user'));
+    }
+  };
+
+  /* ===================== confirm ===================== */
+  const retake = () => {
+    setPendingFile(null);
+    setScreen('camera');
+  };
+
+  const confirm = async () => {
+    if (!pendingFile) return;
+
+    if (step === 'bg') {
+      setBgFile(pendingFile);
+      setPendingFile(null);
+      setStep('fg');
+      setScreen('camera');
+      return;
+    }
+
+    if (step === 'fg') {
+      // 두 번째 사진 확인 후 바로 합성 및 인스타 공유
+      if (!bgFile || !pendingFile) return;
+      
+      try {
+        setUploading(true);
+        const bgUrlTemp = URL.createObjectURL(bgFile);
+        const fgUrlTemp = URL.createObjectURL(pendingFile);
+        
+        const { blob } = await composeStory({ bgUrl: bgUrlTemp, fgUrl: fgUrlTemp, userName, cafeName });
+        
+        URL.revokeObjectURL(bgUrlTemp);
+        URL.revokeObjectURL(fgUrlTemp);
+        
+        const file = new File([blob], 'moca-story.png', { type: 'image/png' });
+        const sharePromise = shareToMyInstagramWithFile(file, blob);
+        const uploadPromise = uploadStoryToInstagram(file);
+
+        await Promise.allSettled([sharePromise, uploadPromise]);
+        
+        setFgFile(pendingFile);
+        setPendingFile(null);
+      } catch (e) {
+        console.error(e);
+        alert('이미지 합성 또는 공유에 실패했어요.');
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+  };
+
+  /* ===================== 결과 생성 ===================== */
   const generate = async () => {
     if (!canPreview) return;
-    try {
-      const { blob } = await composeStory({ bgUrl, fgUrl, titleText });
-      setResultBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setResultUrl(url);
-    } catch (err) {
-      console.error(err);
-      alert('이미지 합성에 실패했어요. 다른 사진으로 다시 시도해 주세요.');
-    }
+    const { blob } = await composeStory({ bgUrl, fgUrl, userName, cafeName });
+    setResultBlob(blob);
+    const url = URL.createObjectURL(blob);
+    setResultUrl(url);
+    return blob;
   };
 
   useEffect(() => {
     if (step !== 'preview') return;
     if (!canPreview) return;
-    if (resultBlob && resultUrl) return;
-    generate();
+    if (resultUrl) return;
+    generate().catch((e) => {
+      console.error(e);
+      alert('이미지 합성에 실패했어요.');
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, canPreview]);
 
-  /* ===== 버튼 액션 ===== */
+  /* ===================== 버튼 액션 ===================== */
   const resetAll = () => {
     setStep('bg');
+    setScreen('camera');
     setBgFile(null);
     setFgFile(null);
+    setPendingFile(null);
     setResultBlob(null);
     if (resultUrl) {
       URL.revokeObjectURL(resultUrl);
@@ -479,7 +785,9 @@ export default function StoryShare() {
 
   const resetFgOnly = () => {
     setStep('fg');
+    setScreen('camera');
     setFgFile(null);
+    setPendingFile(null);
     setResultBlob(null);
     if (resultUrl) {
       URL.revokeObjectURL(resultUrl);
@@ -497,200 +805,247 @@ export default function StoryShare() {
     a.remove();
   };
 
-  /**
-   * ✅ 공유하기 버튼:
-   * 1) “내 인스타 공유 흐름”을 먼저 즉시 실행 (유저 제스처 유지)
-   * 2) 동시에 서버 업로드 API도 병렬로 호출 (기능 유지)
-   *
-   * - 서버 업로드 실패해도 내 인스타 공유는 진행되게 함
-   * - 배포에서 인스타 안 열리던 문제를 줄이기 위해 await 전에 실행
-   */
   const share = () => {
     if (!resultBlob || uploading) return;
-
     setUploading(true);
 
     const file = new File([resultBlob], 'moca-story.png', { type: 'image/png' });
 
-    // ✅ 1) 인스타 공유(또는 저장+인스타) 먼저 실행 (제스처 유지)
     const sharePromise = shareToMyInstagramWithFile(file, resultBlob);
-
-    // ✅ 2) 서버 업로드도 동시에 실행
     const uploadPromise = uploadStoryToInstagram(file);
 
     Promise.allSettled([sharePromise, uploadPromise])
-      .then(([shareRes, uploadRes]) => {
-        // share는 사용자가 취소할 수 있음 → 과한 alert 금지
-        if (shareRes.status === 'rejected' && shareRes.reason?.name !== 'AbortError') {
-          console.error('share error:', shareRes.reason);
-        }
-
-        // 서버 업로드는 결과 알려주기(실패 시만)
+      .then(([, uploadRes]) => {
         if (uploadRes.status === 'rejected') {
-          console.error('upload error:', uploadRes.reason);
           alert(uploadRes.reason?.message || 'MOCA 인스타 스토리 업로드에 실패했어요.');
-          return;
         }
-        // 성공 시 굳이 alert 안 띄움 (사용자는 인스타로 이동했을 수 있음)
-        console.log('upload success:', uploadRes.value);
       })
-      .finally(() => {
-        setUploading(false);
-      });
+      .finally(() => setUploading(false));
   };
 
   return (
     <div className={styles.wrap}>
-      <header className={styles.top}>
-        <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="뒤로가기">
-          ←
-        </button>
-        <div className={styles.title}>스토리 공유</div>
-        <div className={styles.right} />
-      </header>
-
-      {/* 파일 선택 input (모바일은 capture가 카메라 유도, 데스크탑은 보통 무시) */}
-      <input
-        ref={bgInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={onBgChange}
-        className={styles.hiddenInput}
-      />
-      <input
-        ref={fgInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={onFgChange}
-        className={styles.hiddenInput}
-      />
-
-      {/* STEP 1: 배경 선택/촬영 */}
-      {step === 'bg' && (
-        <div className={styles.guide}>
-          <div className={styles.guideInner}>
-            <p className={styles.guideTopLine}>
-              <span className={styles.bold}>첫 번째 사진</span>은 배경이 돼요
-            </p>
-            <p className={styles.sub}>컴퓨터/핸드폰 모두 사진 선택 또는 촬영이 가능해요.</p>
-
-            <div className={styles.rowBtns}>
-              <button className={styles.secondaryBtn} onClick={pickBgFile} type="button">
-                사진 선택
-              </button>
-              <button className={styles.cameraBtn} onClick={() => openCamera('bg')} type="button">
-                촬영하기
-              </button>
+      <main className={styles.stage}>
+        {/* ✅ info 오버레이: 배경(여백) 클릭하면 닫힘 */}
+        {infoOpen && (
+          <div
+            className={styles.infoBackdrop}
+            role="dialog"
+            aria-modal="true"
+            aria-label="안내"
+            onClick={closeInfo}
+          >
+            <div className={styles.infoModal} onClick={(e) => e.stopPropagation()}>
+              {/* ✅ 문구는 위로 */}
+              <div className={styles.infoHintText}>{infoHintText}</div>
+              <img src={infoPhoneImg} alt="안내" className={styles.infoPhoneImg} />
             </div>
           </div>
+        )}
+
+        {/* ✅ 상단 버튼 오버레이 */}
+        <div className={styles.topOverlay}>
+          <button
+            className={styles.overlayBtn}
+            onClick={() => navigate(-1)}
+            type="button"
+            aria-label="닫기"
+          >
+            <img src={imgClose} alt="" className={styles.overlayIcon} />
+          </button>
+
+          <div className={styles.overlaySpacer} />
+
+          <button
+            className={styles.overlayBtn}
+            onClick={openInfo}
+            type="button"
+            aria-label="안내"
+          >
+            <img src={imgInfo} alt="" className={styles.overlayIcon} />
+          </button>
         </div>
-      )}
 
-      {/* STEP 2: 두 번째 사진 선택/촬영 */}
-      {step === 'fg' && (
-        <div className={styles.guide}>
-          <div className={styles.guideInner}>
-            <p className={styles.guideTopLine}>
-              <span className={styles.bold}>두 번째 사진</span>은 가운데 작게 올라가요
-            </p>
-            <p className={styles.sub}>사진 선택 또는 촬영해 주세요.</p>
-
-            <div className={styles.previewHint}>
-              {bgUrl ? <img src={bgUrl} alt="배경 미리보기" className={styles.bgThumb} /> : null}
-            </div>
-
-            <div className={styles.rowBtns}>
-              <button className={styles.secondaryBtn} onClick={() => setStep('bg')} type="button">
-                배경 다시
-              </button>
-              <button className={styles.secondaryBtn} onClick={pickFgFile} type="button">
-                사진 선택
-              </button>
-              <button className={styles.cameraBtn} onClick={() => openCamera('fg')} type="button">
-                촬영하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STEP 3: 결과 미리보기 + 업로드/공유 */}
-      {step === 'preview' && (
-        <div className={styles.previewWrap}>
-          <div className={styles.storyStage}>
-            {resultUrl ? (
-              <img src={resultUrl} alt="스토리 결과" className={styles.resultImg} />
-            ) : (
-              <div className={styles.layerPreview}>
-                {bgUrl && <img src={bgUrl} alt="배경" className={styles.bgFull} />}
-                {fgUrl && <img src={fgUrl} alt="오버레이" className={styles.overlay} />}
-              </div>
-            )}
-          </div>
-
-          <div className={styles.actions}>
-            <button className={styles.secondaryBtn} onClick={resetFgOnly} type="button">
-              두 번째 사진 다시
-            </button>
-            <button className={styles.secondaryBtn} onClick={resetAll} type="button">
-              처음부터
-            </button>
-          </div>
-
-          <div className={styles.bottomBar}>
-            <button className={styles.bottomBtn} onClick={download} type="button" disabled={!resultUrl}>
-              이미지 저장
-            </button>
-            <button
-              className={styles.bottomBtnPrimary}
-              onClick={share}
-              type="button"
-              disabled={!resultBlob || uploading}
-            >
-              {uploading ? '공유 중…' : '공유하기'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 촬영 모달 */}
-      {camOpen && (
-        <div className={styles.camOverlay} role="dialog" aria-modal="true">
-          <div className={styles.camModal}>
-            <div className={styles.camHeader}>
-              <div className={styles.camTitle}>{camTarget === 'bg' ? '배경 촬영' : '두 번째 사진 촬영'}</div>
-              <button className={styles.camClose} onClick={closeCamera} aria-label="닫기">
-                ✕
-              </button>
-            </div>
-
-            <div className={styles.camBody}>
-              {camError ? (
-                <div className={styles.camError}>
-                  <p className={styles.camErrorTitle}>카메라를 열 수 없어요</p>
-                  <p className={styles.camErrorText}>{camError}</p>
-                  <p className={styles.camErrorText}>
-                    데스크탑 촬영은 보통 <b>https</b> 또는 <b>localhost</b>에서만 가능합니다.
-                  </p>
-                </div>
+        {/* ===================== preview ===================== */}
+        {step === 'preview' && (
+          <div className={styles.previewStage}>
+            <div className={styles.previewCanvas}>
+              {resultUrl ? (
+                <img src={resultUrl} alt="스토리 결과" className={styles.previewImg} />
               ) : (
-                <video ref={videoRef} className={styles.camVideo} playsInline muted />
+                <div className={styles.previewFallback}>합성 중…</div>
               )}
             </div>
 
-            <div className={styles.camFooter}>
-              <button className={styles.secondaryBtn} onClick={closeCamera} type="button">
-                취소
+            {/* 오른쪽 화살표 버튼 */}
+            <div className={styles.previewShareBtn}>
+              <button
+                type="button"
+                className={styles.previewArrowBtn}
+                onClick={share}
+                aria-label="인스타 공유"
+                disabled={!resultBlob || uploading}
+              >
+                {imgArrowRight ? (
+                  <img src={imgArrowRight} alt="" className={styles.previewArrowImg} />
+                ) : (
+                  <span className={styles.previewArrowFallback}>→</span>
+                )}
               </button>
-              <button className={styles.cameraBtn} onClick={takePhoto} type="button" disabled={!!camError}>
-                촬영
+            </div>
+
+            <div className={styles.previewActions}>
+              <button className={styles.secondaryBtn} onClick={resetFgOnly} type="button">
+                두 번째 사진 다시
+              </button>
+              <button className={styles.secondaryBtn} onClick={resetAll} type="button">
+                처음부터
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ===================== camera / confirm ===================== */}
+        {step !== 'preview' && (
+          <div className={styles.cameraStage}>
+            {/* ---------- camera ---------- */}
+            {screen === 'camera' && (
+              <>
+                {camError ? (
+                  <div className={styles.camError}>{camError}</div>
+                ) : (
+                  <video
+                    ref={videoRef}
+                    className={`${styles.camVideo} ${mirrorOn ? styles.mirrored : ''}`}
+                    playsInline
+                    muted
+                    autoPlay
+                  />
+                )}
+
+                <div className={styles.controls}>
+                  {/* 왼쪽: 갤러리 썸네일 */}
+                  <button
+                    type="button"
+                    className={styles.thumbBtn}
+                    onClick={openGallery}
+                    aria-label="갤러리"
+                  >
+                    {thumbUrl ? (
+                      <img src={thumbUrl} alt="최근 사진" className={styles.thumbImg} />
+                    ) : (
+                      <div className={styles.thumbPlaceholder} />
+                    )}
+                  </button>
+
+                  {/* 가운데: 셔터 */}
+                  <button
+                    type="button"
+                    className={styles.shutterBtn}
+                    onClick={capture}
+                    aria-label="촬영"
+                    disabled={!!camError || !camReady}
+                  >
+                    <img src={imgShutter} alt="" className={styles.btnImg} />
+                  </button>
+
+                  {/* 오른쪽: 전/후면 */}
+                  <button
+                    type="button"
+                    className={styles.flipBtn}
+                    onClick={flipCamera}
+                    aria-label="전면/후면 전환"
+                    disabled={!!camError}
+                  >
+                    <img src={imgFlip} alt="" className={styles.btnImg} />
+                  </button>
+                </div>
+
+                <input
+                  ref={bgInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickBg}
+                  className={styles.hiddenInput}
+                />
+                <input
+                  ref={fgInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFg}
+                  className={styles.hiddenInput}
+                />
+              </>
+            )}
+
+            {/* ---------- confirm (왼쪽은 “버튼 없음” + 썸네일만, 가운데/오른쪽만 버튼) ---------- */}
+            {screen === 'confirm' && (
+              <>
+                {pendingUrl ? (
+                  <img src={pendingUrl} alt="촬영 결과" className={styles.confirmImg} />
+                ) : (
+                  <div className={styles.previewFallback}>이미지를 불러올 수 없어요.</div>
+                )}
+
+                <div className={styles.confirmBar2}>
+                  {/* ✅ 왼쪽: 버튼 X, 그냥 썸네일(camera의 thumbBtn과 동일한 위치) */}
+                  <div className={styles.confirmLeftThumb}>
+                    {pendingUrl ? (
+                      <img src={pendingUrl} alt="찍힌 사진" className={styles.thumbImg} />
+                    ) : (
+                      <div className={styles.thumbPlaceholder} />
+                    )}
+                  </div>
+
+                  {/* ✅ 가운데: 다시 찍기 pill (양쪽 버튼 사이 중앙에 배치) */}
+                  <button
+                    type="button"
+                    className={styles.confirmRetakePill2}
+                    onClick={retake}
+                    aria-label="다시 찍기"
+                  >
+                    {imgRetakePill ? (
+                      <img src={imgRetakePill} alt="" className={styles.confirmBtnImg} />
+                    ) : (
+                      <span className={styles.confirmRetakeFallback2}>다시 찍기</span>
+                    )}
+                  </button>
+
+                  {/* ✅ 오른쪽: 다음(원형) (camera의 flipBtn과 동일한 위치) */}
+                  <button
+                    type="button"
+                    className={styles.confirmNextCircle2}
+                    onClick={confirm}
+                    aria-label="다음"
+                  >
+                    {imgNextCircle ? (
+                      <img src={imgNextCircle} alt="" className={styles.confirmBtnImg} />
+                    ) : (
+                      <span className={styles.confirmNextFallback2}>→</span>
+                    )}
+                  </button>
+                </div>
+
+                <input
+                  ref={bgInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickBg}
+                  className={styles.hiddenInput}
+                />
+                <input
+                  ref={fgInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFg}
+                  className={styles.hiddenInput}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </main>
+
     </div>
   );
 }

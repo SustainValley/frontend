@@ -43,35 +43,30 @@
 }
 
 .subText {
-  color: #515659;
-  font-size: 12px;
+  color: var(--gray-70, #515659);
+  font-size: 14px;
   line-height: 16px;
   text-align: center;
-  margin: 0;
+  margin: 0 0 15 0;
 }
 
 .nextButton {
   border: none;
-  border-radius: 10px;
-  background: #A9C247;
+  border-radius: 12px;
+  background: var(--Sub-Sub-1, #A4CC08);
   color: #FFF;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-               "Noto Sans KR", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 20px;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
   cursor: pointer;
-  width: 280px;
+  width: 343px;
   max-width: 100%;
-  padding: 9px 0;
+  padding: 12px 0;
   display: inline-flex;
   justify-content: center;
   align-items: center;
   transition: transform 120ms ease, filter 120ms ease;
-}
-
-.nextButton:hover {
-  filter: brightness(1.03);
 }
 
 .nextButton:active {

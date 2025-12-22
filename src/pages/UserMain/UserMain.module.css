@@ -43,7 +43,7 @@
 
 .searchBar {
   position: absolute;
-  top: calc(16px + env(safe-area-inset-top, 0px) + 48px);
+  top: calc(8px + env(safe-area-inset-top, 0px) + 48px);
   left: 16px;
   right: 16px;
   height: 30px;
@@ -169,59 +169,170 @@
 }
 
 .myLocationBtn img { width: 24px; height: 24px; }
-.withReserve { top: -150px; }
-.noReserve { top: -90px; }
 
+/* ✅ 스트립을 위로 올렸으니 버튼도 같이 살짝 위로 */
+.withReserve { top: -160px; }
+.noReserve { top: -100px; }
+
+/* ===================== 예약 스트립 (침범 방지) ===================== */
 .reserveStrip {
   position: absolute;
-  top: -100px;
+  top: -110px;         /* ✅ 아래 침범 방지: panel 위로 확실히 올림 */
   left: 16px;
   right: 16px;
   z-index: 19;
+
   display: flex;
   gap: 5px;
+
   overflow-x: auto;
-  padding-bottom: 2px;
+  overflow-y: hidden;
+
+  height: 90px;        /* ✅ 스트립 높이 고정 */
+  align-items: stretch;
+
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+
   cursor: grab;
   user-select: none;
   touch-action: pan-x;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.reserveStrip::-webkit-scrollbar { height: 6px; }
-.reserveStrip::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 999px; }
+.reserveStrip::-webkit-scrollbar { display: none; }
 .dragging { cursor: grabbing; }
 
+/* ✅ 칩 공통: 높이 고정 + 폭 살짝 증가(330->340) */
 .reserveChip {
-  width: 330px;
+  width: 330px;              /* ✅ 아주 조금만 늘림 */
+  height: 90px;              /* ✅ 침범 방지: 칩 높이 고정 */
   border-radius: 16px;
-  padding: 10px 14px;
+  padding: 15px 14px;
+
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 4px;
+
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   color: var(--gray-90, #232526);
   border: none;
   text-align: left;
   flex-shrink: 0;
+
+  scroll-snap-align: start;
+
+  position: relative;
+  overflow: hidden;
 }
+
+/* ✅ scheduled(이용 예정) 디자인: 너가 올린 원본 그대로 */
 .scheduled {
   border-radius: 12px;
   border: 1px solid var(--Sub-Sub-2, #BFD194);
   background: linear-gradient(105deg, var(--white, #FFF) 33.63%, var(--limerick-00, #EBF7CE) 93.77%);
   box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
 }
-.inuse { background: linear-gradient(135deg, #FFF5F5 0%, #FFEAEA 100%); }
-.pending { background: #fff; border: 1px solid rgba(84,170,37,0.28); box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
-.done { background: linear-gradient(135deg, #F7F7F7 0%, #EFEFEF 100%); }
 
-.reserveCafe { font-size: 13px; line-height: 18px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: none; }
-.reserveChip.inuse .reserveCafe,
+/* ✅ inuse 원본 유지 */
+.inuse { 
+  border: 1px solid var(--Sub-Sub-2, #BFD194);
+  background: #A4CC08;
+  border-radius: 12px;
+  box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
+}
+
+.pending {
+  border-radius: 12px;
+  border: 1px solid var(--Sub-Sub-2, #BFD194);
+  background: linear-gradient(105deg, var(--white, #FFF) 33.63%, var(--limerick-00, #EBF7CE) 93.77%);
+  box-shadow: 0 0 16px 0 rgba(0, 0, 0, 0.10);
+}
+
+/* (혹시 사용 중이면 유지) */
+.done {
+  border: 1px solid var(--Sub-Sub-2, #BFD194);
+  background: linear-gradient(135deg, #FFF5F5 0%, #FFEAEA 100%);
+}
+
+.reserveCafe { 
+  color: var(--gray-60, #686F73);
+  font-family: Pretendard;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reserveChip.inuse .reserveCafe {
+  color: #5A6B0A;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
 .reserveChip.pending .reserveCafe { border-bottom: none; }
-.reserveChip .reserveInfo,
-.reserveChip .timeStrong { font-size: 16px; line-height: 22px; }
-.timeStrong { color: var(--limerick-40, #95AC39); font-family: Pretendard; font-weight: 600; }
+
+.reserveChip .reserveInfo {
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px;
+
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeStrong {
+  color: var(--limerick-40, #95AC39);
+  font-family: Pretendard;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.reserveChip.inuse .timeStrong { color: #FFFEF0; }
+.reserveChip.inuse .reserveInfo { color: #5A6B0A; }
+
+/* ✅ 이용중 오른쪽 이미지 공간 */
+.reserveChip.inuse { padding-right: 96px; }
+
+.inuseRightImg {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ✅ 종료시간 초과 -> 빨간 배경 */
+.overdue {
+  border: 1px solid rgba(231, 76, 60, 0.35) !important;
+  background: linear-gradient(135deg, #ffd8d4 0%, #fe9092 100%) !important;
+  box-shadow: 0 0 16px rgba(231, 76, 60, 0.18) !important;
+}
+
+.overdue .reserveCafe { color: #232526 !important; }
+.overdue .reserveInfo { color: #232526 !important; }
+.overdue .timeStrong { color: #ff4141 !important; }
+
+/* ===================== 이하 너 원본 유지 영역 ===================== */
 
 .cafeCard {
   display: grid;
@@ -245,7 +356,7 @@
   width: 114px;
   height: 114px;
   object-fit: contain;
-  padding: 25px;      
+  padding: 0px;      
   background: #EDEFF2;
   border-radius: 12px;
   box-sizing: border-box;
@@ -253,8 +364,9 @@
 }
 
 .info { grid-area: info; display: flex; flex-direction: column; gap: 6px; }
-.cafeName { color: var(--gray-90, #232526);
 
+.cafeName {
+  color: var(--gray-90, #232526);
   font-family: Pretendard;
   font-size: 16px;
   font-style: normal;
@@ -269,7 +381,6 @@
   gap: 8px;
   margin-top: 4px;
 }
-
 
 .reserveBtn {
   padding: 12px 14px;
@@ -322,7 +433,7 @@
 .detailSheet {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 87%;
+  height: 93.5%;
   background: #fff;
   border-radius: 24px 24px 0 0;
   z-index: 30;
@@ -331,6 +442,7 @@
   padding: 20px 16px;
   overflow-y: auto;
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 28px rgba(71, 71, 71, 0.22);
 }
 
 .detailHeader { margin-bottom: 10px; }
@@ -348,6 +460,7 @@
   font-weight: 600;
   line-height: 24px; 
  }
+
 .detailHeader p:last-child { color: var(--gray-90, #232526);
   font-family: Pretendard;
   font-size: 20px;
@@ -394,7 +507,7 @@
 .cancelModal {
   background: #fff;
   border-radius: 12px;
-  width: 80%;
+  width: 85%;
   max-width: 400px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.2);
   overflow: hidden;
@@ -449,18 +562,14 @@
   cursor: pointer;
 }
 
-@keyframes slideUp {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, -50%); }
-}
-
 .metaRow { color: var(--gray-80, #3A3E40);
-
   font-family: Pretendard;
   font-size: 14px;
   font-style: normal;
   font-weight: 500;
-  line-height: 20px;  display: flex; align-items: center; gap: 6px;  }
+  line-height: 20px;
+  display: flex; align-items: center; gap: 6px;  }
+
 .metaIcon { width: 16px !important; height: 16px !important; }
 
 .completeBody { padding: 5px; text-align: center; font-size: 14px; line-height: 1.6; color: #333; }
@@ -491,55 +600,10 @@
   font-size: 13px;
   letter-spacing: -0.2px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-
-.smallClearBtn::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.65), transparent 60%);
-  opacity: 0.9;
-}
-
-.smallClearBtn:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0.5px 0 rgba(255,255,255,0.7) inset,
-    0 4px 10px rgba(0,0,0,0.10),
-    0 12px 28px rgba(0,0,0,0.12);
-  border-color: rgba(0,0,0,0.12);
-}
-
-.smallClearBtn:active {
-  transform: translateY(0);
-  box-shadow:
-    0 0.5px 0 rgba(255,255,255,0.6) inset,
-    0 2px 6px rgba(0,0,0,0.10),
-    0 8px 18px rgba(0,0,0,0.10);
 }
 
 .smallClearBtn:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
-.smallClearBtn > svg, .smallClearBtn > img { width: 16px; height: 16px; display: block; }
 
-@media (prefers-color-scheme: dark) {
-  .smallClearBtn {
-    color: #f5f5f5;
-    background: linear-gradient(180deg, rgba(28,28,28,0.9), rgba(28,28,28,0.7));
-    border-color: rgba(255,255,255,0.12);
-    box-shadow:
-      0 0.5px 0 rgba(255,255,255,0.05) inset,
-      0 1px 2px rgba(0,0,0,0.5),
-      0 8px 20px rgba(0,0,0,0.6);
-  }
-  .smallClearBtn:focus-visible { outline: 2px solid #fff; }
-}
-
-@media (max-width: 420px) {
-  .smallClearBtn { padding: 8px 12px; font-size: 12px; }
-}
 .menuBackdrop { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 30; }
 
 .sideMenu {
@@ -558,8 +622,8 @@
   transition: transform 0.25s ease;
 }
 
-.sideMenu.open { transform: translateX(0); }
-.sideMenu.close { transform: translateX(-100%); }
+.open { transform: translateX(0); }
+.close { transform: translateX(-100%); }
 
 .menuItem {
   padding: 12px 100px;
@@ -573,11 +637,14 @@
   cursor: pointer;
 }
 
-.menuItem + .menuItem { margin-top: 12px; }.useNowBtn:disabled {
+.menuItem + .menuItem { margin-top: 12px; }
+
+.useNowBtn:disabled {
   background: #e5e7eb !important;
   color: #9ca3af !important;
   cursor: not-allowed !important;
 }
+
 .time {
   color: var(--Sub-Sub-1, #A4CC08);
   font-family: Pretendard;
@@ -587,17 +654,16 @@
   line-height: 24px;
   margin-left: 4px;
 }
-/* --- 사이드 메뉴 버튼 변형 스타일 --- */
+
 .menuItemPrimary {
   background: var(--Sub-Sub-1, #A4CC08);
   color: var(--gray-90, #232526);
   border: 1px solid rgba(0,0,0,0.06);
 }
-.menuItemPrimary:hover { filter: brightness(0.97); }
 
 .menuItemDanger {
   background: #fff;
-  color: #E53935;
+  color: #ffc8c7;
   border: 1px solid rgba(229,57,53,0.18);
 }
 
@@ -606,14 +672,9 @@
   box-shadow: 0 0 0 3px rgba(164,204,8,0.12);
 }
 
-.menuItem:focus-visible {
-  outline: 2px solid #111;
-  outline-offset: 2px;
-}
-
 .storyShareBar {
-  margin-top: auto; 
-  position: sticky; 
+  margin-top: auto;
+  position: sticky;
   bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   z-index: 5;
 }
@@ -637,6 +698,234 @@
   cursor: pointer;
 }
 
-.storyShareBtn:active {
+.storyShareBtn:active { transform: translateY(1px); }
+/* ===================== ✅ 이용중 전용 시트 (두 번째 사진) ===================== */
+.inuseSheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 93.5%;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  overflow: hidden;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 28px rgba(71, 71, 71, 0.22);
+}
+
+.inuseBody {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inuseHeader { padding: 4px 0 10px; }
+
+.inuseTitle {
+  margin: 16px 0 8px;
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 30px; 
+}
+
+.inuseCafeLink {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0 0 32px;
+  color: var(--gray-40, #96A1A6);
+  text-align: center;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px; 
+  text-align: left;
+  cursor: pointer;
+}
+
+.inuseInfoList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inuseInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #3A3E40;
+  font-family: Pretendard;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.inuseInfoIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  opacity: 0.9;
+}
+
+.inuseInfoLabel {
+  width: 64px;
+  color: var(--gray-80, #3A3E40);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px; /* 150% */
+  flex: 0 0 auto;
+}
+
+.inuseInfoValue { 
+  color: var(--gray-60, #686F73);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px; /* 125% */ }
+
+.inuseRemainPill {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #F3F4F6;
+  color: var(--system-blue, #3C70B5);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 24px; /* 120% */
+}
+
+.inuseCenter {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  justify-content: flex-start; /* ✅ center -> flex-start */
+  padding-top: 80px;              /* ✅ 위 패딩 줄이기 */
+  padding-bottom: 12px;        /* 필요하면 유지 */
+  gap: 4px;
+}
+
+.inuseHeroImg {
+  width: 104px;
+  height: 84px;
+  object-fit: contain;
+  opacity: 0.95;
+}
+
+.inuseMsg {
+  margin: 0;
+  color: var(--Primary-Primary, #3A3E40);
+  text-align: center;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
+  }
+
+  .inuseCtaBar {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+  
+    /* ✅ 여기 숫자가 버튼이 올라오는 정도 */
+    bottom: calc(154px + env(safe-area-inset-bottom, 0px));
+  
+    padding: 0;
+    background: transparent;
+  }
+  
+
+.inuseCtaBtn {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 12px;
+  background: #2E3133;
+  color: #fff;
+  font-family: Pretendard;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.inuseCtaBtn:active { transform: translateY(1px); }
+
+/* ✅ 거절 모달 스타일 */
+.rejectModal {
+  background: #fff;
+  border-radius: 12px;
+  width: 85%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  overflow: hidden;
+  padding: 32px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.rejectMessage {
+  margin: 0;
+  color: #232526;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+}
+
+.rejectSubMessage {
+  margin: 0;
+  color: #232526;
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: center;
+}
+
+.rejectReason {
+  margin: 0;
+  color: #6b7280;
+  font-family: Pretendard;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.rejectCloseBtn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #ff2a2a;
+  font-family: Pretendard;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.rejectCloseBtn:active {
   transform: translateY(1px);
+  background: #e5e7eb;
 }

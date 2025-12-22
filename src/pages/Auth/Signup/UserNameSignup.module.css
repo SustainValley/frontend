@@ -34,7 +34,6 @@
   font-family: Pretendard;
   font-size: 20px;
   font-weight: 600;
-  line-height: 24px;
   margin-bottom: 8px;
   margin-top: 8px;
 }
@@ -44,8 +43,7 @@
   font-family: Pretendard;
   font-size: 14px;
   font-weight: 400;
-  line-height: 20px;
-  margin-bottom: 92px;
+  margin: 0 0 92px 0;
 }
 
 .inputGroup {
