@@ -124,9 +124,9 @@ const UserSignup = () => {
 
   const onKakaoLogin = () => {
     const REST_API_KEY = 'c84cef645a77c5d2642041b3b6bc8959';
-    const REDIRECT_URI = 'http://54.180.2.235:8080/hackathon/api/oauth/kakao/callback';
+    const REDIRECT_URI = 'https://mocacafe.site/hackathon/api/oauth/kakao/callback';
     window.location.href =
-      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${REDIRECT_URI}&response_type=code`;
+      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
   };
 
   return (

@@ -65,7 +65,7 @@ const Login = () => {
 
   const handleKakaoLogin = () => {
     const CLIENT_ID = "7b56421a48b08f9dc4dd3e9f246b3a54";
-    const REDIRECT_URI = `${window.location.origin}/oauth/kakao/callback`;
+    const REDIRECT_URI = "https://mocacafe.site/hackathon/api/oauth/kakao/callback";
 
     window.location.href =
       "https://kauth.kakao.com/oauth/authorize" +
