@@ -357,4 +357,25 @@
     color: #5f6368;
     line-height: 18px;
   }
-  
+  /* ✅ 이용중(inuse) 상세 시트 하단 스토리 공유 버튼 */
+.storyShareBtn {
+  display: flex;
+  min-width: 250px;
+  margin: 10px auto 10px auto;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--Sub-Sub-1, #A4CC08);
+  color: var(--gray-90, #232526);
+  font-family: Pretendard;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 24px;
+  cursor: pointer;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+.storyShareBtn:active {
+  transform: translateY(1px);
+}
