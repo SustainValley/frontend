@@ -16,6 +16,13 @@ function formatToday() {
   return `${now.getMonth() + 1}월 ${now.getDate()}일 ${day}요일`;
 }
 
+function getDayOfWeek() {
+  const now = new Date();
+  // OperatingHours.jsx와 동일한 형식 사용: ["mon","tue","wed","thu","fri","sat","sun"]
+  const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  return dayNames[now.getDay()];
+}
+
 function toIsoTime(hhmm) {
   const [h, m] = (hhmm || "00:00").split(":");
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`;
@@ -133,38 +140,60 @@ export default function BlockTime() {
     try {
       setSubmitting(true);
       const nextStatus = status === "AVAILABLE" ? "UNAVAILABLE" : "AVAILABLE";
-      const body =
-        nextStatus === "UNAVAILABLE"
-          ? {
-              ableStartTime: toIsoTime(start),
-              ableEndTime: toIsoTime(end),
-              reservationStatus: "UNAVAILABLE",
-            }
-          : {
-              ableStartTime: toIsoTime("00:00"),
-              ableEndTime: toIsoTime("00:00"),
-              reservationStatus: "AVAILABLE",
-            };
+      
+      if (nextStatus === "UNAVAILABLE") {
+        // 예약 막기: POST /unabletime
+        const dayOfWeek = getDayOfWeek();
+        const body = {
+          dayOfWeek: dayOfWeek,
+          startTime: toIsoTime(start),
+          endTime: toIsoTime(end),
+        };
 
-      const { data } = await instance.patch(
-        `/api/cafe/${cafeId}/abletime/update`,
-        body,
-        { headers: { "Content-Type": "application/json" } }
-      );
+        console.log("[BlockTime] POST /unabletime 요청:", body);
 
-      setModalMsg(
-        data?.message ||
-          (nextStatus === "UNAVAILABLE"
-            ? `${start} ~ ${end} 시간 예약이 차단되었습니다.`
-            : "예약 차단이 해제되었습니다.")
-      );
-      setModalOpen(true);
+        try {
+          const { data } = await instance.post(
+            `/api/cafe/${cafeId}/unabletime`,
+            body,
+            { headers: { "Content-Type": "application/json" } }
+          );
 
-      if (nextStatus === "AVAILABLE") {
+          setModalMsg(
+            data?.message || `${start} ~ ${end} 시간 예약이 차단되었습니다.`
+          );
+          setModalOpen(true);
+          await fetchAbletime();
+        } catch (postError) {
+          console.error("[BlockTime] POST /unabletime 에러:", postError);
+          console.error("[BlockTime] 에러 응답:", postError?.response?.data);
+          const errorMsg = postError?.response?.data?.message || postError?.message || "서버 오류가 발생했습니다.";
+          setModalMsg(`처리에 실패했어요: ${errorMsg}`);
+          setModalOpen(true);
+          throw postError;
+        }
+      } else {
+        // 차단 해제는 기존 API 사용 (또는 다른 엔드포인트 필요할 수 있음)
+        const body = {
+          ableStartTime: toIsoTime("00:00"),
+          ableEndTime: toIsoTime("00:00"),
+          reservationStatus: "AVAILABLE",
+        };
+
+        const { data } = await instance.patch(
+          `/api/cafe/${cafeId}/abletime`,
+          body,
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        setModalMsg(
+          data?.message || "예약 차단이 해제되었습니다."
+        );
+        setModalOpen(true);
         setStart("");
         setEnd("");
+        await fetchAbletime();
       }
-      await fetchAbletime();
     } catch (e) {
       setModalMsg("처리에 실패했어요. 잠시 후 다시 시도해주세요.");
       setModalOpen(true);
@@ -183,7 +212,7 @@ export default function BlockTime() {
         reservationStatus: "AVAILABLE",
       };
       const { data } = await instance.patch(
-        `/api/cafe/${cafeId}/abletime/update`,
+        `/api/cafe/${cafeId}/abletime`,
         body,
         { headers: { "Content-Type": "application/json" } }
       );

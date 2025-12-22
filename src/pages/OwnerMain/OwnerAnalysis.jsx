@@ -37,6 +37,7 @@ const OwnerAnalysis = () => {
   }, [user]);
 
   const [promotion, setPromotion] = useState(null);
+  const [targetSales, setTargetSales] = useState(null);
   const [reasons, setReasons] = useState([]);
   const [rootCause, setRootCause] = useState("");
   const [advice, setAdvice] = useState("");
@@ -50,6 +51,17 @@ const OwnerAnalysis = () => {
       .then((res) => res.json())
       .then((data) => setPromotion(data))
       .catch((err) => console.error("프로모션 데이터 불러오기 실패:", err));
+  }, [cafeId]);
+
+  useEffect(() => {
+    if (!cafeId) return;
+    fetch(
+      `https://port-0-analysis-api-mar0zdvm42447885.sel4.cloudtype.app/cafe/${cafeId}/TargetSales`,
+      { headers: { accept: "application/json" } }
+    )
+      .then((res) => res.json())
+      .then((data) => setTargetSales(data))
+      .catch((err) => console.error("목표매출 데이터 불러오기 실패:", err));
   }, [cafeId]);
 
   useEffect(() => {
@@ -124,13 +136,24 @@ const OwnerAnalysis = () => {
         <div className={styles.salesHero}>
           <div className={styles.salesInfo}>
             <p className={styles.salesTitle}>
-              <span className={styles.salesHighlight}>2025 4분기</span> 목표매출을
+              <span className={styles.salesHighlight}>
+                {targetSales
+                  ? `${targetSales.year} ${targetSales.quarter}분기`
+                  : "목표매출"}
+              </span>{" "}
+              목표매출을
               <br />
               추정해봤어요!
             </p>
-            <p className={styles.salesDate}>2025.09.01~2025.12.31</p>
+            <p className={styles.salesDate}>
+              {targetSales
+                ? targetSales.period.replace(" ~ ", "~")
+                : "데이터를 불러오는 중..."}
+            </p>
           </div>
-          <p className={styles.salesAmount}>1,000,000,000 원</p>
+          <p className={styles.salesAmount}>
+            {targetSales ? `${targetSales.target_sales} 원` : "로딩 중..."}
+          </p>
         </div>
         {/* --- [END] 요청하신 회색 매출 추정 박스 --- */}
 

@@ -348,11 +348,18 @@ export default function StoreInfo() {
       return;
     }
 
+    const maxCapacityValue = typeof maxPeople === "number" && Number.isFinite(maxPeople) && maxPeople > 0 
+      ? maxPeople 
+      : null;
+
     const payload = {
       minOrder: (minOrder || "").trim(),
-      maxSeats: Number(maxPeople),
+      maxCapacity: maxCapacityValue,
       spaceType: isEtc ? (spaceCustom || "").trim() || "기타 (직접 입력)" : space,
     };
+
+    console.log("[StoreInfo] PATCH /update 요청:", payload);
+    console.log("[StoreInfo] maxPeople 값:", maxPeople, "타입:", typeof maxPeople);
 
     try {
       setSaving(true);
@@ -360,6 +367,8 @@ export default function StoreInfo() {
 
       const res = await instance.patch(`/api/cafe/${cafeIdRef.current}/update`, payload);
       const data = res?.data ?? {};
+
+      console.log("[StoreInfo] PATCH /update 응답:", data);
 
       setMinOrder(data.minOrder ?? minOrder);
       if (typeof data.maxSeats === "number") setMaxPeople(data.maxSeats);
