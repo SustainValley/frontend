@@ -1,4 +1,4 @@
-// OwnerAnalysis.jsx (서버 전달 순서 유지 버전)
+// OwnerAnalysis.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OwnerAnalysis.module.css";
@@ -29,7 +29,6 @@ const OwnerAnalysis = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // 1) cafeId 동적 결정 (user → localStorage → null)
   const cafeId = useMemo(() => {
     if (user?.cafeId) return Number(user.cafeId);
     const ls =
@@ -43,7 +42,6 @@ const OwnerAnalysis = () => {
   const [advice, setAdvice] = useState("");
   const [loadingReasons, setLoadingReasons] = useState(true);
 
-  // cafeId가 확정되었을 때만 호출
   useEffect(() => {
     if (!cafeId) return;
     fetch(
@@ -65,14 +63,12 @@ const OwnerAnalysis = () => {
           ? data.focused_cancel_reason
           : [];
 
-        // 🔧 서버가 준 배열의 '그대로 순서'를 유지 (정렬 제거)
         const parsed = focused.map((obj) => {
           const key = Object.keys(obj)[0];
           const count = obj[key] ?? 0;
           return { key, count, label: cancelReasonMap[key] ?? key };
         });
 
-        // 들어온 순서대로 rank 부여
         const ranked = parsed.map((r, i) => ({ ...r, rank: i + 1 }));
 
         setReasons(ranked);
@@ -88,7 +84,6 @@ const OwnerAnalysis = () => {
 
   const visibleReasons = useMemo(() => reasons.slice(0, 6), [reasons]);
 
-  // cafeId 미확정 시 가드 UI
   if (!cafeId) {
     return (
       <div className={styles.page}>
@@ -125,12 +120,26 @@ const OwnerAnalysis = () => {
       </div>
 
       <div className={styles.scrollArea}>
+        {/* --- [START] 요청하신 회색 매출 추정 박스 --- */}
+        <div className={styles.salesHero}>
+          <div className={styles.salesInfo}>
+            <p className={styles.salesTitle}>
+              <span className={styles.salesHighlight}>2025 4분기</span> 목표매출을
+              <br />
+              추정해봤어요!
+            </p>
+            <p className={styles.salesDate}>2025.09.01~2025.12.31</p>
+          </div>
+          <p className={styles.salesAmount}>1,000,000,000 원</p>
+        </div>
+        {/* --- [END] 요청하신 회색 매출 추정 박스 --- */}
+
         <div className={styles.section}>
-          <p className={styles.subtitle}>현재 공릉동은..</p>
+          <p className={styles.subtitle}>프로모션 추천</p>
           <div className={styles.highlightCard}>
             <p className={styles.highlightTitle}>
               {promotion
-                ? `상권 ${promotion.commercial_status}인 시간이에요.`
+                ? `상권 ${promotion.commercial_status} 시간이에요.`
                 : "상권 정보를 불러오는 중이에요..."}
               <br /> 고객 유치에 힘써보세요!
             </p>
@@ -147,7 +156,7 @@ const OwnerAnalysis = () => {
                       promotion.main_purpose}{" "}
                     비중이 {promotion.percent} 이상이에요!
                     <br />
-                    {promotion.rec_promotion}
+                    "{promotion.rec_promotion}"
                   </p>
                 </div>
               </>

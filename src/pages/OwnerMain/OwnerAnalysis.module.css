@@ -1,3 +1,4 @@
+/* OwnerAnalysis.module.css */
 .page {
   display: flex;
   flex-direction: column;
@@ -12,6 +13,7 @@
   background: #fff;
   border-bottom: none;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .backBtn {
@@ -39,8 +41,8 @@
 .scrollArea {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  padding-bottom: 80px;
+  /* padding을 제거하여 회색 박스가 양옆에 꽉 차게 함 */
+  padding: 0 0 80px 0;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -49,8 +51,59 @@
   display: none;
 }
 
-.section {
+/* --- 매출 추정 --- */
+.salesHero {
+  width: 100%;
+  height: 232px;
+  background-color: #3A3E40; 
+  padding: 20px 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   margin-bottom: 24px;
+}
+
+.salesInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.salesTitle {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #FFFFFF; 
+  margin: 0;
+}
+
+.salesHighlight {
+  color: #A4CC08; 
+}
+
+.salesDate {
+  font-size: 14px;
+  color: #FFFFFF; 
+  opacity: 0.5; 
+  margin: 0;
+  font-weight: 400;
+}
+
+.salesAmount {
+  font-size: 32px;
+  font-weight: 700;
+  color: #FFFFFF; 
+  margin: 0;
+  text-align: right; 
+  margin-top: auto;
+}
+/* ------ */
+
+
+/* 기존 section은 padding이 필요하므로 margin으로 좌우 여백 확보 */
+.section {
+  margin: 0 12px 12px 12px;
 }
 
 .subtitle {
