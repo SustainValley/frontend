@@ -16,6 +16,18 @@ export default function KakaoCallback() {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state") || "";
+      
+      // state 검증 (CSRF 방지)
+      const savedState = sessionStorage.getItem("kakao_oauth_state");
+      if (state && savedState && state !== savedState) {
+        sessionStorage.removeItem("kakao_oauth_state");
+        alert("보안 검증에 실패했습니다. 다시 시도해주세요.");
+        navigate("/login", { replace: true });
+        return;
+      }
+      if (savedState) {
+        sessionStorage.removeItem("kakao_oauth_state");
+      }
 
       if (!code) {
         navigate("/login", { replace: true });

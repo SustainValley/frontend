@@ -124,9 +124,16 @@ const UserSignup = () => {
 
   const onKakaoLogin = () => {
     const REST_API_KEY = 'c84cef645a77c5d2642041b3b6bc8959';
-    const REDIRECT_URI = 'https://mocacafe.site/hackathon/api/oauth/kakao/callback';
+    // 프로덕션은 mocacafe.site, 로컬은 window.location.origin 사용
+    const isProduction = window.location.hostname === "mocacafe.site" || !window.location.hostname.includes("localhost");
+    const REDIRECT_URI = isProduction 
+      ? "https://mocacafe.site/oauth/kakao/callback"
+      : `${window.location.origin}/oauth/kakao/callback`;
+    // CSRF 방지를 위한 state 생성
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem("kakao_oauth_state", state);
     window.location.href =
-      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+      `https://kauth.kakao.com/oauth/authorize?client_id=${REST_API_KEY}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${state}`;
   };
 
   return (
