@@ -97,9 +97,7 @@ function isOpenNowByText(rawText, nowMin, nowDow) {
     const applies = days == null || days.has(nowDow);
     if (!applies) continue;
 
-    if (/휴무|쉼|닫음|closed/i.test(seg)) {
-      continue;
-    }
+    if (/휴무|쉼|닫음|closed/i.test(seg)) continue;
 
     const regex = /(\d{1,2})(?::?(\d{2}))?\s*[~\-–—]\s*(\d{1,2})(?::?(\d{2}))?/g;
     for (const m of seg.matchAll(regex)) {
@@ -189,19 +187,20 @@ const toFrontStatus = (reservationStatus, attendanceStatus) => {
   return 'pending';
 };
 
-/* ===================== ✅ API 설정 (배포에서도 절대경로로 고정) ===================== */
+/* ===================== ✅ API 설정 (배포에서도 백엔드 도메인으로 강제) ===================== */
 
 const IS_DEV = process.env.NODE_ENV === 'development';
 
-// ✅ 배포 환경에서는 반드시 백엔드 도메인으로 고정
-// (필요하면 REACT_APP_API_HOST를 Vercel 환경변수로 추가해서 덮어쓸 수 있음)
-const PROD_API_HOST = process.env.REACT_APP_API_HOST || 'https://mocacafe.site';
-const API_HOST = IS_DEV ? 'http://54.180.2.235:8080' : PROD_API_HOST;
+// ✅ 여기서 "프론트 도메인(vercel.app)"로 붙는 걸 원천 차단.
+// - 개발: EC2(8080)
+// - 배포/프리뷰(어느 도메인에서 접속하든): 무조건 mocacafe.site 로 호출
+const DEV_API_HOST = 'http://54.180.2.235:8080';
+const PROD_API_HOST = 'https://mocacafe.site';
 
-// ✅ 항상 절대경로가 되도록 구성
+const API_HOST = IS_DEV ? DEV_API_HOST : PROD_API_HOST;
 const API_PREFIX = `${API_HOST}/hackathon/api`;
 
-// ✅ 이미지/파일도 백엔드에서 내려주는 경우 동일 HOST로 붙임
+// ✅ 이미지/파일도 백엔드 호스트로 붙임
 const MEDIA_HOST = API_HOST;
 const withHost = (url) => {
   if (!url) return null;
@@ -316,7 +315,6 @@ export default function UserMain() {
     const api = mapRef.current;
     const kakao = window?.kakao;
 
-    // 1) 새 KakaoMap(v2) API가 노출된 경우
     if (api?.centerToGongneung) {
       api.centerToGongneung({ level: 4, showMarker: true });
       return;
@@ -326,7 +324,6 @@ export default function UserMain() {
       return;
     }
 
-    // 2) 구버전: ref가 kakao.maps.Map 인스턴스인 경우
     if (api && kakao?.maps) {
       const map = api.getMap ? api.getMap() : api;
       const pos = new kakao.maps.LatLng(GONGNEUNG.lat, GONGNEUNG.lng);
@@ -357,7 +354,7 @@ export default function UserMain() {
     let abort = false;
     const fetchReservations = async () => {
       if (!userId) {
-        if (!abort) { setReservations([]); }
+        if (!abort) setReservations([]);
         return;
       }
       try {
@@ -365,7 +362,7 @@ export default function UserMain() {
           `${API_PREFIX}/reservation?userId=${encodeURIComponent(userId)}`,
           {
             headers: { accept: '*/*' },
-            credentials: 'include', // ✅ 카페 리스트와 동일하게 쿠키 포함
+            credentials: 'include',
           }
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -378,7 +375,6 @@ export default function UserMain() {
             if (!status) return null;
             const time = `${fmtHHMM(row.startTime)} - ${fmtHHMM(row.endTime)}`;
 
-            // 이미지 URL 우선순위: cafeImageUrl → imageUrl
             const rawImg = row.cafeImageUrl ?? row.imageUrl ?? null;
             const thumb = withHost(rawImg);
 
@@ -472,7 +468,9 @@ export default function UserMain() {
     return matchSpace && matchPeople;
   });
 
-  const listForRender = selectedCafeId ? byFilters.filter((c) => String(c.cafeId) === String(selectedCafeId)) : byFilters;
+  const listForRender = selectedCafeId
+    ? byFilters.filter((c) => String(c.cafeId) === String(selectedCafeId))
+    : byFilters;
 
   const cafesForMap = listForRender.map((c) => ({
     cafeId: c.cafeId,
@@ -549,13 +547,12 @@ export default function UserMain() {
         accept: '*/*',
         'Content-Type': 'application/json',
       },
-      credentials: 'include', // ✅ 취소도 쿠키 필요하면 포함
+      credentials: 'include',
       body: JSON.stringify({ cancelReason: reasonCode }),
     });
 
     if (!res.ok) {
-      const msg = `취소 실패 (HTTP ${res.status})`;
-      throw new Error(msg);
+      throw new Error(`취소 실패 (HTTP ${res.status})`);
     }
     const data = await res.json().catch(() => ({}));
     if (data?.isSuccess === false) {
@@ -594,13 +591,10 @@ export default function UserMain() {
     img.src = defaultCafeLogo;
   };
 
-  // ✅ (추가) 스토리 공유 버튼 클릭 핸들러
   const handleStoryShare = () => {
     if (!activeReservation) return;
     navigate('/user/story', {
-      state: {
-        reservation: activeReservation,
-      },
+      state: { reservation: activeReservation },
     });
   };
 
