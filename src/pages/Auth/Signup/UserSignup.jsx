@@ -126,9 +126,7 @@ const UserSignup = () => {
     const REST_API_KEY = 'c84cef645a77c5d2642041b3b6bc8959';
     // 프로덕션은 mocacafe.site, 로컬은 window.location.origin 사용
     const isProduction = window.location.hostname === "mocacafe.site" || !window.location.hostname.includes("localhost");
-    const REDIRECT_URI = isProduction 
-      ? "https://mocacafe.site/hackathon/api/oauth/kakao/callback"
-      : `${window.location.origin}/hackathon/api/oauth/kakao/callback`;
+     const REDIRECT_URI =  "http://localhost:3000/oauth/kakao/callback"
     // CSRF 방지를 위한 state 생성
     const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     sessionStorage.setItem("kakao_oauth_state", state);
